@@ -39,6 +39,13 @@ mvn spring-boot:run
 
 Aplikacja wystartuje domyślnie na `http://localhost:8080`.
 
+## Swagger
+
+Po starcie aplikacji dostępne są:
+
+- UI: `http://localhost:8080/swagger-ui.html`
+- specyfikacja OpenAPI: `http://localhost:8080/v3/api-docs`
+
 ## Przykładowy endpoint
 
 Pobiera faktury sprzedaży z wczorajszego dnia (data dokumentu, strefa `Europe/Warsaw`):
