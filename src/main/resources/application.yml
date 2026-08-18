@@ -2,6 +2,9 @@ spring:
   application:
     name: ksiegowosc
 
+server:
+  port: ${PORT:8080}
+
 clients:
   merit:
     base-url: https://program.360ksiegowosc.pl/api/v1

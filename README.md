@@ -39,6 +39,27 @@ mvn spring-boot:run
 
 Aplikacja wystartuje domyślnie na `http://localhost:8080`.
 
+## Docker
+
+Zbuduj i uruchom obraz lokalnie:
+
+```bash
+docker build -t ksiegowosc .
+docker run --rm -p 8080:8080 -e MERIT_API_ID=twoj-api-id -e MERIT_API_KEY=twoj-api-key ksiegowosc
+```
+
+Aplikacja czyta port ze zmiennej `PORT` (domyślnie `8080`). Render wstrzykuje własne `PORT`.
+
+## Render.com
+
+1. W Renderze utwórz **Web Service** i podłącz repozytorium GitHub.
+2. Jako runtime wybierz **Docker** (Render wykryje `Dockerfile` w katalogu głównym).
+3. Dodaj sekrety środowiskowe:
+   - `MERIT_API_ID`
+   - `MERIT_API_KEY`
+
+Po deployu Swagger będzie pod `/swagger-ui.html`, a lista faktur pod `/api/invoices/yesterday`.
+
 ## Swagger
 
 Po starcie aplikacji dostępne są:
