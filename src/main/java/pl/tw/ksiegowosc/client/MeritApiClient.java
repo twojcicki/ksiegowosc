@@ -26,9 +26,11 @@ public class MeritApiClient {
         this.meritRestClient = meritRestClient;
     }
 
-    public List<SalesInvoiceDto> getInvoices(LocalDate day) {
-        String period = day.format(PERIOD_FORMAT);
-        InvoiceListRequest request = new InvoiceListRequest(period, period, 0);
+    public List<SalesInvoiceDto> getInvoices(LocalDate from, LocalDate to) {
+        InvoiceListRequest request = new InvoiceListRequest(
+                from.format(PERIOD_FORMAT),
+                to.format(PERIOD_FORMAT),
+                0);
 
         return meritRestClient.post()
                 .uri("/getinvoices")

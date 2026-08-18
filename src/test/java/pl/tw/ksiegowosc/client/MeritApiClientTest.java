@@ -29,7 +29,7 @@ import pl.tw.ksiegowosc.dto.SalesInvoiceDto;
 class MeritApiClientTest {
 
     @Test
-    void shouldFetchInvoicesForGivenDay() {
+    void shouldFetchInvoicesForGivenPeriod() {
         Clock clock = Clock.fixed(Instant.parse("2026-08-18T10:00:00Z"), ZoneOffset.UTC);
         MeritApiProperties properties = new MeritApiProperties(
                 "https://program.360ksiegowosc.pl/api/v1",
@@ -43,7 +43,7 @@ class MeritApiClientTest {
         MockRestServiceServer server = MockRestServiceServer.bindTo(builder).build();
         MeritApiClient client = new MeritApiClient(builder.build());
 
-        String expectedBody = "{\"PeriodStart\":\"20260817\",\"PeriodEnd\":\"20260817\",\"DateType\":0}";
+        String expectedBody = "{\"PeriodStart\":\"20260801\",\"PeriodEnd\":\"20260817\",\"DateType\":0}";
         String expectedSignature = interceptor.sign("20260818100000", expectedBody);
 
         server.expect(requestTo(startsWith("https://program.360ksiegowosc.pl/api/v1/getinvoices")))
@@ -65,7 +65,9 @@ class MeritApiClientTest {
                         ]
                         """, MediaType.APPLICATION_JSON));
 
-        List<SalesInvoiceDto> invoices = client.getInvoices(LocalDate.of(2026, 8, 17));
+        List<SalesInvoiceDto> invoices = client.getInvoices(
+                LocalDate.of(2026, 8, 1),
+                LocalDate.of(2026, 8, 17));
 
         assertThat(invoices).hasSize(1);
         assertThat(invoices.getFirst().invoiceNo()).isEqualTo("FV/2026/08/17");

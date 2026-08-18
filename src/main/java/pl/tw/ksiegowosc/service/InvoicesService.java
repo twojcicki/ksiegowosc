@@ -1,11 +1,11 @@
 package pl.tw.ksiegowosc.service;
 
-import java.time.Clock;
 import java.time.LocalDate;
-import java.time.ZoneId;
 import java.util.List;
 
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
+import org.springframework.web.server.ResponseStatusException;
 
 import pl.tw.ksiegowosc.client.MeritApiClient;
 import pl.tw.ksiegowosc.dto.SalesInvoiceDto;
@@ -13,18 +13,23 @@ import pl.tw.ksiegowosc.dto.SalesInvoiceDto;
 @Service
 public class InvoicesService {
 
-    private static final ZoneId WARSAW = ZoneId.of("Europe/Warsaw");
-
     private final MeritApiClient meritApiClient;
-    private final Clock clock;
 
-    public InvoicesService(MeritApiClient meritApiClient, Clock clock) {
+    public InvoicesService(MeritApiClient meritApiClient) {
         this.meritApiClient = meritApiClient;
-        this.clock = clock;
     }
 
-    public List<SalesInvoiceDto> getYesterdaysInvoices() {
-        LocalDate yesterday = LocalDate.now(clock.withZone(WARSAW)).minusDays(1);
-        return meritApiClient.getInvoices(yesterday);
+    public List<SalesInvoiceDto> getInvoices(LocalDate from, LocalDate to) {
+        if (from.isAfter(to)) {
+            throw new ResponseStatusException(
+                    HttpStatus.BAD_REQUEST,
+                    "Data początkowa nie może być późniejsza niż data końcowa.");
+        }
+        if (from.plusMonths(3).isBefore(to)) {
+            throw new ResponseStatusException(
+                    HttpStatus.BAD_REQUEST,
+                    "Zakres dat nie może przekraczać 3 miesięcy.");
+        }
+        return meritApiClient.getInvoices(from, to);
     }
 }
