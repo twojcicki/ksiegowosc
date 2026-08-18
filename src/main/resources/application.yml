@@ -1,0 +1,9 @@
+spring:
+  application:
+    name: ksiegowosc
+
+clients:
+  merit:
+    base-url: https://program.360ksiegowosc.pl/api/v1
+    api-id: ${MERIT_API_ID:change-me}
+    api-key: ${MERIT_API_KEY:change-me}
