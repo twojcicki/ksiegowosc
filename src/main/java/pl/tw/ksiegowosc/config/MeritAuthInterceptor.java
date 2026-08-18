@@ -42,11 +42,11 @@ public class MeritAuthInterceptor implements ClientHttpRequestInterceptor {
         String signature = sign(timestamp, httpBody);
 
         URI signedUri = UriComponentsBuilder.fromUri(request.getURI())
-                .queryParam("apiId", properties.apiId())
-                .queryParam("timestamp", timestamp)
-                .queryParam("signature", signature)
-                .build()
+                .queryParam("apiId", "{apiId}")
+                .queryParam("timestamp", "{timestamp}")
+                .queryParam("signature", "{signature}")
                 .encode()
+                .buildAndExpand(properties.apiId(), timestamp, signature)
                 .toUri();
 
         HttpRequest signedRequest = new HttpRequestWrapper(request) {
