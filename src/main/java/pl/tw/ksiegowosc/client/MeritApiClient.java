@@ -9,7 +9,9 @@ import org.springframework.http.MediaType;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestClient;
 
+import pl.tw.ksiegowosc.dto.InvoiceDetailsRequest;
 import pl.tw.ksiegowosc.dto.InvoiceListRequest;
+import pl.tw.ksiegowosc.dto.SalesInvoiceDetailsDto;
 import pl.tw.ksiegowosc.dto.SalesInvoiceDto;
 
 @Component
@@ -38,5 +40,16 @@ public class MeritApiClient {
                 .body(request)
                 .retrieve()
                 .body(INVOICES_RESPONSE);
+    }
+
+    public SalesInvoiceDetailsDto getInvoiceDetails(String id, boolean addAttachment) {
+        InvoiceDetailsRequest request = new InvoiceDetailsRequest(id, addAttachment);
+
+        return meritRestClient.post()
+                .uri("/getinvoice")
+                .contentType(MediaType.APPLICATION_JSON)
+                .body(request)
+                .retrieve()
+                .body(SalesInvoiceDetailsDto.class);
     }
 }

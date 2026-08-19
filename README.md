@@ -58,7 +58,7 @@ Aplikacja czyta port ze zmiennej `PORT` (domyślnie `8080`). Render wstrzykuje w
    - `MERIT_API_ID`
    - `MERIT_API_KEY`
 
-Po deployu Swagger będzie pod `/swagger-ui.html`, a lista faktur pod `/api/invoices?from=2026-01-01&to=2026-01-31`.
+Po deployu Swagger będzie pod `/swagger-ui.html`, lista faktur pod `/api/invoices?from=2026-01-01&to=2026-01-31`, a szczegóły pod `/api/invoices/{id}`.
 
 ## Swagger
 
@@ -77,6 +77,15 @@ curl "http://localhost:8080/api/invoices?from=2026-01-01&to=2026-01-31"
 
 Wywołanie idzie do `POST https://program.360ksiegowosc.pl/api/v1/getinvoices`
 z `PeriodStart` i `PeriodEnd` w formacie `yyyyMMdd` oraz `DateType: 0`.
+
+Szczegóły pojedynczej faktury (`SIHId` z listy). Opcjonalny parametr `addAttachment=true` dołącza PDF w base64:
+
+```bash
+curl "http://localhost:8080/api/invoices/5f91033c-9d0f-416e-a079-d3c892b8c317"
+```
+
+Wywołanie idzie do `POST https://program.360ksiegowosc.pl/api/v1/getinvoice`
+z `Id` oraz `AddAttachment`.
 
 ## Struktura
 

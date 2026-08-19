@@ -16,7 +16,9 @@ import org.springframework.http.HttpStatus;
 import org.springframework.web.server.ResponseStatusException;
 
 import pl.tw.ksiegowosc.client.MeritApiClient;
+import pl.tw.ksiegowosc.dto.SalesInvoiceDetailsDto;
 import pl.tw.ksiegowosc.dto.SalesInvoiceDto;
+import pl.tw.ksiegowosc.dto.SalesInvoiceHeaderDto;
 
 class InvoicesServiceTest {
 
@@ -85,5 +87,42 @@ class InvoicesServiceTest {
         invoicesService.getInvoices(from, to);
 
         verify(meritApiClient).getInvoices(from, to);
+    }
+
+    @Test
+    void shouldFetchInvoiceDetails() {
+        String invoiceId = "5f91033c-9d0f-416e-a079-d3c892b8c317";
+        SalesInvoiceDetailsDto expected = new SalesInvoiceDetailsDto(
+                new SalesInvoiceHeaderDto(
+                        invoiceId,
+                        null, null, null, null, null,
+                        "FV/1",
+                        null, null, "Klient",
+                        null, null, null, null, null, null, null,
+                        new BigDecimal("10.00"),
+                        null, null, null, null, null, null, null, null, null, null, null, null, null),
+                List.of(),
+                List.of(),
+                null);
+        when(meritApiClient.getInvoiceDetails(invoiceId, false)).thenReturn(expected);
+
+        SalesInvoiceDetailsDto details = invoicesService.getInvoiceDetails(invoiceId, false);
+
+        assertThat(details.header().invoiceNo()).isEqualTo("FV/1");
+        verify(meritApiClient).getInvoiceDetails(invoiceId, false);
+    }
+
+    @Test
+    void shouldReturnNotFoundWhenInvoiceDetailsAreMissing() {
+        when(meritApiClient.getInvoiceDetails("missing-id", false)).thenReturn(null);
+
+        assertThatThrownBy(() -> invoicesService.getInvoiceDetails("missing-id", false))
+                .isInstanceOf(ResponseStatusException.class)
+                .satisfies(ex -> {
+                    ResponseStatusException statusEx = (ResponseStatusException) ex;
+                    assertThat(statusEx.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
+                    assertThat(statusEx.getReason())
+                            .isEqualTo("Nie znaleziono faktury o podanym identyfikatorze.");
+                });
     }
 }

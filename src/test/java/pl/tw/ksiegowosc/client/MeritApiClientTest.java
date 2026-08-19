@@ -24,6 +24,7 @@ import org.springframework.web.client.RestClient;
 
 import pl.tw.ksiegowosc.config.MeritApiProperties;
 import pl.tw.ksiegowosc.config.MeritAuthInterceptor;
+import pl.tw.ksiegowosc.dto.SalesInvoiceDetailsDto;
 import pl.tw.ksiegowosc.dto.SalesInvoiceDto;
 
 class MeritApiClientTest {
@@ -72,6 +73,59 @@ class MeritApiClientTest {
         assertThat(invoices).hasSize(1);
         assertThat(invoices.getFirst().invoiceNo()).isEqualTo("FV/2026/08/17");
         assertThat(invoices.getFirst().customerName()).isEqualTo("Przykładowy Klient");
+        server.verify();
+    }
+
+    @Test
+    void shouldFetchInvoiceDetails() {
+        Clock clock = Clock.fixed(Instant.parse("2026-08-18T10:00:00Z"), ZoneOffset.UTC);
+        MeritApiProperties properties = new MeritApiProperties(
+                "https://program.360ksiegowosc.pl/api/v1",
+                "test-api-id",
+                "test-api-key");
+        MeritAuthInterceptor interceptor = new MeritAuthInterceptor(properties, clock);
+
+        RestClient.Builder builder = RestClient.builder()
+                .baseUrl(properties.baseUrl())
+                .requestInterceptor(interceptor);
+        MockRestServiceServer server = MockRestServiceServer.bindTo(builder).build();
+        MeritApiClient client = new MeritApiClient(builder.build());
+
+        String invoiceId = "5f91033c-9d0f-416e-a079-d3c892b8c317";
+        String expectedBody = "{\"Id\":\"" + invoiceId + "\",\"AddAttachment\":false}";
+        String expectedSignature = interceptor.sign("20260818100000", expectedBody);
+
+        server.expect(requestTo(startsWith("https://program.360ksiegowosc.pl/api/v1/getinvoice")))
+                .andExpect(method(HttpMethod.POST))
+                .andExpect(queryParam("apiId", "test-api-id"))
+                .andExpect(queryParam("timestamp", "20260818100000"))
+                .andExpect(queryParam("signature", URLEncoder.encode(expectedSignature, StandardCharsets.UTF_8)))
+                .andExpect(content().json(expectedBody, true))
+                .andRespond(withSuccess("""
+                        {
+                          "Header": {
+                            "SIHId": "5f91033c-9d0f-416e-a079-d3c892b8c317",
+                            "InvoiceNo": "FV/2026/08/17",
+                            "CustomerName": "Przykładowy Klient",
+                            "TotalAmount": 123.45
+                          },
+                          "Lines": [
+                            {
+                              "ArticleCode": "ABC",
+                              "Quantity": 1,
+                              "Price": 123.45,
+                              "Description": "Usługa"
+                            }
+                          ],
+                          "Payments": []
+                        }
+                        """, MediaType.APPLICATION_JSON));
+
+        SalesInvoiceDetailsDto details = client.getInvoiceDetails(invoiceId, false);
+
+        assertThat(details.header().invoiceNo()).isEqualTo("FV/2026/08/17");
+        assertThat(details.lines()).hasSize(1);
+        assertThat(details.lines().getFirst().articleCode()).isEqualTo("ABC");
         server.verify();
     }
 }

@@ -4,6 +4,7 @@ import java.time.LocalDate;
 import java.util.List;
 
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
@@ -11,6 +12,7 @@ import org.springframework.web.bind.annotation.RestController;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import pl.tw.ksiegowosc.dto.SalesInvoiceDetailsDto;
 import pl.tw.ksiegowosc.dto.SalesInvoiceDto;
 import pl.tw.ksiegowosc.service.InvoicesService;
 
@@ -36,5 +38,18 @@ public class InvoicesController {
             @Parameter(description = "Koniec zakresu (yyyy-MM-dd)", required = true, example = "2026-01-31")
             @RequestParam LocalDate to) {
         return invoicesService.getInvoices(from, to);
+    }
+
+    @GetMapping("/{id}")
+    @Operation(
+            summary = "Szczegóły faktury",
+            description = "Zwraca pełne szczegóły faktury sprzedaży z Merit (nagłówek, pozycje, płatności). "
+                    + "Identyfikator to SIHId z listy faktur.")
+    public SalesInvoiceDetailsDto getInvoiceDetails(
+            @Parameter(description = "SIHId faktury", required = true)
+            @PathVariable String id,
+            @Parameter(description = "Czy dołączyć załącznik PDF w base64")
+            @RequestParam(defaultValue = "false") boolean addAttachment) {
+        return invoicesService.getInvoiceDetails(id, addAttachment);
     }
 }

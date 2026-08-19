@@ -8,6 +8,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.server.ResponseStatusException;
 
 import pl.tw.ksiegowosc.client.MeritApiClient;
+import pl.tw.ksiegowosc.dto.SalesInvoiceDetailsDto;
 import pl.tw.ksiegowosc.dto.SalesInvoiceDto;
 
 @Service
@@ -31,5 +32,13 @@ public class InvoicesService {
                     "Zakres dat nie może przekraczać 3 miesięcy.");
         }
         return meritApiClient.getInvoices(from, to);
+    }
+
+    public SalesInvoiceDetailsDto getInvoiceDetails(String id, boolean addAttachment) {
+        SalesInvoiceDetailsDto details = meritApiClient.getInvoiceDetails(id, addAttachment);
+        if (details == null || details.header() == null) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Nie znaleziono faktury o podanym identyfikatorze.");
+        }
+        return details;
     }
 }
