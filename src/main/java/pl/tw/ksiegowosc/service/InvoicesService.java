@@ -4,10 +4,13 @@ import java.time.LocalDate;
 import java.util.List;
 
 import org.springframework.http.HttpStatus;
+import org.springframework.http.HttpStatusCode;
 import org.springframework.stereotype.Service;
+import org.springframework.web.client.RestClientResponseException;
 import org.springframework.web.server.ResponseStatusException;
 
 import pl.tw.ksiegowosc.client.MeritApiClient;
+import pl.tw.ksiegowosc.client.MeritErrorMessages;
 import pl.tw.ksiegowosc.dto.SalesInvoiceDetailsDto;
 import pl.tw.ksiegowosc.dto.SalesInvoiceDto;
 import pl.tw.ksiegowosc.dto.SendInvoiceEmailResponse;
@@ -44,7 +47,15 @@ public class InvoicesService {
     }
 
     public SendInvoiceEmailResponse sendInvoiceByEmail(String id, boolean delivNote) {
-        String result = meritApiClient.sendInvoiceByEmail(id, delivNote);
+        String result;
+        try {
+            result = meritApiClient.sendInvoiceByEmail(id, delivNote);
+        } catch (RestClientResponseException ex) {
+            HttpStatusCode status = ex.getStatusCode().is4xxClientError()
+                    ? ex.getStatusCode()
+                    : HttpStatus.BAD_GATEWAY;
+            throw new ResponseStatusException(status, MeritErrorMessages.from(ex), ex);
+        }
         if (result != null && "OK".equalsIgnoreCase(result.trim())) {
             return new SendInvoiceEmailResponse("OK");
         }

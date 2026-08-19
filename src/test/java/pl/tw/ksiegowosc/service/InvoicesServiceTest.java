@@ -7,12 +7,15 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import java.math.BigDecimal;
+import java.nio.charset.StandardCharsets;
 import java.time.LocalDate;
 import java.util.List;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
+import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.server.ResponseStatusException;
 
 import pl.tw.ksiegowosc.client.MeritApiClient;
@@ -148,6 +151,27 @@ class InvoicesServiceTest {
                     ResponseStatusException statusEx = (ResponseStatusException) ex;
                     assertThat(statusEx.getStatusCode()).isEqualTo(HttpStatus.BAD_GATEWAY);
                     assertThat(statusEx.getReason()).isEqualTo("Mailbox unavailable");
+                });
+    }
+
+    @Test
+    void shouldReturnMeritMessageWhenEmailSendIsRejected() {
+        String meritBody = "{\"Message\":\"E-mail nadawcy nie został wpisany w ustawieniach faktury sprzedaży.\"}";
+        when(meritApiClient.sendInvoiceByEmail("id", false)).thenThrow(
+                HttpClientErrorException.create(
+                        HttpStatus.BAD_REQUEST,
+                        "Bad Request",
+                        HttpHeaders.EMPTY,
+                        meritBody.getBytes(StandardCharsets.UTF_8),
+                        StandardCharsets.UTF_8));
+
+        assertThatThrownBy(() -> invoicesService.sendInvoiceByEmail("id", false))
+                .isInstanceOf(ResponseStatusException.class)
+                .satisfies(ex -> {
+                    ResponseStatusException statusEx = (ResponseStatusException) ex;
+                    assertThat(statusEx.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+                    assertThat(statusEx.getReason())
+                            .isEqualTo("E-mail nadawcy nie został wpisany w ustawieniach faktury sprzedaży.");
                 });
     }
 }
