@@ -26,6 +26,7 @@ clients:
     base-url: https://program.360ksiegowosc.pl/api/v1
     api-id: ${MERIT_API_ID:change-me}
     api-key: ${MERIT_API_KEY:change-me}
+    v2-base-url: https://program.360ksiegowosc.pl/api/v2
 ```
 
 Klient podpisuje każde żądanie HMAC-SHA256 zgodnie z dokumentacją Merit:
@@ -58,7 +59,7 @@ Aplikacja czyta port ze zmiennej `PORT` (domyślnie `8080`). Render wstrzykuje w
    - `MERIT_API_ID`
    - `MERIT_API_KEY`
 
-Po deployu Swagger będzie pod `/swagger-ui.html`, lista faktur pod `/api/invoices?from=2026-01-01&to=2026-01-31`, a szczegóły pod `/api/invoices/{id}`.
+Po deployu Swagger będzie pod `/swagger-ui.html`, lista faktur pod `/api/invoices?from=2026-01-01&to=2026-01-31`, szczegóły pod `/api/invoices/{id}`, a wysyłka e-mail pod `POST /api/invoices/{id}/email`.
 
 ## Swagger
 
@@ -86,6 +87,15 @@ curl "http://localhost:8080/api/invoices/5f91033c-9d0f-416e-a079-d3c892b8c317"
 
 Wywołanie idzie do `POST https://program.360ksiegowosc.pl/api/v1/getinvoice`
 z `Id` oraz `AddAttachment`.
+
+Wysyłka faktury e-mailem na adres klienta zapisany w Merit. Opcjonalny parametr `delivNote=true` wysyła dokument bez cen:
+
+```bash
+curl -X POST "http://localhost:8080/api/invoices/5f91033c-9d0f-416e-a079-d3c892b8c317/email"
+```
+
+Wywołanie idzie do `POST https://program.360ksiegowosc.pl/api/v2/sendinvoicebyemail`
+z `Id` oraz `DelivNote`.
 
 ## Struktura
 

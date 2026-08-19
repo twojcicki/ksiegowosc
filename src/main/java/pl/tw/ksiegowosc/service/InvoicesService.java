@@ -10,6 +10,7 @@ import org.springframework.web.server.ResponseStatusException;
 import pl.tw.ksiegowosc.client.MeritApiClient;
 import pl.tw.ksiegowosc.dto.SalesInvoiceDetailsDto;
 import pl.tw.ksiegowosc.dto.SalesInvoiceDto;
+import pl.tw.ksiegowosc.dto.SendInvoiceEmailResponse;
 
 @Service
 public class InvoicesService {
@@ -40,5 +41,16 @@ public class InvoicesService {
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Nie znaleziono faktury o podanym identyfikatorze.");
         }
         return details;
+    }
+
+    public SendInvoiceEmailResponse sendInvoiceByEmail(String id, boolean delivNote) {
+        String result = meritApiClient.sendInvoiceByEmail(id, delivNote);
+        if (result != null && "OK".equalsIgnoreCase(result.trim())) {
+            return new SendInvoiceEmailResponse("OK");
+        }
+        String message = (result == null || result.isBlank())
+                ? "Nie udało się wysłać faktury e-mailem."
+                : result.trim();
+        throw new ResponseStatusException(HttpStatus.BAD_GATEWAY, message);
     }
 }

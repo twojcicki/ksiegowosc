@@ -10,3 +10,4 @@ clients:
     base-url: https://program.360ksiegowosc.pl/api/v1
     api-id: ${MERIT_API_ID:change-me}
     api-key: ${MERIT_API_KEY:change-me}
+    v2-base-url: https://program.360ksiegowosc.pl/api/v2

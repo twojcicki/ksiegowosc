@@ -19,6 +19,7 @@ import pl.tw.ksiegowosc.client.MeritApiClient;
 import pl.tw.ksiegowosc.dto.SalesInvoiceDetailsDto;
 import pl.tw.ksiegowosc.dto.SalesInvoiceDto;
 import pl.tw.ksiegowosc.dto.SalesInvoiceHeaderDto;
+import pl.tw.ksiegowosc.dto.SendInvoiceEmailResponse;
 
 class InvoicesServiceTest {
 
@@ -123,6 +124,30 @@ class InvoicesServiceTest {
                     assertThat(statusEx.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
                     assertThat(statusEx.getReason())
                             .isEqualTo("Nie znaleziono faktury o podanym identyfikatorze.");
+                });
+    }
+
+    @Test
+    void shouldSendInvoiceByEmail() {
+        String invoiceId = "5f91033c-9d0f-416e-a079-d3c892b8c317";
+        when(meritApiClient.sendInvoiceByEmail(invoiceId, false)).thenReturn("OK");
+
+        SendInvoiceEmailResponse response = invoicesService.sendInvoiceByEmail(invoiceId, false);
+
+        assertThat(response.status()).isEqualTo("OK");
+        verify(meritApiClient).sendInvoiceByEmail(invoiceId, false);
+    }
+
+    @Test
+    void shouldReturnBadGatewayWhenEmailSendFails() {
+        when(meritApiClient.sendInvoiceByEmail("id", false)).thenReturn("Mailbox unavailable");
+
+        assertThatThrownBy(() -> invoicesService.sendInvoiceByEmail("id", false))
+                .isInstanceOf(ResponseStatusException.class)
+                .satisfies(ex -> {
+                    ResponseStatusException statusEx = (ResponseStatusException) ex;
+                    assertThat(statusEx.getStatusCode()).isEqualTo(HttpStatus.BAD_GATEWAY);
+                    assertThat(statusEx.getReason()).isEqualTo("Mailbox unavailable");
                 });
     }
 }

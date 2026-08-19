@@ -4,6 +4,7 @@ import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
 
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Component;
@@ -13,6 +14,7 @@ import pl.tw.ksiegowosc.dto.InvoiceDetailsRequest;
 import pl.tw.ksiegowosc.dto.InvoiceListRequest;
 import pl.tw.ksiegowosc.dto.SalesInvoiceDetailsDto;
 import pl.tw.ksiegowosc.dto.SalesInvoiceDto;
+import pl.tw.ksiegowosc.dto.SendInvoiceEmailRequest;
 
 @Component
 public class MeritApiClient {
@@ -23,9 +25,13 @@ public class MeritApiClient {
             };
 
     private final RestClient meritRestClient;
+    private final RestClient meritV2RestClient;
 
-    public MeritApiClient(RestClient meritRestClient) {
+    public MeritApiClient(
+            @Qualifier("meritRestClient") RestClient meritRestClient,
+            @Qualifier("meritV2RestClient") RestClient meritV2RestClient) {
         this.meritRestClient = meritRestClient;
+        this.meritV2RestClient = meritV2RestClient;
     }
 
     public List<SalesInvoiceDto> getInvoices(LocalDate from, LocalDate to) {
@@ -51,5 +57,16 @@ public class MeritApiClient {
                 .body(request)
                 .retrieve()
                 .body(SalesInvoiceDetailsDto.class);
+    }
+
+    public String sendInvoiceByEmail(String id, boolean delivNote) {
+        SendInvoiceEmailRequest request = new SendInvoiceEmailRequest(id, delivNote);
+
+        return meritV2RestClient.post()
+                .uri("/sendinvoicebyemail")
+                .contentType(MediaType.APPLICATION_JSON)
+                .body(request)
+                .retrieve()
+                .body(String.class);
     }
 }

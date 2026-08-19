@@ -5,6 +5,7 @@ import java.util.List;
 
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
@@ -14,11 +15,12 @@ import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import pl.tw.ksiegowosc.dto.SalesInvoiceDetailsDto;
 import pl.tw.ksiegowosc.dto.SalesInvoiceDto;
+import pl.tw.ksiegowosc.dto.SendInvoiceEmailResponse;
 import pl.tw.ksiegowosc.service.InvoicesService;
 
 @RestController
 @RequestMapping("/api/invoices")
-@Tag(name = "Faktury", description = "Pobieranie faktur sprzedaży z Merit Aktiva")
+@Tag(name = "Faktury", description = "Faktury sprzedaży z Merit Aktiva")
 public class InvoicesController {
 
     private final InvoicesService invoicesService;
@@ -51,5 +53,18 @@ public class InvoicesController {
             @Parameter(description = "Czy dołączyć załącznik PDF w base64")
             @RequestParam(defaultValue = "false") boolean addAttachment) {
         return invoicesService.getInvoiceDetails(id, addAttachment);
+    }
+
+    @PostMapping("/{id}/email")
+    @Operation(
+            summary = "Wyślij fakturę e-mailem",
+            description = "Wysyła fakturę sprzedaży na adres e-mail klienta zapisany w Merit Aktiva. "
+                    + "Identyfikator to SIHId z listy faktur.")
+    public SendInvoiceEmailResponse sendInvoiceByEmail(
+            @Parameter(description = "SIHId faktury", required = true)
+            @PathVariable String id,
+            @Parameter(description = "true = dokument bez cen (WZ)")
+            @RequestParam(defaultValue = "false") boolean delivNote) {
+        return invoicesService.sendInvoiceByEmail(id, delivNote);
     }
 }

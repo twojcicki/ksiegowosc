@@ -38,4 +38,13 @@ public class HttpClientsConfig {
                 .requestInterceptor(interceptor)
                 .build();
     }
+
+    @Bean
+    RestClient meritV2RestClient(MeritApiProperties properties, MeritAuthInterceptor interceptor) {
+        return RestClient.builder()
+                .baseUrl(properties.v2BaseUrl())
+                .defaultHeader("Accept", MediaType.APPLICATION_JSON_VALUE)
+                .requestInterceptor(interceptor)
+                .build();
+    }
 }
