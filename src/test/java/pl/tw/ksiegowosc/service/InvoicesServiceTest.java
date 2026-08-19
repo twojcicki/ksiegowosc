@@ -142,6 +142,15 @@ class InvoicesServiceTest {
     }
 
     @Test
+    void shouldTreatQuotedOkAsSuccessfulEmailSend() {
+        when(meritApiClient.sendInvoiceByEmail("id", false)).thenReturn("\"OK\"");
+
+        SendInvoiceEmailResponse response = invoicesService.sendInvoiceByEmail("id", false);
+
+        assertThat(response.status()).isEqualTo("OK");
+    }
+
+    @Test
     void shouldReturnBadGatewayWhenEmailSendFails() {
         when(meritApiClient.sendInvoiceByEmail("id", false)).thenReturn("Mailbox unavailable");
 

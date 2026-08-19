@@ -56,12 +56,23 @@ public class InvoicesService {
                     : HttpStatus.BAD_GATEWAY;
             throw new ResponseStatusException(status, MeritErrorMessages.from(ex), ex);
         }
-        if (result != null && "OK".equalsIgnoreCase(result.trim())) {
+        if (isOk(result)) {
             return new SendInvoiceEmailResponse("OK");
         }
         String message = (result == null || result.isBlank())
                 ? "Nie udało się wysłać faktury e-mailem."
                 : result.trim();
         throw new ResponseStatusException(HttpStatus.BAD_GATEWAY, message);
+    }
+
+    private boolean isOk(String result) {
+        if (result == null) {
+            return false;
+        }
+        String normalized = result.trim();
+        if (normalized.length() >= 2 && normalized.startsWith("\"") && normalized.endsWith("\"")) {
+            normalized = normalized.substring(1, normalized.length() - 1).trim();
+        }
+        return "OK".equalsIgnoreCase(normalized);
     }
 }
