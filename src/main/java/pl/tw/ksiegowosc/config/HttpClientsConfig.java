@@ -28,22 +28,33 @@ public class HttpClientsConfig {
     }
 
     @Bean
+    MeritLoggingInterceptor meritLoggingInterceptor() {
+        return new MeritLoggingInterceptor();
+    }
+
+    @Bean
     RestClient meritRestClient(
             RestClient.Builder builder,
             MeritApiProperties properties,
-            MeritAuthInterceptor interceptor) {
+            MeritAuthInterceptor interceptor,
+            MeritLoggingInterceptor loggingInterceptor) {
         return builder
                 .baseUrl(properties.baseUrl())
                 .defaultHeader("Accept", MediaType.APPLICATION_JSON_VALUE)
+                .requestInterceptor(loggingInterceptor)
                 .requestInterceptor(interceptor)
                 .build();
     }
 
     @Bean
-    RestClient meritV2RestClient(MeritApiProperties properties, MeritAuthInterceptor interceptor) {
+    RestClient meritV2RestClient(
+            MeritApiProperties properties,
+            MeritAuthInterceptor interceptor,
+            MeritLoggingInterceptor loggingInterceptor) {
         return RestClient.builder()
                 .baseUrl(properties.v2BaseUrl())
                 .defaultHeader("Accept", MediaType.APPLICATION_JSON_VALUE)
+                .requestInterceptor(loggingInterceptor)
                 .requestInterceptor(interceptor)
                 .build();
     }
