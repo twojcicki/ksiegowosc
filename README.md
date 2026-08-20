@@ -38,7 +38,12 @@ Klient podpisuje każde żądanie HMAC-SHA256 zgodnie z dokumentacją Merit:
 mvn spring-boot:run
 ```
 
-Aplikacja wystartuje domyślnie na `http://localhost:8080`. Lista faktur (Vaadin) jest na stronie głównej; REST i Swagger bez zmian.
+Aplikacja wystartuje domyślnie na `http://localhost:8080`. Lista faktur (Vaadin) jest na stronie głównej; z każdego wiersza można wysłać fakturę e-mailem na adres klienta w Merit (przycisk „E-mail”, potwierdzenie w dialogu). Status wysyłki pojawia się jako powiadomienie w prawym górnym rogu. REST i Swagger bez zmian.
+
+## Dokumentacja zmian
+
+- [CHANGELOG.md](CHANGELOG.md) — historia zmian z odnośnikami do notatek implementacyjnych
+- [docs/plans/](docs/plans/) — notatki planistyczne do poszczególnych funkcji
 
 ## Docker
 
@@ -99,6 +104,7 @@ z `Id` oraz `DelivNote`.
 
 ## Struktura
 
+- `docs/plans` - notatki implementacyjne (plany zmian)
 - `src/main/java/pl/tw/ksiegowosc/ui` - ekrany Vaadin (lista faktur na `/`)
 - `src/main/java/pl/tw/ksiegowosc/controller` - endpointy HTTP
 - `src/main/java/pl/tw/ksiegowosc/service` - logika aplikacyjna, w tym walidacja zakresu dat

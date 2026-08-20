@@ -10,6 +10,7 @@ import org.springframework.web.server.ResponseStatusException;
 
 import com.vaadin.flow.component.button.Button;
 import com.vaadin.flow.component.button.ButtonVariant;
+import com.vaadin.flow.component.confirmdialog.ConfirmDialog;
 import com.vaadin.flow.component.datepicker.DatePicker;
 import com.vaadin.flow.component.grid.Grid;
 import com.vaadin.flow.component.html.H2;
@@ -87,7 +88,58 @@ public class InvoiceListView extends VerticalLayout {
                 .setHeader("Zapłacono")
                 .setAutoWidth(true)
                 .setSortable(true);
+        grid.addComponentColumn(invoice -> createEmailButton(invoice))
+                .setHeader("Akcje")
+                .setAutoWidth(true);
         grid.setSizeFull();
+    }
+
+    private Button createEmailButton(SalesInvoiceDto invoice) {
+        Button emailButton = new Button("E-mail");
+        emailButton.addThemeVariants(ButtonVariant.LUMO_SMALL, ButtonVariant.LUMO_TERTIARY);
+        emailButton.setEnabled(invoice.sihId() != null && !invoice.sihId().isBlank());
+        emailButton.addClickListener(event -> confirmSendEmail(invoice, emailButton));
+        return emailButton;
+    }
+
+    private void confirmSendEmail(SalesInvoiceDto invoice, Button emailButton) {
+        String invoiceNo = invoice.invoiceNo() == null || invoice.invoiceNo().isBlank()
+                ? invoice.sihId()
+                : invoice.invoiceNo();
+        String customer = invoice.customerName() == null || invoice.customerName().isBlank()
+                ? "—"
+                : invoice.customerName();
+
+        ConfirmDialog dialog = new ConfirmDialog();
+        dialog.setHeader("Wyślij fakturę e-mailem?");
+        dialog.setText("Faktura " + invoiceNo + " / " + customer);
+        dialog.setCancelable(true);
+        dialog.setCancelText("Anuluj");
+        dialog.setConfirmText("Wyślij");
+        dialog.addConfirmListener(event -> {
+            dialog.close();
+            sendInvoiceByEmail(invoice, emailButton);
+        });
+        dialog.open();
+    }
+
+    private void sendInvoiceByEmail(SalesInvoiceDto invoice, Button emailButton) {
+        emailButton.setEnabled(false);
+        String invoiceNo = invoice.invoiceNo() == null || invoice.invoiceNo().isBlank()
+                ? invoice.sihId()
+                : invoice.invoiceNo();
+        try {
+            invoicesService.sendInvoiceByEmail(invoice.sihId(), false);
+            showSuccess("Wysłano fakturę " + invoiceNo + ".");
+        } catch (ResponseStatusException ex) {
+            showError(emailErrorMessage(ex, invoiceNo));
+        } catch (RestClientResponseException ex) {
+            showError(MeritErrorMessages.from(ex));
+        } catch (RuntimeException ex) {
+            showError("Nie udało się wysłać faktury " + invoiceNo + ".");
+        } finally {
+            emailButton.setEnabled(true);
+        }
     }
 
     private void loadInvoices() {
@@ -116,8 +168,20 @@ public class InvoiceListView extends VerticalLayout {
         return ex.getReason();
     }
 
+    private static String emailErrorMessage(ResponseStatusException ex, String invoiceNo) {
+        if (ex.getReason() == null || ex.getReason().isBlank()) {
+            return "Nie udało się wysłać faktury " + invoiceNo + ".";
+        }
+        return ex.getReason();
+    }
+
+    private static void showSuccess(String message) {
+        Notification notification = Notification.show(message, 5000, Notification.Position.TOP_END);
+        notification.addThemeVariants(NotificationVariant.LUMO_SUCCESS);
+    }
+
     private static void showError(String message) {
-        Notification notification = Notification.show(message, 5000, Notification.Position.MIDDLE);
+        Notification notification = Notification.show(message, 5000, Notification.Position.TOP_END);
         notification.addThemeVariants(NotificationVariant.LUMO_ERROR);
     }
 }
