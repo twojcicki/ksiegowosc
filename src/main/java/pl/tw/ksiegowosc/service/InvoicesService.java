@@ -1,7 +1,12 @@
 package pl.tw.ksiegowosc.service;
 
+import java.time.Instant;
 import java.time.LocalDate;
 import java.util.List;
+import java.util.Map;
+import java.util.Objects;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.http.HttpStatusCode;
@@ -14,14 +19,20 @@ import pl.tw.ksiegowosc.client.MeritErrorMessages;
 import pl.tw.ksiegowosc.dto.SalesInvoiceDetailsDto;
 import pl.tw.ksiegowosc.dto.SalesInvoiceDto;
 import pl.tw.ksiegowosc.dto.SendInvoiceEmailResponse;
+import pl.tw.ksiegowosc.entity.InvoiceEmailStatus;
+import pl.tw.ksiegowosc.repository.InvoiceEmailStatusRepository;
 
 @Service
 public class InvoicesService {
 
     private final MeritApiClient meritApiClient;
+    private final InvoiceEmailStatusRepository invoiceEmailStatusRepository;
 
-    public InvoicesService(MeritApiClient meritApiClient) {
+    public InvoicesService(
+            MeritApiClient meritApiClient,
+            InvoiceEmailStatusRepository invoiceEmailStatusRepository) {
         this.meritApiClient = meritApiClient;
+        this.invoiceEmailStatusRepository = invoiceEmailStatusRepository;
     }
 
     public List<SalesInvoiceDto> getInvoices(LocalDate from, LocalDate to) {
@@ -35,7 +46,8 @@ public class InvoicesService {
                     HttpStatus.BAD_REQUEST,
                     "Zakres dat nie może przekraczać 3 miesięcy.");
         }
-        return meritApiClient.getInvoices(from, to);
+        List<SalesInvoiceDto> invoices = meritApiClient.getInvoices(from, to);
+        return enrichWithEmailStatus(invoices);
     }
 
     public SalesInvoiceDetailsDto getInvoiceDetails(String id, boolean addAttachment) {
@@ -57,12 +69,68 @@ public class InvoicesService {
             throw new ResponseStatusException(status, MeritErrorMessages.from(ex), ex);
         }
         if (isOk(result)) {
+            markEmailSent(id);
             return new SendInvoiceEmailResponse("OK");
         }
         String message = (result == null || result.isBlank())
                 ? "Nie udało się wysłać faktury e-mailem."
                 : result.trim();
         throw new ResponseStatusException(HttpStatus.BAD_GATEWAY, message);
+    }
+
+    private List<SalesInvoiceDto> enrichWithEmailStatus(List<SalesInvoiceDto> invoices) {
+        if (invoices == null || invoices.isEmpty()) {
+            return invoices == null ? List.of() : invoices;
+        }
+        List<String> invoiceIds = invoices.stream()
+                .map(SalesInvoiceDto::sihId)
+                .filter(Objects::nonNull)
+                .filter(id -> !id.isBlank())
+                .toList();
+        if (invoiceIds.isEmpty()) {
+            return invoices;
+        }
+        Map<String, InvoiceEmailStatus> statuses = invoiceEmailStatusRepository.findAllByInvoiceIdIn(invoiceIds)
+                .stream()
+                .collect(Collectors.toMap(InvoiceEmailStatus::getInvoiceId, Function.identity()));
+        return invoices.stream()
+                .map(invoice -> withEmailStatus(invoice, statuses.get(invoice.sihId())))
+                .toList();
+    }
+
+    private static SalesInvoiceDto withEmailStatus(SalesInvoiceDto invoice, InvoiceEmailStatus status) {
+        if (status == null) {
+            return new SalesInvoiceDto(
+                    invoice.sihId(),
+                    invoice.invoiceNo(),
+                    invoice.documentDate(),
+                    invoice.customerName(),
+                    invoice.totalAmount(),
+                    invoice.paid(),
+                    false,
+                    null);
+        }
+        return new SalesInvoiceDto(
+                invoice.sihId(),
+                invoice.invoiceNo(),
+                invoice.documentDate(),
+                invoice.customerName(),
+                invoice.totalAmount(),
+                invoice.paid(),
+                status.isEmailSent(),
+                status.getEmailSentAt());
+    }
+
+    private void markEmailSent(String invoiceId) {
+        InvoiceEmailStatus status = invoiceEmailStatusRepository.findById(invoiceId)
+                .orElseGet(() -> {
+                    InvoiceEmailStatus created = new InvoiceEmailStatus();
+                    created.setInvoiceId(invoiceId);
+                    return created;
+                });
+        status.setEmailSent(true);
+        status.setEmailSentAt(Instant.now());
+        invoiceEmailStatusRepository.save(status);
     }
 
     private boolean isOk(String result) {

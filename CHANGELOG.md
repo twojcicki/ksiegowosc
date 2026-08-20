@@ -8,6 +8,8 @@ Format oparty na [Keep a Changelog](https://keepachangelog.com/pl/1.1.0/).
 
 - Przycisk wysyłki faktury e-mailem w wierszu listy Vaadin.
   Notatka: [docs/plans/vaadin-invoice-email-button.md](docs/plans/vaadin-invoice-email-button.md)
+- PostgreSQL + Liquibase: status wysyłki e-mail faktury (`invoice_email_status`), kolumny „Wysłano” i „Data wysyłki” na liście.
+  Notatka: [docs/plans/postgres-invoice-email-status.md](docs/plans/postgres-invoice-email-status.md)
 
 ## [0.0.1] - 2026-08-20
 

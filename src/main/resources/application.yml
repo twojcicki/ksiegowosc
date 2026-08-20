@@ -1,6 +1,16 @@
 spring:
   application:
     name: ksiegowosc
+  datasource:
+    url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://localhost:5432/ksiegowosc}
+    username: ${SPRING_DATASOURCE_USERNAME:ksiegowosc}
+    password: ${SPRING_DATASOURCE_PASSWORD:ksiegowosc}
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    open-in-view: false
+  liquibase:
+    change-log: classpath:db/changelog/db.changelog-master.yaml
 
 server:
   port: ${PORT:8080}

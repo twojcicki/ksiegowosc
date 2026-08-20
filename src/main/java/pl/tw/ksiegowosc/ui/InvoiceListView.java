@@ -1,7 +1,10 @@
 package pl.tw.ksiegowosc.ui;
 
 import java.text.NumberFormat;
+import java.time.Instant;
 import java.time.LocalDate;
+import java.time.ZoneId;
+import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.Locale;
 
@@ -30,6 +33,8 @@ import pl.tw.ksiegowosc.service.InvoicesService;
 public class InvoiceListView extends VerticalLayout {
 
     private static final Locale PL = Locale.forLanguageTag("pl-PL");
+    private static final ZoneId ZONE = ZoneId.of("Europe/Warsaw");
+    private static final DateTimeFormatter EMAIL_SENT_FORMAT = DateTimeFormatter.ofPattern("dd.MM.yyyy HH:mm", PL);
 
     private final InvoicesService invoicesService;
     private final DatePicker fromPicker = new DatePicker("Od");
@@ -88,6 +93,14 @@ public class InvoiceListView extends VerticalLayout {
                 .setHeader("Zapłacono")
                 .setAutoWidth(true)
                 .setSortable(true);
+        grid.addColumn(invoice -> Boolean.TRUE.equals(invoice.emailSent()) ? "Tak" : "Nie")
+                .setHeader("Wysłano")
+                .setAutoWidth(true)
+                .setSortable(true);
+        grid.addColumn(invoice -> formatEmailSentAt(invoice.emailSentAt()))
+                .setHeader("Data wysyłki")
+                .setAutoWidth(true)
+                .setSortable(true);
         grid.addComponentColumn(invoice -> createEmailButton(invoice))
                 .setHeader("Akcje")
                 .setAutoWidth(true);
@@ -131,6 +144,7 @@ public class InvoiceListView extends VerticalLayout {
         try {
             invoicesService.sendInvoiceByEmail(invoice.sihId(), false);
             showSuccess("Wysłano fakturę " + invoiceNo + ".");
+            loadInvoices();
         } catch (ResponseStatusException ex) {
             showError(emailErrorMessage(ex, invoiceNo));
         } catch (RestClientResponseException ex) {
@@ -159,6 +173,13 @@ public class InvoiceListView extends VerticalLayout {
         } catch (RuntimeException ex) {
             showError("Nie udało się pobrać faktur.");
         }
+    }
+
+    private String formatEmailSentAt(Instant emailSentAt) {
+        if (emailSentAt == null) {
+            return "";
+        }
+        return EMAIL_SENT_FORMAT.format(emailSentAt.atZone(ZONE));
     }
 
     private static String reason(ResponseStatusException ex) {

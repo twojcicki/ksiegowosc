@@ -1,0 +1,23 @@
+databaseChangeLog:
+  - changeSet:
+      id: 001-invoice-email-status
+      author: ksiegowosc
+      changes:
+        - createTable:
+            tableName: invoice_email_status
+            columns:
+              - column:
+                  name: invoice_id
+                  type: VARCHAR(64)
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: email_sent
+                  type: BOOLEAN
+                  defaultValueBoolean: false
+                  constraints:
+                    nullable: false
+              - column:
+                  name: email_sent_at
+                  type: TIMESTAMPTZ

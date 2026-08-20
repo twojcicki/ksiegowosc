@@ -1,0 +1,21 @@
+spring:
+  datasource:
+    url: jdbc:h2:mem:ksiegowosc;MODE=PostgreSQL;DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=FALSE
+    username: sa
+    password:
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    open-in-view: false
+  liquibase:
+    change-log: classpath:db/changelog/db.changelog-master.yaml
+
+vaadin:
+  launch-browser: false
+
+clients:
+  merit:
+    base-url: https://example.test/api/v1
+    api-id: test-id
+    api-key: test-key
+    v2-base-url: https://example.test/api/v2

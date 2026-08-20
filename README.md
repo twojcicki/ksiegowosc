@@ -8,6 +8,7 @@ Aplikacja pobiera listę faktur sprzedaży z Merit Aktiva (lokalizacja PL) z pod
 
 - Java 25
 - Maven 3.9+
+- PostgreSQL 16 (lokalnie przez Docker Compose; produkcja: Render Managed Postgres)
 - credentials API Merit: `Api Id` i `Api Key` (Ustawienia >> Ustawienia API)
 
 ## Konfiguracja
@@ -32,13 +33,23 @@ clients:
 Klient podpisuje każde żądanie HMAC-SHA256 zgodnie z dokumentacją Merit:
 `signature = Base64(HMAC-SHA256(apiId + timestamp + body, apiKey))`.
 
+Baza PostgreSQL (status wysyłki e-mail faktur) — lokalnie domyślnie `jdbc:postgresql://localhost:5432/ksiegowosc` (użytkownik/hasło: `ksiegowosc`). Na Renderze ustaw `SPRING_DATASOURCE_URL`, `SPRING_DATASOURCE_USERNAME`, `SPRING_DATASOURCE_PASSWORD` z Managed Postgres.
+
 ## Uruchomienie
+
+Lokalna baza:
+
+```bash
+docker compose up -d
+```
+
+Aplikacja:
 
 ```bash
 mvn spring-boot:run
 ```
 
-Aplikacja wystartuje domyślnie na `http://localhost:8080`. Lista faktur (Vaadin) jest na stronie głównej; z każdego wiersza można wysłać fakturę e-mailem na adres klienta w Merit (przycisk „E-mail”, potwierdzenie w dialogu). Status wysyłki pojawia się jako powiadomienie w prawym górnym rogu. REST i Swagger bez zmian.
+Aplikacja wystartuje domyślnie na `http://localhost:8080`. Lista faktur (Vaadin) jest na stronie głównej; z każdego wiersza można wysłać fakturę e-mailem na adres klienta w Merit (przycisk „E-mail”, potwierdzenie w dialogu). Kolumny „Wysłano” i „Data wysyłki” pokazują status z lokalnej bazy. Status wysyłki pojawia się też jako powiadomienie w prawym górnym rogu. REST i Swagger bez zmian.
 
 ## Dokumentacja zmian
 
@@ -63,6 +74,7 @@ Aplikacja czyta port ze zmiennej `PORT` (domyślnie `8080`). Render wstrzykuje w
 3. Dodaj sekrety środowiskowe:
    - `MERIT_API_ID`
    - `MERIT_API_KEY`
+   - `SPRING_DATASOURCE_URL`, `SPRING_DATASOURCE_USERNAME`, `SPRING_DATASOURCE_PASSWORD` (z Render Managed Postgres)
 
 Obraz budowany jest z profilem Maven `production` (zoptymalizowany frontend Vaadin). Po deployu UI listy faktur będzie pod `/`, Swagger pod `/swagger-ui.html`, lista REST pod `/api/invoices?from=2026-01-01&to=2026-01-31`, szczegóły pod `/api/invoices/{id}`, a wysyłka e-mail pod `POST /api/invoices/{id}/email`.
 
@@ -105,6 +117,8 @@ z `Id` oraz `DelivNote`.
 ## Struktura
 
 - `docs/plans` - notatki implementacyjne (plany zmian)
+- `src/main/java/pl/tw/ksiegowosc/entity` - encje JPA
+- `src/main/java/pl/tw/ksiegowosc/repository` - repozytoria Spring Data
 - `src/main/java/pl/tw/ksiegowosc/ui` - ekrany Vaadin (lista faktur na `/`)
 - `src/main/java/pl/tw/ksiegowosc/controller` - endpointy HTTP
 - `src/main/java/pl/tw/ksiegowosc/service` - logika aplikacyjna, w tym walidacja zakresu dat
