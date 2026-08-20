@@ -7,3 +7,6 @@ out/
 *.class
 hs_err_pid*
 replay_pid*
+node_modules/
+frontend/generated/
+src/main/frontend/generated/

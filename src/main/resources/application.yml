@@ -5,6 +5,10 @@ spring:
 server:
   port: ${PORT:8080}
 
+vaadin:
+  launch-browser: false
+  exclude-urls: /api/**,/swagger-ui/**,/v3/api-docs/**
+
 clients:
   merit:
     base-url: https://program.360ksiegowosc.pl/api/v1

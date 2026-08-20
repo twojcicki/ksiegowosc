@@ -3,7 +3,7 @@ package pl.tw.ksiegowosc;
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.context.SpringBootTest;
 
-@SpringBootTest
+@SpringBootTest(properties = "vaadin.launch-browser=false")
 class KsiegowoscApplicationTests {
 
     @Test

@@ -1,8 +1,8 @@
 # Ksiegowosc
 
-Szkielet aplikacji w `Spring Boot 4.1.x` z `Java 25`, `Maven` i klientem HTTP opartym o `RestClient`.
+Szkielet aplikacji w `Spring Boot 4.1.x` z `Java 25`, `Maven`, `Vaadin 25.2` i klientem HTTP opartym o `RestClient`.
 
-Aplikacja pobiera listę faktur sprzedaży z Merit Aktiva (lokalizacja PL) z podanego zakresu dat.
+Aplikacja pobiera listę faktur sprzedaży z Merit Aktiva (lokalizacja PL) z podanego zakresu dat. Lista jest dostępna w UI Vaadin oraz przez REST.
 
 ## Wymagania
 
@@ -38,7 +38,7 @@ Klient podpisuje każde żądanie HMAC-SHA256 zgodnie z dokumentacją Merit:
 mvn spring-boot:run
 ```
 
-Aplikacja wystartuje domyślnie na `http://localhost:8080`.
+Aplikacja wystartuje domyślnie na `http://localhost:8080`. Lista faktur (Vaadin) jest na stronie głównej; REST i Swagger bez zmian.
 
 ## Docker
 
@@ -59,7 +59,7 @@ Aplikacja czyta port ze zmiennej `PORT` (domyślnie `8080`). Render wstrzykuje w
    - `MERIT_API_ID`
    - `MERIT_API_KEY`
 
-Po deployu Swagger będzie pod `/swagger-ui.html`, lista faktur pod `/api/invoices?from=2026-01-01&to=2026-01-31`, szczegóły pod `/api/invoices/{id}`, a wysyłka e-mail pod `POST /api/invoices/{id}/email`.
+Obraz budowany jest z profilem Maven `production` (zoptymalizowany frontend Vaadin). Po deployu UI listy faktur będzie pod `/`, Swagger pod `/swagger-ui.html`, lista REST pod `/api/invoices?from=2026-01-01&to=2026-01-31`, szczegóły pod `/api/invoices/{id}`, a wysyłka e-mail pod `POST /api/invoices/{id}/email`.
 
 ## Swagger
 
@@ -99,6 +99,7 @@ z `Id` oraz `DelivNote`.
 
 ## Struktura
 
+- `src/main/java/pl/tw/ksiegowosc/ui` - ekrany Vaadin (lista faktur na `/`)
 - `src/main/java/pl/tw/ksiegowosc/controller` - endpointy HTTP
 - `src/main/java/pl/tw/ksiegowosc/service` - logika aplikacyjna, w tym walidacja zakresu dat
 - `src/main/java/pl/tw/ksiegowosc/client` - klient Merit Aktiva

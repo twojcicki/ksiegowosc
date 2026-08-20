@@ -6,3 +6,6 @@ out
 *.iml
 *.log
 .cursor
+node_modules
+frontend/generated
+src/main/frontend/generated
