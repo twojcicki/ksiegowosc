@@ -121,6 +121,7 @@ public class CreateInvoiceDialog extends Dialog {
         dueDate.setValue(today.plusDays(14));
         currencyCode.setValue("PLN");
 
+        customerId.setValue("6fb6b812-08ed-4bed-5e80-08def950532f");
         customerId.setRequiredIndicatorVisible(true);
         invoiceNo.setRequiredIndicatorVisible(true);
         invoiceNo.setMaxLength(35);
@@ -150,6 +151,7 @@ public class CreateInvoiceDialog extends Dialog {
         price.setRequiredIndicatorVisible(true);
         price.setMin(0);
         taxId.setRequiredIndicatorVisible(true);
+        taxId.setValue("973a4395-665f-47a6-a5b6-5384dd24f8d0");
         taxId.setHelperText("GUID stawki VAT z Merit (Ustawienia → VAT)");
         taxAmount.setRequiredIndicatorVisible(true);
         taxAmount.setMin(0);
