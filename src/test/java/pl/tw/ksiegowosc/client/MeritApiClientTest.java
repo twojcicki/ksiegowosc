@@ -25,6 +25,7 @@ import org.springframework.web.client.RestClient;
 
 import pl.tw.ksiegowosc.config.MeritApiProperties;
 import pl.tw.ksiegowosc.config.MeritAuthInterceptor;
+import pl.tw.ksiegowosc.dto.CustomerDto;
 import pl.tw.ksiegowosc.dto.MeritCreateInvoiceCustomer;
 import pl.tw.ksiegowosc.dto.MeritCreateInvoiceItem;
 import pl.tw.ksiegowosc.dto.MeritCreateInvoiceRequest;
@@ -245,6 +246,84 @@ class MeritApiClientTest {
 
         assertThat(response.invoiceId()).isEqualTo("5f91033c-9d0f-416e-a079-d3c892b8c317");
         assertThat(response.customerId()).isEqualTo("665f01a4-357a-4a6b-a565-2f17e6e1da13");
+        server.verify();
+    }
+
+    @Test
+    void shouldFetchCustomersAsList() {
+        Clock clock = Clock.fixed(Instant.parse("2026-08-18T10:00:00Z"), ZoneOffset.UTC);
+        MeritApiProperties properties = new MeritApiProperties(
+                "https://program.360ksiegowosc.pl/api/v1",
+                "test-api-id",
+                "test-api-key",
+                "https://program.360ksiegowosc.pl/api/v2");
+        MeritAuthInterceptor interceptor = new MeritAuthInterceptor(properties, clock);
+
+        RestClient.Builder builder = RestClient.builder()
+                .baseUrl(properties.baseUrl())
+                .requestInterceptor(interceptor);
+        MockRestServiceServer server = MockRestServiceServer.bindTo(builder).build();
+        MeritApiClient client = new MeritApiClient(builder.build(), RestClient.builder().build());
+
+        server.expect(requestTo(startsWith("https://program.360ksiegowosc.pl/api/v1/getcustomers")))
+                .andExpect(method(HttpMethod.POST))
+                .andExpect(content().json("{\"Name\":\"Firma\"}"))
+                .andRespond(withSuccess("""
+                        [
+                          {
+                            "CustomerId": "11111111-1111-1111-1111-111111111111",
+                            "Name": "Firma A",
+                            "RegNo": "111",
+                            "Email": "a@example.com"
+                          },
+                          {
+                            "CustomerId": "22222222-2222-2222-2222-222222222222",
+                            "Name": "Firma B",
+                            "RegNo": "222"
+                          }
+                        ]
+                        """, MediaType.APPLICATION_JSON));
+
+        List<CustomerDto> customers = client.getCustomers("Firma");
+
+        assertThat(customers).hasSize(2);
+        assertThat(customers.getFirst().name()).isEqualTo("Firma A");
+        assertThat(customers.get(1).customerId()).isEqualTo("22222222-2222-2222-2222-222222222222");
+        server.verify();
+    }
+
+    @Test
+    void shouldWrapSingleCustomerObjectAsList() {
+        Clock clock = Clock.fixed(Instant.parse("2026-08-18T10:00:00Z"), ZoneOffset.UTC);
+        MeritApiProperties properties = new MeritApiProperties(
+                "https://program.360ksiegowosc.pl/api/v1",
+                "test-api-id",
+                "test-api-key",
+                "https://program.360ksiegowosc.pl/api/v2");
+        MeritAuthInterceptor interceptor = new MeritAuthInterceptor(properties, clock);
+
+        RestClient.Builder builder = RestClient.builder()
+                .baseUrl(properties.baseUrl())
+                .requestInterceptor(interceptor);
+        MockRestServiceServer server = MockRestServiceServer.bindTo(builder).build();
+        MeritApiClient client = new MeritApiClient(builder.build(), RestClient.builder().build());
+
+        server.expect(requestTo(startsWith("https://program.360ksiegowosc.pl/api/v1/getcustomers")))
+                .andExpect(method(HttpMethod.POST))
+                .andExpect(content().json("{}"))
+                .andRespond(withSuccess("""
+                        {
+                          "CustomerId": "11111111-1111-1111-1111-111111111111",
+                          "Name": "Jedyny Klient",
+                          "City": "Warszawa"
+                        }
+                        """, MediaType.APPLICATION_JSON));
+
+        List<CustomerDto> customers = client.getCustomers(null);
+
+        assertThat(customers).hasSize(1);
+        assertThat(customers.getFirst().name()).isEqualTo("Jedyny Klient");
+        assertThat(customers.getFirst().city()).isEqualTo("Warszawa");
         server.verify();
     }
 }

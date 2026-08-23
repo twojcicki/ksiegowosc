@@ -6,6 +6,8 @@ Format oparty na [Keep a Changelog](https://keepachangelog.com/pl/1.1.0/).
 
 ### Added
 
+- Endpoint listy klientów (`GET /api/customers`, opcjonalny filtr `name`).
+  Notatka: [docs/plans/customers-endpoint.md](docs/plans/customers-endpoint.md)
 - Formularz „Dodaj fakturę” w Vaadin (dialog z polami API, Zapisz / Anuluj).
   Notatka: [docs/plans/vaadin-create-invoice-form.md](docs/plans/vaadin-create-invoice-form.md)
 - Endpoint tworzenia faktury sprzedaży (`POST /api/invoices`) z komentarzem górnym i dolnym.

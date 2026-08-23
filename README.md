@@ -76,7 +76,7 @@ Aplikacja czyta port ze zmiennej `PORT` (domyślnie `8080`). Render wstrzykuje w
    - `MERIT_API_KEY`
    - `SPRING_DATASOURCE_URL`, `SPRING_DATASOURCE_USERNAME`, `SPRING_DATASOURCE_PASSWORD` (z Render Managed Postgres)
 
-Obraz budowany jest z profilem Maven `production` (zoptymalizowany frontend Vaadin). Po deployu UI listy faktur będzie pod `/`, Swagger pod `/swagger-ui.html`, lista REST pod `/api/invoices?from=2026-01-01&to=2026-01-31`, tworzenie faktury pod `POST /api/invoices`, szczegóły pod `/api/invoices/{id}`, a wysyłka e-mail pod `POST /api/invoices/{id}/email`.
+Obraz budowany jest z profilem Maven `production` (zoptymalizowany frontend Vaadin). Po deployu UI listy faktur będzie pod `/`, Swagger pod `/swagger-ui.html`, lista REST pod `/api/invoices?from=2026-01-01&to=2026-01-31`, tworzenie faktury pod `POST /api/invoices`, szczegóły pod `/api/invoices/{id}`, wysyłka e-mail pod `POST /api/invoices/{id}/email`, a klienci pod `/api/customers`.
 
 ## Swagger
 
@@ -106,6 +106,15 @@ curl -X POST "http://localhost:8080/api/invoices" ^
 
 Wywołanie idzie do `POST https://program.360ksiegowosc.pl/api/v1/sendinvoice`
 z m.in. `Customer.Id`, `AccountingDoc: 1`, `HComment`, `FComment`.
+
+Lista klientów z Merit. Opcjonalny parametr `name` filtruje po nazwie (dopasowanie częściowe):
+
+```bash
+curl "http://localhost:8080/api/customers?name=Firma"
+```
+
+Wywołanie idzie do `POST https://program.360ksiegowosc.pl/api/v1/getcustomers`
+z body `{}` albo `{ "Name": "..." }`.
 
 Szczegóły pojedynczej faktury (`SIHId` z listy). Opcjonalny parametr `addAttachment=true` dołącza PDF w base64:
 

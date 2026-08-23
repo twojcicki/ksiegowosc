@@ -11,6 +11,7 @@ Indeks planów zmian w repozytorium. Każdy wpis w [CHANGELOG.md](../CHANGELOG.m
 | [invoice-details-endpoint.md](invoice-details-endpoint.md) | `7bf897d` | GET /api/invoices/{id} |
 | [invoice-email-endpoint.md](invoice-email-endpoint.md) | `9467a2b` | POST /api/invoices/{id}/email |
 | [create-invoice-endpoint.md](create-invoice-endpoint.md) | — | POST /api/invoices — tworzenie faktury |
+| [customers-endpoint.md](customers-endpoint.md) | — | GET /api/customers — lista klientów |
 | [vaadin-invoice-list.md](vaadin-invoice-list.md) | `9910bda` | Ekran listy faktur Vaadin na `/` |
 | [vaadin-create-invoice-form.md](vaadin-create-invoice-form.md) | — | Formularz dodawania faktury w Vaadin |
 | [vaadin-invoice-email-button.md](vaadin-invoice-email-button.md) | `6170268` | Przycisk wysyłki e-mail w wierszu listy |

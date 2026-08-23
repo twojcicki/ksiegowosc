@@ -2,6 +2,8 @@ package pl.tw.ksiegowosc.client;
 
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 
 import org.springframework.beans.factory.annotation.Qualifier;
@@ -10,10 +12,16 @@ import org.springframework.http.MediaType;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestClient;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+
+import pl.tw.ksiegowosc.dto.CustomerDto;
 import pl.tw.ksiegowosc.dto.InvoiceDetailsRequest;
 import pl.tw.ksiegowosc.dto.InvoiceListRequest;
 import pl.tw.ksiegowosc.dto.MeritCreateInvoiceRequest;
 import pl.tw.ksiegowosc.dto.MeritCreateInvoiceResponse;
+import pl.tw.ksiegowosc.dto.MeritCustomersRequest;
 import pl.tw.ksiegowosc.dto.SalesInvoiceDetailsDto;
 import pl.tw.ksiegowosc.dto.SalesInvoiceDto;
 import pl.tw.ksiegowosc.dto.SendInvoiceEmailRequest;
@@ -22,6 +30,7 @@ import pl.tw.ksiegowosc.dto.SendInvoiceEmailRequest;
 public class MeritApiClient {
 
     private static final DateTimeFormatter PERIOD_FORMAT = DateTimeFormatter.BASIC_ISO_DATE;
+    private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
     private static final ParameterizedTypeReference<List<SalesInvoiceDto>> INVOICES_RESPONSE =
             new ParameterizedTypeReference<>() {
             };
@@ -79,5 +88,47 @@ public class MeritApiClient {
                 .body(request)
                 .retrieve()
                 .body(MeritCreateInvoiceResponse.class);
+    }
+
+    public List<CustomerDto> getCustomers(String name) {
+        MeritCustomersRequest request = new MeritCustomersRequest(name);
+        String rawBody = meritRestClient.post()
+                .uri("/getcustomers")
+                .contentType(MediaType.APPLICATION_JSON)
+                .body(request)
+                .retrieve()
+                .body(String.class);
+        return normalizeCustomers(parseJson(rawBody));
+    }
+
+    private static JsonNode parseJson(String rawBody) {
+        if (rawBody == null || rawBody.isBlank()) {
+            return null;
+        }
+        try {
+            return OBJECT_MAPPER.readTree(rawBody);
+        } catch (JsonProcessingException ex) {
+            throw new IllegalStateException("Nie udało się sparsować odpowiedzi Merit getcustomers.", ex);
+        }
+    }
+
+    private List<CustomerDto> normalizeCustomers(JsonNode body) {
+        if (body == null || body.isNull() || body.isMissingNode()) {
+            return List.of();
+        }
+        if (body.isArray()) {
+            if (body.isEmpty()) {
+                return List.of();
+            }
+            List<CustomerDto> customers = new ArrayList<>(body.size());
+            for (JsonNode node : body) {
+                customers.add(OBJECT_MAPPER.convertValue(node, CustomerDto.class));
+            }
+            return Collections.unmodifiableList(customers);
+        }
+        if (body.isObject()) {
+            return List.of(OBJECT_MAPPER.convertValue(body, CustomerDto.class));
+        }
+        return List.of();
     }
 }
