@@ -12,6 +12,8 @@ import org.springframework.web.client.RestClient;
 
 import pl.tw.ksiegowosc.dto.InvoiceDetailsRequest;
 import pl.tw.ksiegowosc.dto.InvoiceListRequest;
+import pl.tw.ksiegowosc.dto.MeritCreateInvoiceRequest;
+import pl.tw.ksiegowosc.dto.MeritCreateInvoiceResponse;
 import pl.tw.ksiegowosc.dto.SalesInvoiceDetailsDto;
 import pl.tw.ksiegowosc.dto.SalesInvoiceDto;
 import pl.tw.ksiegowosc.dto.SendInvoiceEmailRequest;
@@ -68,5 +70,14 @@ public class MeritApiClient {
                 .body(request)
                 .retrieve()
                 .body(String.class);
+    }
+
+    public MeritCreateInvoiceResponse createInvoice(MeritCreateInvoiceRequest request) {
+        return meritRestClient.post()
+                .uri("/sendinvoice")
+                .contentType(MediaType.APPLICATION_JSON)
+                .body(request)
+                .retrieve()
+                .body(MeritCreateInvoiceResponse.class);
     }
 }

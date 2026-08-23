@@ -76,7 +76,7 @@ Aplikacja czyta port ze zmiennej `PORT` (domyślnie `8080`). Render wstrzykuje w
    - `MERIT_API_KEY`
    - `SPRING_DATASOURCE_URL`, `SPRING_DATASOURCE_USERNAME`, `SPRING_DATASOURCE_PASSWORD` (z Render Managed Postgres)
 
-Obraz budowany jest z profilem Maven `production` (zoptymalizowany frontend Vaadin). Po deployu UI listy faktur będzie pod `/`, Swagger pod `/swagger-ui.html`, lista REST pod `/api/invoices?from=2026-01-01&to=2026-01-31`, szczegóły pod `/api/invoices/{id}`, a wysyłka e-mail pod `POST /api/invoices/{id}/email`.
+Obraz budowany jest z profilem Maven `production` (zoptymalizowany frontend Vaadin). Po deployu UI listy faktur będzie pod `/`, Swagger pod `/swagger-ui.html`, lista REST pod `/api/invoices?from=2026-01-01&to=2026-01-31`, tworzenie faktury pod `POST /api/invoices`, szczegóły pod `/api/invoices/{id}`, a wysyłka e-mail pod `POST /api/invoices/{id}/email`.
 
 ## Swagger
 
@@ -95,6 +95,17 @@ curl "http://localhost:8080/api/invoices?from=2026-01-01&to=2026-01-31"
 
 Wywołanie idzie do `POST https://program.360ksiegowosc.pl/api/v1/getinvoices`
 z `PeriodStart` i `PeriodEnd` w formacie `yyyyMMdd` oraz `DateType: 0`.
+
+Tworzenie faktury sprzedaży dla istniejącego klienta (GUID). Wymagane m.in. pozycje, VAT, komentarz górny i dolny:
+
+```bash
+curl -X POST "http://localhost:8080/api/invoices" ^
+  -H "Content-Type: application/json" ^
+  -d "{\"customerId\":\"665f01a4-357a-4a6b-a565-2f17e6e1da13\",\"invoiceNo\":\"FV/2026/01/01\",\"docDate\":\"2026-01-01\",\"dueDate\":\"2026-01-15\",\"currencyCode\":\"PLN\",\"headerComment\":\"Komentarz gorny\",\"footerComment\":\"Komentarz dolny\",\"totalAmount\":100.00,\"lines\":[{\"itemCode\":\"USLUGA\",\"description\":\"Usluga\",\"itemType\":2,\"quantity\":1,\"price\":100.00,\"taxId\":\"665f01a4-357a-4a6b-a565-2f17e6e1da13\"}],\"taxAmounts\":[{\"taxId\":\"665f01a4-357a-4a6b-a565-2f17e6e1da13\",\"amount\":23.00}]}"
+```
+
+Wywołanie idzie do `POST https://program.360ksiegowosc.pl/api/v1/sendinvoice`
+z m.in. `Customer.Id`, `AccountingDoc: 1`, `HComment`, `FComment`.
 
 Szczegóły pojedynczej faktury (`SIHId` z listy). Opcjonalny parametr `addAttachment=true` dołącza PDF w base64:
 

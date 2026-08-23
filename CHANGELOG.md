@@ -6,6 +6,8 @@ Format oparty na [Keep a Changelog](https://keepachangelog.com/pl/1.1.0/).
 
 ### Added
 
+- Endpoint tworzenia faktury sprzedaży (`POST /api/invoices`) z komentarzem górnym i dolnym.
+  Notatka: [docs/plans/create-invoice-endpoint.md](docs/plans/create-invoice-endpoint.md)
 - Przycisk wysyłki faktury e-mailem w wierszu listy Vaadin.
   Notatka: [docs/plans/vaadin-invoice-email-button.md](docs/plans/vaadin-invoice-email-button.md)
 - PostgreSQL + Liquibase: status wysyłki e-mail faktury (`invoice_email_status`), kolumny „Wysłano” i „Data wysyłki” na liście.

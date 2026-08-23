@@ -2,6 +2,7 @@ package pl.tw.ksiegowosc.service;
 
 import java.time.Instant;
 import java.time.LocalDate;
+import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -16,6 +17,14 @@ import org.springframework.web.server.ResponseStatusException;
 
 import pl.tw.ksiegowosc.client.MeritApiClient;
 import pl.tw.ksiegowosc.client.MeritErrorMessages;
+import pl.tw.ksiegowosc.dto.CreateInvoiceRequest;
+import pl.tw.ksiegowosc.dto.CreateInvoiceResponse;
+import pl.tw.ksiegowosc.dto.MeritCreateInvoiceCustomer;
+import pl.tw.ksiegowosc.dto.MeritCreateInvoiceItem;
+import pl.tw.ksiegowosc.dto.MeritCreateInvoiceRequest;
+import pl.tw.ksiegowosc.dto.MeritCreateInvoiceResponse;
+import pl.tw.ksiegowosc.dto.MeritCreateInvoiceRow;
+import pl.tw.ksiegowosc.dto.MeritCreateInvoiceTaxAmount;
 import pl.tw.ksiegowosc.dto.SalesInvoiceDetailsDto;
 import pl.tw.ksiegowosc.dto.SalesInvoiceDto;
 import pl.tw.ksiegowosc.dto.SendInvoiceEmailResponse;
@@ -24,6 +33,9 @@ import pl.tw.ksiegowosc.repository.InvoiceEmailStatusRepository;
 
 @Service
 public class InvoicesService {
+
+    private static final DateTimeFormatter MERIT_DATE = DateTimeFormatter.BASIC_ISO_DATE;
+    private static final int ACCOUNTING_DOC_INVOICE = 1;
 
     private final MeritApiClient meritApiClient;
     private final InvoiceEmailStatusRepository invoiceEmailStatusRepository;
@@ -56,6 +68,55 @@ public class InvoicesService {
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Nie znaleziono faktury o podanym identyfikatorze.");
         }
         return details;
+    }
+
+    public CreateInvoiceResponse createInvoice(CreateInvoiceRequest request) {
+        MeritCreateInvoiceRequest meritRequest = toMeritRequest(request);
+        try {
+            MeritCreateInvoiceResponse meritResponse = meritApiClient.createInvoice(meritRequest);
+            if (meritResponse == null
+                    || meritResponse.invoiceId() == null
+                    || meritResponse.invoiceId().isBlank()) {
+                throw new ResponseStatusException(
+                        HttpStatus.BAD_GATEWAY,
+                        "Merit nie zwrócił identyfikatora utworzonej faktury.");
+            }
+            return new CreateInvoiceResponse(meritResponse.invoiceId(), meritResponse.customerId());
+        } catch (RestClientResponseException ex) {
+            HttpStatusCode status = ex.getStatusCode().is4xxClientError()
+                    ? ex.getStatusCode()
+                    : HttpStatus.BAD_GATEWAY;
+            throw new ResponseStatusException(status, MeritErrorMessages.from(ex), ex);
+        }
+    }
+
+    private static MeritCreateInvoiceRequest toMeritRequest(CreateInvoiceRequest request) {
+        List<MeritCreateInvoiceRow> rows = request.lines().stream()
+                .map(line -> new MeritCreateInvoiceRow(
+                        new MeritCreateInvoiceItem(line.itemCode(), line.description(), line.itemType()),
+                        line.quantity(),
+                        line.price(),
+                        line.taxId()))
+                .toList();
+        List<MeritCreateInvoiceTaxAmount> taxAmounts = request.taxAmounts().stream()
+                .map(tax -> new MeritCreateInvoiceTaxAmount(tax.taxId(), tax.amount()))
+                .toList();
+        return new MeritCreateInvoiceRequest(
+                new MeritCreateInvoiceCustomer(request.customerId()),
+                ACCOUNTING_DOC_INVOICE,
+                toMeritDate(request.docDate()),
+                toMeritDate(request.dueDate()),
+                request.invoiceNo(),
+                request.currencyCode(),
+                rows,
+                taxAmounts,
+                request.totalAmount(),
+                request.headerComment(),
+                request.footerComment());
+    }
+
+    private static String toMeritDate(LocalDate date) {
+        return date.format(MERIT_DATE) + "000000";
     }
 
     public SendInvoiceEmailResponse sendInvoiceByEmail(String id, boolean delivNote) {

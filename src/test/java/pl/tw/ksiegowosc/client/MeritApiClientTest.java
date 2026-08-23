@@ -8,6 +8,7 @@ import static org.springframework.test.web.client.match.MockRestRequestMatchers.
 import static org.springframework.test.web.client.match.MockRestRequestMatchers.requestTo;
 import static org.springframework.test.web.client.response.MockRestResponseCreators.withSuccess;
 
+import java.math.BigDecimal;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.time.Clock;
@@ -24,6 +25,12 @@ import org.springframework.web.client.RestClient;
 
 import pl.tw.ksiegowosc.config.MeritApiProperties;
 import pl.tw.ksiegowosc.config.MeritAuthInterceptor;
+import pl.tw.ksiegowosc.dto.MeritCreateInvoiceCustomer;
+import pl.tw.ksiegowosc.dto.MeritCreateInvoiceItem;
+import pl.tw.ksiegowosc.dto.MeritCreateInvoiceRequest;
+import pl.tw.ksiegowosc.dto.MeritCreateInvoiceResponse;
+import pl.tw.ksiegowosc.dto.MeritCreateInvoiceRow;
+import pl.tw.ksiegowosc.dto.MeritCreateInvoiceTaxAmount;
 import pl.tw.ksiegowosc.dto.SalesInvoiceDetailsDto;
 import pl.tw.ksiegowosc.dto.SalesInvoiceDto;
 
@@ -162,6 +169,82 @@ class MeritApiClientTest {
         String result = client.sendInvoiceByEmail(invoiceId, false);
 
         assertThat(result).isEqualTo("OK");
+        server.verify();
+    }
+
+    @Test
+    void shouldCreateInvoice() {
+        Clock clock = Clock.fixed(Instant.parse("2026-08-18T10:00:00Z"), ZoneOffset.UTC);
+        MeritApiProperties properties = new MeritApiProperties(
+                "https://program.360ksiegowosc.pl/api/v1",
+                "test-api-id",
+                "test-api-key",
+                "https://program.360ksiegowosc.pl/api/v2");
+        MeritAuthInterceptor interceptor = new MeritAuthInterceptor(properties, clock);
+
+        RestClient.Builder builder = RestClient.builder()
+                .baseUrl(properties.baseUrl())
+                .requestInterceptor(interceptor);
+        MockRestServiceServer server = MockRestServiceServer.bindTo(builder).build();
+        MeritApiClient client = new MeritApiClient(builder.build(), RestClient.builder().build());
+
+        MeritCreateInvoiceRequest request = new MeritCreateInvoiceRequest(
+                new MeritCreateInvoiceCustomer("665f01a4-357a-4a6b-a565-2f17e6e1da13"),
+                1,
+                "20260101000000",
+                "20260115000000",
+                "FV/2026/01/01",
+                "PLN",
+                List.of(new MeritCreateInvoiceRow(
+                        new MeritCreateInvoiceItem("USLUGA", "Usluga", 2),
+                        new BigDecimal("1.00"),
+                        new BigDecimal("100.00"),
+                        "665f01a4-357a-4a6b-a565-2f17e6e1da13")),
+                List.of(new MeritCreateInvoiceTaxAmount(
+                        "665f01a4-357a-4a6b-a565-2f17e6e1da13",
+                        new BigDecimal("23.00"))),
+                new BigDecimal("100.00"),
+                "Komentarz gorny",
+                "Komentarz dolny");
+
+        server.expect(requestTo(startsWith("https://program.360ksiegowosc.pl/api/v1/sendinvoice")))
+                .andExpect(method(HttpMethod.POST))
+                .andExpect(queryParam("apiId", "test-api-id"))
+                .andExpect(queryParam("timestamp", "20260818100000"))
+                .andExpect(content().json("""
+                        {
+                          "Customer": { "Id": "665f01a4-357a-4a6b-a565-2f17e6e1da13" },
+                          "AccountingDoc": 1,
+                          "DocDate": "20260101000000",
+                          "DueDate": "20260115000000",
+                          "InvoiceNo": "FV/2026/01/01",
+                          "CurrencyCode": "PLN",
+                          "InvoiceRow": [{
+                            "Item": { "Code": "USLUGA", "Description": "Usluga", "Type": 2 },
+                            "Quantity": 1.00,
+                            "Price": 100.00,
+                            "TaxId": "665f01a4-357a-4a6b-a565-2f17e6e1da13"
+                          }],
+                          "TaxAmount": [{
+                            "TaxId": "665f01a4-357a-4a6b-a565-2f17e6e1da13",
+                            "Amount": 23.00
+                          }],
+                          "TotalAmount": 100.00,
+                          "HComment": "Komentarz gorny",
+                          "FComment": "Komentarz dolny"
+                        }
+                        """))
+                .andRespond(withSuccess("""
+                        {
+                          "CustomerId": "665f01a4-357a-4a6b-a565-2f17e6e1da13",
+                          "InvoiceId": "5f91033c-9d0f-416e-a079-d3c892b8c317"
+                        }
+                        """, MediaType.APPLICATION_JSON));
+
+        MeritCreateInvoiceResponse response = client.createInvoice(request);
+
+        assertThat(response.invoiceId()).isEqualTo("5f91033c-9d0f-416e-a079-d3c892b8c317");
+        assertThat(response.customerId()).isEqualTo("665f01a4-357a-4a6b-a565-2f17e6e1da13");
         server.verify();
     }
 }

@@ -10,6 +10,7 @@ Indeks planów zmian w repozytorium. Każdy wpis w [CHANGELOG.md](../CHANGELOG.m
 | [dockerfile-render.md](dockerfile-render.md) | `958dc19` | Dockerfile i deploy na Render.com |
 | [invoice-details-endpoint.md](invoice-details-endpoint.md) | `7bf897d` | GET /api/invoices/{id} |
 | [invoice-email-endpoint.md](invoice-email-endpoint.md) | `9467a2b` | POST /api/invoices/{id}/email |
+| [create-invoice-endpoint.md](create-invoice-endpoint.md) | — | POST /api/invoices — tworzenie faktury |
 | [vaadin-invoice-list.md](vaadin-invoice-list.md) | `9910bda` | Ekran listy faktur Vaadin na `/` |
 | [vaadin-invoice-email-button.md](vaadin-invoice-email-button.md) | `6170268` | Przycisk wysyłki e-mail w wierszu listy |
 | [postgres-invoice-email-status.md](postgres-invoice-email-status.md) | — | PostgreSQL + status wysyłki e-mail na liście |

@@ -24,6 +24,12 @@ import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.server.ResponseStatusException;
 
 import pl.tw.ksiegowosc.client.MeritApiClient;
+import pl.tw.ksiegowosc.dto.CreateInvoiceLineRequest;
+import pl.tw.ksiegowosc.dto.CreateInvoiceRequest;
+import pl.tw.ksiegowosc.dto.CreateInvoiceResponse;
+import pl.tw.ksiegowosc.dto.CreateInvoiceTaxAmountRequest;
+import pl.tw.ksiegowosc.dto.MeritCreateInvoiceRequest;
+import pl.tw.ksiegowosc.dto.MeritCreateInvoiceResponse;
 import pl.tw.ksiegowosc.dto.SalesInvoiceDetailsDto;
 import pl.tw.ksiegowosc.dto.SalesInvoiceDto;
 import pl.tw.ksiegowosc.dto.SalesInvoiceHeaderDto;
@@ -236,5 +242,53 @@ class InvoicesServiceTest {
                             .isEqualTo("E-mail nadawcy nie został wpisany w ustawieniach faktury sprzedaży.");
                 });
         verify(invoiceEmailStatusRepository, never()).save(any());
+    }
+
+    @Test
+    void shouldCreateInvoice() {
+        CreateInvoiceRequest request = validCreateInvoiceRequest();
+        when(meritApiClient.createInvoice(any())).thenReturn(new MeritCreateInvoiceResponse(
+                "5f91033c-9d0f-416e-a079-d3c892b8c317",
+                "665f01a4-357a-4a6b-a565-2f17e6e1da13"));
+
+        CreateInvoiceResponse response = invoicesService.createInvoice(request);
+
+        assertThat(response.invoiceId()).isEqualTo("5f91033c-9d0f-416e-a079-d3c892b8c317");
+        assertThat(response.customerId()).isEqualTo("665f01a4-357a-4a6b-a565-2f17e6e1da13");
+
+        ArgumentCaptor<MeritCreateInvoiceRequest> captor = ArgumentCaptor.forClass(MeritCreateInvoiceRequest.class);
+        verify(meritApiClient).createInvoice(captor.capture());
+        MeritCreateInvoiceRequest meritRequest = captor.getValue();
+        assertThat(meritRequest.customer().id()).isEqualTo("665f01a4-357a-4a6b-a565-2f17e6e1da13");
+        assertThat(meritRequest.accountingDoc()).isEqualTo(1);
+        assertThat(meritRequest.docDate()).isEqualTo("20260101000000");
+        assertThat(meritRequest.dueDate()).isEqualTo("20260115000000");
+        assertThat(meritRequest.invoiceNo()).isEqualTo("FV/2026/01/01");
+        assertThat(meritRequest.hComment()).isEqualTo("Komentarz górny");
+        assertThat(meritRequest.fComment()).isEqualTo("Komentarz dolny");
+        assertThat(meritRequest.invoiceRow()).hasSize(1);
+        assertThat(meritRequest.taxAmount()).hasSize(1);
+    }
+
+    private static CreateInvoiceRequest validCreateInvoiceRequest() {
+        return new CreateInvoiceRequest(
+                "665f01a4-357a-4a6b-a565-2f17e6e1da13",
+                "FV/2026/01/01",
+                LocalDate.of(2026, 1, 1),
+                LocalDate.of(2026, 1, 15),
+                "PLN",
+                "Komentarz górny",
+                "Komentarz dolny",
+                new BigDecimal("100.00"),
+                List.of(new CreateInvoiceLineRequest(
+                        "USLUGA",
+                        "Usługa",
+                        2,
+                        new BigDecimal("1"),
+                        new BigDecimal("100.00"),
+                        "665f01a4-357a-4a6b-a565-2f17e6e1da13")),
+                List.of(new CreateInvoiceTaxAmountRequest(
+                        "665f01a4-357a-4a6b-a565-2f17e6e1da13",
+                        new BigDecimal("23.00"))));
     }
 }
