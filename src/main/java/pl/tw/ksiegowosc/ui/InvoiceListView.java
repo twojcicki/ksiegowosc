@@ -61,16 +61,28 @@ public class InvoiceListView extends VerticalLayout {
         Button search = new Button("Szukaj", event -> loadInvoices());
         search.addThemeVariants(ButtonVariant.LUMO_PRIMARY);
 
+        Button addInvoice = new Button("Dodaj fakturę", event -> openCreateInvoiceDialog());
+        addInvoice.addThemeVariants(ButtonVariant.LUMO_PRIMARY);
+
+        HorizontalLayout titleRow = new HorizontalLayout(addInvoice, new H2("Faktury"));
+        titleRow.setAlignItems(Alignment.CENTER);
+        titleRow.setWidthFull();
+
         HorizontalLayout filters = new HorizontalLayout(fromPicker, toPicker, search);
         filters.setAlignItems(Alignment.END);
         filters.setWidthFull();
 
         configureGrid();
 
-        add(new H2("Faktury"), filters, grid);
+        add(titleRow, filters, grid);
         setFlexGrow(1, grid);
 
         loadInvoices();
+    }
+
+    private void openCreateInvoiceDialog() {
+        CreateInvoiceDialog dialog = new CreateInvoiceDialog(invoicesService, this::loadInvoices);
+        dialog.open();
     }
 
     private void configureGrid() {

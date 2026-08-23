@@ -6,6 +6,8 @@ Format oparty na [Keep a Changelog](https://keepachangelog.com/pl/1.1.0/).
 
 ### Added
 
+- Formularz „Dodaj fakturę” w Vaadin (dialog z polami API, Zapisz / Anuluj).
+  Notatka: [docs/plans/vaadin-create-invoice-form.md](docs/plans/vaadin-create-invoice-form.md)
 - Endpoint tworzenia faktury sprzedaży (`POST /api/invoices`) z komentarzem górnym i dolnym.
   Notatka: [docs/plans/create-invoice-endpoint.md](docs/plans/create-invoice-endpoint.md)
 - Przycisk wysyłki faktury e-mailem w wierszu listy Vaadin.

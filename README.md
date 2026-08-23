@@ -49,7 +49,7 @@ Aplikacja:
 mvn spring-boot:run
 ```
 
-Aplikacja wystartuje domyślnie na `http://localhost:8080`. Lista faktur (Vaadin) jest na stronie głównej; z każdego wiersza można wysłać fakturę e-mailem na adres klienta w Merit (przycisk „E-mail”, potwierdzenie w dialogu). Kolumny „Wysłano” i „Data wysyłki” pokazują status z lokalnej bazy. Status wysyłki pojawia się też jako powiadomienie w prawym górnym rogu. REST i Swagger bez zmian.
+Aplikacja wystartuje domyślnie na `http://localhost:8080`. Lista faktur (Vaadin) jest na stronie głównej; przycisk „Dodaj fakturę” otwiera formularz tworzenia faktury w Merit. Z każdego wiersza można wysłać fakturę e-mailem na adres klienta w Merit (przycisk „E-mail”, potwierdzenie w dialogu). Kolumny „Wysłano” i „Data wysyłki” pokazują status z lokalnej bazy. Status wysyłki pojawia się też jako powiadomienie w prawym górnym rogu. REST i Swagger bez zmian.
 
 ## Dokumentacja zmian
 
