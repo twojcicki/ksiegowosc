@@ -5,7 +5,6 @@ import java.time.Instant;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
-import jakarta.persistence.Lob;
 import jakarta.persistence.Table;
 
 @Entity
@@ -18,12 +17,10 @@ public class AllegroToken {
     @Column(name = "id", length = 32, nullable = false)
     private String id = SINGLETON_ID;
 
-    @Lob
-    @Column(name = "access_token", nullable = false)
+    @Column(name = "access_token", nullable = false, length = 8192)
     private String accessToken;
 
-    @Lob
-    @Column(name = "refresh_token", nullable = false)
+    @Column(name = "refresh_token", nullable = false, length = 8192)
     private String refreshToken;
 
     @Column(name = "expires_at", nullable = false)
