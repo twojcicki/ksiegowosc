@@ -23,6 +23,7 @@ import com.vaadin.flow.component.orderedlayout.HorizontalLayout;
 import com.vaadin.flow.component.orderedlayout.VerticalLayout;
 import com.vaadin.flow.router.PageTitle;
 import com.vaadin.flow.router.Route;
+import com.vaadin.flow.router.RouterLink;
 
 import pl.tw.ksiegowosc.client.MeritErrorMessages;
 import pl.tw.ksiegowosc.dto.SalesInvoiceDto;
@@ -68,13 +69,17 @@ public class InvoiceListView extends VerticalLayout {
         titleRow.setAlignItems(Alignment.CENTER);
         titleRow.setWidthFull();
 
+        RouterLink allegroLink = new RouterLink("Allegro", AllegroView.class);
+        HorizontalLayout nav = new HorizontalLayout(allegroLink);
+        nav.setWidthFull();
+
         HorizontalLayout filters = new HorizontalLayout(fromPicker, toPicker, search);
         filters.setAlignItems(Alignment.END);
         filters.setWidthFull();
 
         configureGrid();
 
-        add(titleRow, filters, grid);
+        add(nav, titleRow, filters, grid);
         setFlexGrow(1, grid);
 
         loadInvoices();

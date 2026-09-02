@@ -8,9 +8,13 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.http.MediaType;
 import org.springframework.web.client.RestClient;
 
+import pl.tw.ksiegowosc.service.AllegroAuthService;
+
 @Configuration
-@EnableConfigurationProperties(MeritApiProperties.class)
+@EnableConfigurationProperties({MeritApiProperties.class, AllegroApiProperties.class})
 public class HttpClientsConfig {
+
+    public static final String ALLEGRO_ACCEPT = "application/vnd.allegro.public.v1+json";
 
     @Bean
     Clock clock() {
@@ -56,6 +60,29 @@ public class HttpClientsConfig {
                 .defaultHeader("Accept", MediaType.APPLICATION_JSON_VALUE)
                 .requestInterceptor(loggingInterceptor)
                 .requestInterceptor(interceptor)
+                .build();
+    }
+
+    @Bean
+    RestClient allegroAuthRestClient(AllegroApiProperties properties) {
+        return RestClient.builder()
+                .baseUrl(properties.authUrl())
+                .build();
+    }
+
+    @Bean
+    AllegroAuthInterceptor allegroAuthInterceptor(AllegroAuthService authService) {
+        return new AllegroAuthInterceptor(authService);
+    }
+
+    @Bean
+    RestClient allegroRestClient(
+            AllegroApiProperties properties,
+            AllegroAuthInterceptor allegroAuthInterceptor) {
+        return RestClient.builder()
+                .baseUrl(properties.apiBaseUrl())
+                .defaultHeader("Accept", ALLEGRO_ACCEPT)
+                .requestInterceptor(allegroAuthInterceptor)
                 .build();
     }
 }

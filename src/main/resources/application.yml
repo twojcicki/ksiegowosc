@@ -25,3 +25,10 @@ clients:
     api-id: ${MERIT_API_ID:change-me}
     api-key: ${MERIT_API_KEY:change-me}
     v2-base-url: https://program.360ksiegowosc.pl/api/v2
+  allegro:
+    api-base-url: https://api.allegro.pl.allegrosandbox.pl
+    auth-url: https://allegro.pl.allegrosandbox.pl
+    client-id: ${ALLEGRO_CLIENT_ID:change-me}
+    client-secret: ${ALLEGRO_CLIENT_SECRET:change-me}
+    redirect-uri: ${ALLEGRO_REDIRECT_URI:http://localhost:8080/api/allegro/auth/callback}
+    scopes: allegro:api:sale:offers:read allegro:api:orders:read

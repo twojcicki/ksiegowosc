@@ -16,6 +16,7 @@ Indeks planów zmian w repozytorium. Każdy wpis w [CHANGELOG.md](../CHANGELOG.m
 | [vaadin-create-invoice-form.md](vaadin-create-invoice-form.md) | — | Formularz dodawania faktury w Vaadin |
 | [vaadin-invoice-email-button.md](vaadin-invoice-email-button.md) | `6170268` | Przycisk wysyłki e-mail w wierszu listy |
 | [postgres-invoice-email-status.md](postgres-invoice-email-status.md) | — | PostgreSQL + status wysyłki e-mail na liście |
+| [allegro-sandbox-integration.md](allegro-sandbox-integration.md) | — | Allegro Sandbox — OAuth, oferty, sprzedane pozycje |
 
 Commity bez osobnej notatki (wpisy tylko w CHANGELOG):
 

@@ -6,6 +6,8 @@ Format oparty na [Keep a Changelog](https://keepachangelog.com/pl/1.1.0/).
 
 ### Added
 
+- Integracja Allegro Sandbox: OAuth2, lista ofert i sprzedanych pozycji (REST + Vaadin `/allegro`).
+  Notatka: [docs/plans/allegro-sandbox-integration.md](docs/plans/allegro-sandbox-integration.md)
 - Endpoint listy klientów (`GET /api/customers`, opcjonalny filtr `name`).
   Notatka: [docs/plans/customers-endpoint.md](docs/plans/customers-endpoint.md)
 - Formularz „Dodaj fakturę” w Vaadin (dialog z polami API, Zapisz / Anuluj).

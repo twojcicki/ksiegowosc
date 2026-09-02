@@ -2,7 +2,7 @@
 
 Szkielet aplikacji w `Spring Boot 4.1.x` z `Java 25`, `Maven`, `Vaadin 25.2` i klientem HTTP opartym o `RestClient`.
 
-Aplikacja pobiera listę faktur sprzedaży z Merit Aktiva (lokalizacja PL) z podanego zakresu dat. Lista jest dostępna w UI Vaadin oraz przez REST.
+Aplikacja pobiera listę faktur sprzedaży z Merit Aktiva (lokalizacja PL) z podanego zakresu dat. Lista jest dostępna w UI Vaadin oraz przez REST. Integracja z Allegro Sandbox umożliwia podgląd ofert i sprzedanych pozycji.
 
 ## Wymagania
 
@@ -19,6 +19,9 @@ Klucze podawaj przez zmienne środowiskowe, bez wpisywania ich do repozytorium:
 ```bash
 set MERIT_API_ID=twoj-api-id
 set MERIT_API_KEY=twoj-api-key
+set ALLEGRO_CLIENT_ID=twoj-client-id
+set ALLEGRO_CLIENT_SECRET=twoj-client-secret
+set ALLEGRO_REDIRECT_URI=http://localhost:8080/api/allegro/auth/callback
 ```
 
 ```yaml
@@ -28,7 +31,16 @@ clients:
     api-id: ${MERIT_API_ID:change-me}
     api-key: ${MERIT_API_KEY:change-me}
     v2-base-url: https://program.360ksiegowosc.pl/api/v2
+  allegro:
+    api-base-url: https://api.allegro.pl.allegrosandbox.pl
+    auth-url: https://allegro.pl.allegrosandbox.pl
+    client-id: ${ALLEGRO_CLIENT_ID:change-me}
+    client-secret: ${ALLEGRO_CLIENT_SECRET:change-me}
+    redirect-uri: ${ALLEGRO_REDIRECT_URI:http://localhost:8080/api/allegro/auth/callback}
+    scopes: allegro:api:sale:offers:read allegro:api:orders:read
 ```
+
+Allegro Sandbox: zarejestruj aplikację na [apps.developer.allegro.pl.allegrosandbox.pl](https://apps.developer.allegro.pl.allegrosandbox.pl/) i ustaw ten sam Redirect URI co w konfiguracji. Połączenie konta: `GET /api/allegro/auth/connect` lub link na stronie `/allegro`.
 
 Klient podpisuje każde żądanie HMAC-SHA256 zgodnie z dokumentacją Merit:
 `signature = Base64(HMAC-SHA256(apiId + timestamp + body, apiKey))`.
@@ -49,7 +61,7 @@ Aplikacja:
 mvn spring-boot:run
 ```
 
-Aplikacja wystartuje domyślnie na `http://localhost:8080`. Lista faktur (Vaadin) jest na stronie głównej; przycisk „Dodaj fakturę” otwiera formularz tworzenia faktury w Merit. Z każdego wiersza można wysłać fakturę e-mailem na adres klienta w Merit (przycisk „E-mail”, potwierdzenie w dialogu). Kolumny „Wysłano” i „Data wysyłki” pokazują status z lokalnej bazy. Status wysyłki pojawia się też jako powiadomienie w prawym górnym rogu. REST i Swagger bez zmian.
+Aplikacja wystartuje domyślnie na `http://localhost:8080`. Lista faktur (Vaadin) jest na stronie głównej; strona Allegro pod `/allegro` (zakładki Oferty i Sprzedane). Przycisk „Dodaj fakturę” otwiera formularz tworzenia faktury w Merit. Z każdego wiersza można wysłać fakturę e-mailem na adres klienta w Merit (przycisk „E-mail”, potwierdzenie w dialogu). Kolumny „Wysłano” i „Data wysyłki” pokazują status z lokalnej bazy. Status wysyłki pojawia się też jako powiadomienie w prawym górnym rogu. REST i Swagger bez zmian.
 
 ## Dokumentacja zmian
 
@@ -76,7 +88,7 @@ Aplikacja czyta port ze zmiennej `PORT` (domyślnie `8080`). Render wstrzykuje w
    - `MERIT_API_KEY`
    - `SPRING_DATASOURCE_URL`, `SPRING_DATASOURCE_USERNAME`, `SPRING_DATASOURCE_PASSWORD` (z Render Managed Postgres)
 
-Obraz budowany jest z profilem Maven `production` (zoptymalizowany frontend Vaadin). Po deployu UI listy faktur będzie pod `/`, Swagger pod `/swagger-ui.html`, lista REST pod `/api/invoices?from=2026-01-01&to=2026-01-31`, tworzenie faktury pod `POST /api/invoices`, szczegóły pod `/api/invoices/{id}`, wysyłka e-mail pod `POST /api/invoices/{id}/email`, a klienci pod `/api/customers`.
+Obraz budowany jest z profilem Maven `production` (zoptymalizowany frontend Vaadin). Po deployu UI listy faktur będzie pod `/`, Allegro pod `/allegro`, Swagger pod `/swagger-ui.html`, lista REST pod `/api/invoices?from=2026-01-01&to=2026-01-31`, tworzenie faktury pod `POST /api/invoices`, szczegóły pod `/api/invoices/{id}`, wysyłka e-mail pod `POST /api/invoices/{id}/email`, klienci pod `/api/customers`, oferty Allegro pod `/api/allegro/offers`, sprzedane pozycje pod `/api/allegro/sold-items?from=...&to=...`.
 
 ## Swagger
 
