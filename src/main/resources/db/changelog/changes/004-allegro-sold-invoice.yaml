@@ -1,0 +1,30 @@
+databaseChangeLog:
+  - changeSet:
+      id: 004-allegro-sold-invoice
+      author: ksiegowosc
+      changes:
+        - createTable:
+            tableName: allegro_sold_invoice
+            columns:
+              - column:
+                  name: order_id
+                  type: VARCHAR(64)
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: invoice_no
+                  type: VARCHAR(35)
+                  constraints:
+                    nullable: false
+                    unique: true
+              - column:
+                  name: merit_invoice_id
+                  type: VARCHAR(64)
+                  constraints:
+                    nullable: true
+              - column:
+                  name: created_at
+                  type: TIMESTAMPTZ
+                  constraints:
+                    nullable: false

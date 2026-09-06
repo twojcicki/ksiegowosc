@@ -29,9 +29,12 @@ import com.vaadin.flow.router.Route;
 import com.vaadin.flow.router.RouterLink;
 
 import pl.tw.ksiegowosc.client.AllegroErrorMessages;
+import pl.tw.ksiegowosc.client.MeritErrorMessages;
 import pl.tw.ksiegowosc.dto.AllegroOfferDto;
 import pl.tw.ksiegowosc.dto.AllegroSoldItemDto;
+import pl.tw.ksiegowosc.dto.IssueAllegroInvoiceResponse;
 import pl.tw.ksiegowosc.service.AllegroAuthService;
+import pl.tw.ksiegowosc.service.AllegroInvoiceService;
 import pl.tw.ksiegowosc.service.AllegroOffersService;
 import pl.tw.ksiegowosc.service.AllegroOrdersService;
 
@@ -46,6 +49,7 @@ public class AllegroView extends VerticalLayout {
     private final AllegroAuthService authService;
     private final AllegroOffersService offersService;
     private final AllegroOrdersService ordersService;
+    private final AllegroInvoiceService invoiceService;
     private final NumberFormat amountFormat;
 
     private final VerticalLayout connectBanner = new VerticalLayout();
@@ -58,10 +62,12 @@ public class AllegroView extends VerticalLayout {
     public AllegroView(
             AllegroAuthService authService,
             AllegroOffersService offersService,
-            AllegroOrdersService ordersService) {
+            AllegroOrdersService ordersService,
+            AllegroInvoiceService invoiceService) {
         this.authService = authService;
         this.offersService = offersService;
         this.ordersService = ordersService;
+        this.invoiceService = invoiceService;
         this.amountFormat = NumberFormat.getNumberInstance(PL);
         this.amountFormat.setMinimumFractionDigits(2);
         this.amountFormat.setMaximumFractionDigits(2);
@@ -166,10 +172,10 @@ public class AllegroView extends VerticalLayout {
 
     private void configureSoldGrid() {
         soldGrid.addColumn(AllegroSoldItemDto::orderId).setHeader("ID zamówienia").setAutoWidth(true).setSortable(true);
-        soldGrid.addColumn(AllegroSoldItemDto::name).setHeader("Nazwa").setFlexGrow(1).setSortable(true);
-        soldGrid.addColumn(AllegroSoldItemDto::quantity).setHeader("Ilość").setAutoWidth(true).setSortable(true);
-        soldGrid.addColumn(item -> formatAmount(item.price(), item.currency()))
-                .setHeader("Cena")
+        soldGrid.addColumn(AllegroSoldItemDto::name).setHeader("Pozycje").setFlexGrow(1).setSortable(true);
+        soldGrid.addColumn(AllegroSoldItemDto::itemCount).setHeader("Liczba pozycji").setAutoWidth(true).setSortable(true);
+        soldGrid.addColumn(item -> formatAmount(item.totalGross(), item.currency()))
+                .setHeader("Suma brutto")
                 .setAutoWidth(true);
         soldGrid.addColumn(item -> formatInstant(item.boughtAt()))
                 .setHeader("Data zakupu")
@@ -180,7 +186,51 @@ public class AllegroView extends VerticalLayout {
                 .setHeader("Realizacja")
                 .setAutoWidth(true)
                 .setSortable(true);
+        soldGrid.addColumn(item -> {
+            String invoiceNo = item.invoiceNo();
+            return invoiceNo == null || invoiceNo.isBlank() ? "—" : invoiceNo;
+        }).setHeader("Faktura").setAutoWidth(true).setSortable(true);
+        soldGrid.addComponentColumn(this::createIssueInvoiceButton)
+                .setHeader("Akcja")
+                .setAutoWidth(true)
+                .setFlexGrow(0);
         soldGrid.setSizeFull();
+    }
+
+    private Button createIssueInvoiceButton(AllegroSoldItemDto item) {
+        boolean alreadyIssued = item.invoiceNo() != null && !item.invoiceNo().isBlank();
+        Button button = new Button("Wystaw fakturę");
+        button.addThemeVariants(ButtonVariant.LUMO_SMALL, ButtonVariant.LUMO_PRIMARY);
+        button.setEnabled(!alreadyIssued);
+        if (alreadyIssued) {
+            button.getElement().setAttribute("title", "Faktura już wystawiona");
+        }
+        button.addClickListener(event -> issueInvoice(item, button));
+        return button;
+    }
+
+    private void issueInvoice(AllegroSoldItemDto item, Button button) {
+        button.setEnabled(false);
+        try {
+            IssueAllegroInvoiceResponse response = invoiceService.issueInvoice(item.orderId());
+            showSuccess("Wystawiono fakturę " + response.invoiceNo() + ".");
+            loadSoldItems();
+        } catch (ResponseStatusException ex) {
+            showError(reason(ex));
+            if (item.invoiceNo() == null || item.invoiceNo().isBlank()) {
+                button.setEnabled(true);
+            }
+        } catch (RestClientResponseException ex) {
+            String message = MeritErrorMessages.from(ex);
+            if (message == null || message.isBlank()) {
+                message = AllegroErrorMessages.from(ex);
+            }
+            showError(message);
+            button.setEnabled(true);
+        } catch (RuntimeException ex) {
+            showError("Nie udało się wystawić faktury.");
+            button.setEnabled(true);
+        }
     }
 
     private void refreshConnectionState() {
@@ -234,7 +284,7 @@ public class AllegroView extends VerticalLayout {
         } catch (RestClientResponseException ex) {
             showError(AllegroErrorMessages.from(ex));
         } catch (RuntimeException ex) {
-            showError("Nie udało się pobrać sprzedanych pozycji.");
+            showError("Nie udało się pobrać sprzedanych zamówień.");
         }
     }
 
@@ -263,5 +313,10 @@ public class AllegroView extends VerticalLayout {
     private static void showError(String message) {
         Notification notification = Notification.show(message, 5000, Notification.Position.TOP_END);
         notification.addThemeVariants(NotificationVariant.LUMO_ERROR);
+    }
+
+    private static void showSuccess(String message) {
+        Notification notification = Notification.show(message, 4000, Notification.Position.TOP_END);
+        notification.addThemeVariants(NotificationVariant.LUMO_SUCCESS);
     }
 }

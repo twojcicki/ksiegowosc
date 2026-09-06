@@ -5,13 +5,13 @@ import java.time.Instant;
 
 public record AllegroSoldItemDto(
         String orderId,
-        String offerId,
         String name,
-        Integer quantity,
-        BigDecimal price,
+        Integer itemCount,
+        BigDecimal totalGross,
         String currency,
         Instant boughtAt,
         String buyerLogin,
         String orderStatus,
-        String fulfillmentStatus) {
+        String fulfillmentStatus,
+        String invoiceNo) {
 }

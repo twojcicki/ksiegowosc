@@ -46,11 +46,13 @@ class CustomersServiceTest {
     }
 
     @Test
-    void shouldPassNullWhenNameIsMissing() {
-        when(meritApiClient.getCustomers(null)).thenReturn(List.of());
+    void shouldPassVatRegNoToClient() {
+        when(meritApiClient.getCustomers(null, "5252674798")).thenReturn(List.of(
+                new CustomerDto("id", "Firma", null, "5252674798", null, null, null, null)));
 
-        customersService.getCustomers(null);
+        List<CustomerDto> customers = customersService.getCustomersByVatRegNo("  5252674798  ");
 
-        verify(meritApiClient).getCustomers(null);
+        assertThat(customers).hasSize(1);
+        verify(meritApiClient).getCustomers(null, "5252674798");
     }
 }

@@ -113,4 +113,58 @@ class AllegroApiClientTest {
         assertThat(response.checkoutForms().getFirst().lineItems().getFirst().name()).isEqualTo("Sold item");
         server.verify();
     }
+
+    @Test
+    void shouldFetchCheckoutFormById() {
+        RestClient.Builder builder = RestClient.builder()
+                .baseUrl("https://api.allegro.pl.allegrosandbox.pl")
+                .defaultHeader("Accept", HttpClientsConfig.ALLEGRO_ACCEPT)
+                .requestInterceptor((request, body, execution) -> {
+                    request.getHeaders().setBearerAuth("test-token");
+                    return execution.execute(request, body);
+                });
+        MockRestServiceServer server = MockRestServiceServer.bindTo(builder).build();
+        AllegroApiClient client = new AllegroApiClient(builder.build());
+
+        server.expect(requestTo("https://api.allegro.pl.allegrosandbox.pl/order/checkout-forms/order-1"))
+                .andExpect(method(HttpMethod.GET))
+                .andRespond(withSuccess("""
+                        {
+                          "id": "order-1",
+                          "buyer": { "login": "buyer1", "email": "a@example.com" },
+                          "status": "READY_FOR_PROCESSING",
+                          "invoice": {
+                            "required": true,
+                            "address": {
+                              "street": "Testowa 1",
+                              "city": "Poznań",
+                              "zipCode": "60-001",
+                              "countryCode": "PL",
+                              "company": {
+                                "name": "Firma",
+                                "taxId": "5252674798"
+                              }
+                            }
+                          },
+                          "lineItems": [
+                            {
+                              "id": "line-1",
+                              "offerId": "123",
+                              "name": "Sold item",
+                              "quantity": 1,
+                              "price": { "amount": "49.99", "currency": "PLN" },
+                              "boughtAt": "2026-01-15T10:00:00.000Z"
+                            }
+                          ]
+                        }
+                        """, MediaType.parseMediaType(HttpClientsConfig.ALLEGRO_ACCEPT)));
+
+        var form = client.getCheckoutForm("order-1");
+
+        assertThat(form.id()).isEqualTo("order-1");
+        assertThat(form.buyer().email()).isEqualTo("a@example.com");
+        assertThat(form.invoice().address().company().taxId()).isEqualTo("5252674798");
+        assertThat(form.lineItems()).hasSize(1);
+        server.verify();
+    }
 }

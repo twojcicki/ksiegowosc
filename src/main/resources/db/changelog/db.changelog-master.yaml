@@ -5,3 +5,5 @@ databaseChangeLog:
       file: db/changelog/changes/002-allegro-token.yaml
   - include:
       file: db/changelog/changes/003-allegro-token-column-type.yaml
+  - include:
+      file: db/changelog/changes/004-allegro-sold-invoice.yaml

@@ -19,6 +19,8 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import pl.tw.ksiegowosc.dto.CustomerDto;
 import pl.tw.ksiegowosc.dto.InvoiceDetailsRequest;
 import pl.tw.ksiegowosc.dto.InvoiceListRequest;
+import pl.tw.ksiegowosc.dto.MeritCreateCustomerRequest;
+import pl.tw.ksiegowosc.dto.MeritCreateCustomerResponse;
 import pl.tw.ksiegowosc.dto.MeritCreateInvoiceRequest;
 import pl.tw.ksiegowosc.dto.MeritCreateInvoiceResponse;
 import pl.tw.ksiegowosc.dto.MeritCustomersRequest;
@@ -91,7 +93,13 @@ public class MeritApiClient {
     }
 
     public List<CustomerDto> getCustomers(String name) {
-        MeritCustomersRequest request = new MeritCustomersRequest(name);
+        return getCustomers(name, null);
+    }
+
+    public List<CustomerDto> getCustomers(String name, String vatRegNo) {
+        MeritCustomersRequest request = new MeritCustomersRequest(
+                blankToNull(name),
+                blankToNull(vatRegNo));
         String rawBody = meritRestClient.post()
                 .uri("/getcustomers")
                 .contentType(MediaType.APPLICATION_JSON)
@@ -99,6 +107,22 @@ public class MeritApiClient {
                 .retrieve()
                 .body(String.class);
         return normalizeCustomers(parseJson(rawBody));
+    }
+
+    public MeritCreateCustomerResponse createCustomer(MeritCreateCustomerRequest request) {
+        return meritV2RestClient.post()
+                .uri("/sendcustomer")
+                .contentType(MediaType.APPLICATION_JSON)
+                .body(request)
+                .retrieve()
+                .body(MeritCreateCustomerResponse.class);
+    }
+
+    private static String blankToNull(String value) {
+        if (value == null || value.isBlank()) {
+            return null;
+        }
+        return value.trim();
     }
 
     private static JsonNode parseJson(String rawBody) {

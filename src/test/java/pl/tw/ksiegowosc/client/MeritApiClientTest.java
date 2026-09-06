@@ -326,4 +326,96 @@ class MeritApiClientTest {
         assertThat(customers.getFirst().city()).isEqualTo("Warszawa");
         server.verify();
     }
+
+    @Test
+    void shouldFetchCustomersByVatRegNo() {
+        Clock clock = Clock.fixed(Instant.parse("2026-08-18T10:00:00Z"), ZoneOffset.UTC);
+        MeritApiProperties properties = new MeritApiProperties(
+                "https://program.360ksiegowosc.pl/api/v1",
+                "test-api-id",
+                "test-api-key",
+                "https://program.360ksiegowosc.pl/api/v2");
+        MeritAuthInterceptor interceptor = new MeritAuthInterceptor(properties, clock);
+
+        RestClient.Builder builder = RestClient.builder()
+                .baseUrl(properties.baseUrl())
+                .requestInterceptor(interceptor);
+        MockRestServiceServer server = MockRestServiceServer.bindTo(builder).build();
+        MeritApiClient client = new MeritApiClient(builder.build(), RestClient.builder().build());
+
+        server.expect(requestTo(startsWith("https://program.360ksiegowosc.pl/api/v1/getcustomers")))
+                .andExpect(method(HttpMethod.POST))
+                .andExpect(content().json("{\"VatRegNo\":\"5252674798\"}"))
+                .andRespond(withSuccess("""
+                        {
+                          "CustomerId": "11111111-1111-1111-1111-111111111111",
+                          "Name": "Allegro",
+                          "VatRegNo": "5252674798"
+                        }
+                        """, MediaType.APPLICATION_JSON));
+
+        List<CustomerDto> customers = client.getCustomers(null, "5252674798");
+
+        assertThat(customers).hasSize(1);
+        assertThat(customers.getFirst().vatRegNo()).isEqualTo("5252674798");
+        server.verify();
+    }
+
+    @Test
+    void shouldCreateCustomer() {
+        Clock clock = Clock.fixed(Instant.parse("2026-08-18T10:00:00Z"), ZoneOffset.UTC);
+        MeritApiProperties properties = new MeritApiProperties(
+                "https://program.360ksiegowosc.pl/api/v1",
+                "test-api-id",
+                "test-api-key",
+                "https://program.360ksiegowosc.pl/api/v2");
+        MeritAuthInterceptor interceptor = new MeritAuthInterceptor(properties, clock);
+
+        RestClient.Builder v2Builder = RestClient.builder()
+                .baseUrl(properties.v2BaseUrl())
+                .requestInterceptor(interceptor);
+        MockRestServiceServer server = MockRestServiceServer.bindTo(v2Builder).build();
+        MeritApiClient client = new MeritApiClient(RestClient.builder().build(), v2Builder.build());
+
+        pl.tw.ksiegowosc.dto.MeritCreateCustomerRequest request =
+                new pl.tw.ksiegowosc.dto.MeritCreateCustomerRequest(
+                        "Klient",
+                        true,
+                        "PL",
+                        null,
+                        "Ul. Testowa 1",
+                        "Warszawa",
+                        "00-001",
+                        "a@example.com",
+                        "PLN",
+                        "PL");
+
+        server.expect(requestTo(startsWith("https://program.360ksiegowosc.pl/api/v2/sendcustomer")))
+                .andExpect(method(HttpMethod.POST))
+                .andExpect(content().json("""
+                        {
+                          "Name": "Klient",
+                          "NotTDCustomer": true,
+                          "CountryCode": "PL",
+                          "Address": "Ul. Testowa 1",
+                          "City": "Warszawa",
+                          "PostalCode": "00-001",
+                          "Email": "a@example.com",
+                          "CurrencyCode": "PLN",
+                          "SalesInvLang": "PL"
+                        }
+                        """))
+                .andRespond(withSuccess("""
+                        {
+                          "Id": "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa",
+                          "Name": "Klient"
+                        }
+                        """, MediaType.APPLICATION_JSON));
+
+        pl.tw.ksiegowosc.dto.MeritCreateCustomerResponse response = client.createCustomer(request);
+
+        assertThat(response.id()).isEqualTo("aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa");
+        assertThat(response.name()).isEqualTo("Klient");
+        server.verify();
+    }
 }

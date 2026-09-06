@@ -7,6 +7,7 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestClient;
 import org.springframework.web.util.UriComponentsBuilder;
 
+import pl.tw.ksiegowosc.dto.allegro.AllegroCheckoutForm;
 import pl.tw.ksiegowosc.dto.allegro.AllegroCheckoutFormsResponse;
 import pl.tw.ksiegowosc.dto.allegro.AllegroOffersResponse;
 
@@ -52,5 +53,12 @@ public class AllegroApiClient {
                 .uri(builder.build().toUriString())
                 .retrieve()
                 .body(AllegroCheckoutFormsResponse.class);
+    }
+
+    public AllegroCheckoutForm getCheckoutForm(String id) {
+        return allegroRestClient.get()
+                .uri("/order/checkout-forms/{id}", id)
+                .retrieve()
+                .body(AllegroCheckoutForm.class);
     }
 }

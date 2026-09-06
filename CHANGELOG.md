@@ -6,6 +6,8 @@ Format oparty na [Keep a Changelog](https://keepachangelog.com/pl/1.1.0/).
 
 ### Added
 
+- Wystawianie faktury Merit z zamówienia Allegro (przycisk w tabeli Sprzedane, zapis numeru w DB).
+  Notatka: [docs/plans/allegro-issue-invoice.md](docs/plans/allegro-issue-invoice.md)
 - Integracja Allegro Sandbox: OAuth2, lista ofert i sprzedanych pozycji (REST + Vaadin `/allegro`).
   Notatka: [docs/plans/allegro-sandbox-integration.md](docs/plans/allegro-sandbox-integration.md)
 - Endpoint listy klientów (`GET /api/customers`, opcjonalny filtr `name`).

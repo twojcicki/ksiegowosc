@@ -10,5 +10,6 @@ public record AllegroCheckoutForm(
         AllegroBuyer buyer,
         String status,
         AllegroFulfillment fulfillment,
+        AllegroInvoice invoice,
         List<AllegroLineItem> lineItems) {
 }
