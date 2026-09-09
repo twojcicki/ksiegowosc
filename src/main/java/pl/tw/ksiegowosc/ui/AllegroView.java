@@ -11,12 +11,15 @@ import java.util.Locale;
 import org.springframework.web.client.RestClientResponseException;
 import org.springframework.web.server.ResponseStatusException;
 
+import com.vaadin.flow.component.applayout.DrawerToggle;
 import com.vaadin.flow.component.button.Button;
 import com.vaadin.flow.component.button.ButtonVariant;
 import com.vaadin.flow.component.datepicker.DatePicker;
 import com.vaadin.flow.component.grid.Grid;
+import com.vaadin.flow.component.grid.GridVariant;
 import com.vaadin.flow.component.html.Anchor;
-import com.vaadin.flow.component.html.H2;
+import com.vaadin.flow.component.html.Div;
+import com.vaadin.flow.component.html.H1;
 import com.vaadin.flow.component.html.Paragraph;
 import com.vaadin.flow.component.notification.Notification;
 import com.vaadin.flow.component.notification.NotificationVariant;
@@ -26,8 +29,8 @@ import com.vaadin.flow.component.tabs.Tab;
 import com.vaadin.flow.component.tabs.Tabs;
 import com.vaadin.flow.router.PageTitle;
 import com.vaadin.flow.router.Route;
-import com.vaadin.flow.router.RouterLink;
 
+import jakarta.annotation.security.PermitAll;
 import pl.tw.ksiegowosc.client.AllegroErrorMessages;
 import pl.tw.ksiegowosc.client.MeritErrorMessages;
 import pl.tw.ksiegowosc.dto.AllegroOfferDto;
@@ -37,10 +40,14 @@ import pl.tw.ksiegowosc.service.AllegroAuthService;
 import pl.tw.ksiegowosc.service.AllegroInvoiceService;
 import pl.tw.ksiegowosc.service.AllegroOffersService;
 import pl.tw.ksiegowosc.service.AllegroOrdersService;
+import pl.tw.ksiegowosc.ui.component.View;
+import pl.tw.ksiegowosc.ui.component.ViewHeader;
+import pl.tw.ksiegowosc.ui.util.Aura;
 
 @Route("allegro")
 @PageTitle("Allegro")
-public class AllegroView extends VerticalLayout {
+@PermitAll
+public class AllegroView extends View {
 
     private static final Locale PL = Locale.forLanguageTag("pl-PL");
     private static final ZoneId ZONE = ZoneId.of("Europe/Warsaw");
@@ -52,7 +59,7 @@ public class AllegroView extends VerticalLayout {
     private final AllegroInvoiceService invoiceService;
     private final NumberFormat amountFormat;
 
-    private final VerticalLayout connectBanner = new VerticalLayout();
+    private final Div connectBanner = new Div();
     private final VerticalLayout contentLayout = new VerticalLayout();
     private final Grid<AllegroOfferDto> offersGrid = new Grid<>(AllegroOfferDto.class, false);
     private final Grid<AllegroSoldItemDto> soldGrid = new Grid<>(AllegroSoldItemDto.class, false);
@@ -72,47 +79,51 @@ public class AllegroView extends VerticalLayout {
         this.amountFormat.setMinimumFractionDigits(2);
         this.amountFormat.setMaximumFractionDigits(2);
 
-        setSizeFull();
-        setPadding(true);
-        setSpacing(true);
-
-        RouterLink invoicesLink = new RouterLink("Faktury", InvoiceListView.class);
-        HorizontalLayout nav = new HorizontalLayout(invoicesLink);
-        nav.setWidthFull();
-
-        HorizontalLayout titleRow = new HorizontalLayout(new H2("Allegro Sandbox"));
-        titleRow.setAlignItems(Alignment.CENTER);
-        titleRow.setWidthFull();
-
-        configureConnectBanner();
+        addClassNames(Aura.SURFACE_SOLID, "allegro-view");
         configureOffersGrid();
         configureSoldGrid();
+        add(createHeader(), connectBanner, createContent());
+        refreshConnectionState();
+    }
 
+    private ViewHeader createHeader() {
+        DrawerToggle toggle = new DrawerToggle();
+        toggle.addThemeVariants(ButtonVariant.TERTIARY);
+        return new ViewHeader(toggle, new H1("Allegro"));
+    }
+
+    private VerticalLayout createContent() {
         Tab offersTab = new Tab("Oferty");
         Tab soldTab = new Tab("Sprzedane");
         Tabs tabs = new Tabs(offersTab, soldTab);
         tabs.setWidthFull();
 
-        VerticalLayout offersPanel = new VerticalLayout(createOffersToolbar(), offersGrid);
+        Button refresh = new Button("Odśwież", e -> loadOffers());
+        refresh.addThemeVariants(ButtonVariant.PRIMARY);
+        HorizontalLayout offersToolbar = new HorizontalLayout(refresh);
+        offersToolbar.addClassName("filters");
+        offersToolbar.setWidthFull();
+
+        VerticalLayout offersPanel = new VerticalLayout(offersToolbar, offersGrid);
         offersPanel.setPadding(false);
-        offersPanel.setSpacing(true);
+        offersPanel.setSpacing(false);
         offersPanel.setSizeFull();
         offersPanel.setFlexGrow(1, offersGrid);
 
-        Button soldSearch = new Button("Szukaj", event -> loadSoldItems());
-        soldSearch.addThemeVariants(ButtonVariant.LUMO_PRIMARY);
+        Button soldSearch = new Button("Szukaj", e -> loadSoldItems());
+        soldSearch.addThemeVariants(ButtonVariant.PRIMARY);
         soldFromPicker.setLocale(PL);
         soldToPicker.setLocale(PL);
         LocalDate today = LocalDate.now();
         soldFromPicker.setValue(today.minusDays(30));
         soldToPicker.setValue(today);
         HorizontalLayout soldFilters = new HorizontalLayout(soldFromPicker, soldToPicker, soldSearch);
-        soldFilters.setAlignItems(Alignment.END);
+        soldFilters.addClassName("filters");
         soldFilters.setWidthFull();
 
         VerticalLayout soldPanel = new VerticalLayout(soldFilters, soldGrid);
         soldPanel.setPadding(false);
-        soldPanel.setSpacing(true);
+        soldPanel.setSpacing(false);
         soldPanel.setSizeFull();
         soldPanel.setFlexGrow(1, soldGrid);
         soldPanel.setVisible(false);
@@ -128,34 +139,17 @@ public class AllegroView extends VerticalLayout {
             }
         });
 
-        contentLayout.add(tabs, offersPanel, soldPanel);
+        contentLayout.setPadding(false);
+        contentLayout.setSpacing(false);
         contentLayout.setSizeFull();
+        contentLayout.add(tabs, offersPanel, soldPanel);
         contentLayout.setFlexGrow(1, offersPanel);
         contentLayout.setFlexGrow(1, soldPanel);
-        contentLayout.setPadding(false);
-        contentLayout.setSpacing(true);
-
-        add(nav, titleRow, connectBanner, contentLayout);
-        setFlexGrow(1, contentLayout);
-
-        refreshConnectionState();
-    }
-
-    private void configureConnectBanner() {
-        connectBanner.setPadding(false);
-        connectBanner.setSpacing(false);
-        connectBanner.setVisible(false);
-    }
-
-    private HorizontalLayout createOffersToolbar() {
-        Button refresh = new Button("Odśwież", event -> loadOffers());
-        refresh.addThemeVariants(ButtonVariant.LUMO_PRIMARY);
-        HorizontalLayout toolbar = new HorizontalLayout(refresh);
-        toolbar.setWidthFull();
-        return toolbar;
+        return contentLayout;
     }
 
     private void configureOffersGrid() {
+        offersGrid.addThemeVariants(GridVariant.NO_BORDER);
         offersGrid.addColumn(AllegroOfferDto::id).setHeader("ID oferty").setAutoWidth(true).setSortable(true);
         offersGrid.addColumn(AllegroOfferDto::name).setHeader("Nazwa").setFlexGrow(1).setSortable(true);
         offersGrid.addColumn(offer -> formatAmount(offer.price(), offer.currency()))
@@ -171,6 +165,7 @@ public class AllegroView extends VerticalLayout {
     }
 
     private void configureSoldGrid() {
+        soldGrid.addThemeVariants(GridVariant.NO_BORDER);
         soldGrid.addColumn(AllegroSoldItemDto::orderId).setHeader("ID zamówienia").setAutoWidth(true).setSortable(true);
         soldGrid.addColumn(AllegroSoldItemDto::name).setHeader("Pozycje").setFlexGrow(1).setSortable(true);
         soldGrid.addColumn(AllegroSoldItemDto::itemCount).setHeader("Liczba pozycji").setAutoWidth(true).setSortable(true);
@@ -238,6 +233,7 @@ public class AllegroView extends VerticalLayout {
         connectBanner.removeAll();
         connectBanner.setVisible(!connected);
         contentLayout.setVisible(connected);
+        connectBanner.addClassName("banner");
 
         if (!connected) {
             Anchor connectLink = new Anchor("/api/allegro/auth/connect", "Połącz z Allegro");
@@ -255,8 +251,7 @@ public class AllegroView extends VerticalLayout {
             return;
         }
         try {
-            List<AllegroOfferDto> offers = offersService.getOffers(0, 100, null);
-            offersGrid.setItems(offers);
+            offersGrid.setItems(offersService.getOffers(0, 100, null));
         } catch (ResponseStatusException ex) {
             showError(reason(ex));
         } catch (RestClientResponseException ex) {
@@ -277,8 +272,7 @@ public class AllegroView extends VerticalLayout {
             return;
         }
         try {
-            List<AllegroSoldItemDto> items = ordersService.getSoldItems(from, to, 0, 100);
-            soldGrid.setItems(items);
+            soldGrid.setItems(ordersService.getSoldItems(from, to, 0, 100));
         } catch (ResponseStatusException ex) {
             showError(reason(ex));
         } catch (RestClientResponseException ex) {

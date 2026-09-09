@@ -61,8 +61,11 @@ Aplikacja:
 mvn spring-boot:run
 ```
 
-Aplikacja wystartuje domyślnie na `http://localhost:8080`. Lista faktur (Vaadin) jest na stronie głównej; strona Allegro pod `/allegro` (zakładki Oferty i Sprzedane). W tabeli Sprzedane każdy wiersz to jedno zamówienie; przycisk „Wystaw fakturę” tworzy fakturę w Merit ze wszystkimi pozycjami i zapisuje numer przy zamówieniu. Przycisk „Dodaj fakturę” na liście faktur otwiera formularz tworzenia faktury w Merit. Z każdego wiersza można wysłać fakturę e-mailem na adres klienta w Merit (przycisk „E-mail”, potwierdzenie w dialogu). Kolumny „Wysłano” i „Data wysyłki” pokazują status z lokalnej bazy. Status wysyłki pojawia się też jako powiadomienie w prawym górnym rogu. REST i Swagger bez zmian.
+Aplikacja wystartuje domyślnie na `http://localhost:8080`. UI używa motywu **Aura** i layoutu jak w [vaadin-demo](https://github.com/vaadin/vaadin-demo) (`AppLayout` + `SideNav`): **Faktury** (`/`) i **Allegro** (`/allegro`).
 
+**Logowanie:** widoki wymagają sesji. Startowy użytkownik (seed przy pierwszym uruchomieniu, jeśli brak w DB): login `admin`, hasło `admin` — zmień hasło w produkcji. Wylogowanie: menu avatara w stopce nawigacji.
+
+W tabeli Sprzedane każdy wiersz to jedno zamówienie; przycisk „Wystaw fakturę” tworzy fakturę w Merit ze wszystkimi pozycjami i zapisuje numer przy zamówieniu. Przycisk „Dodaj fakturę” na liście faktur otwiera formularz tworzenia faktury w Merit. Z wiersza można otworzyć szczegóły (dialog) lub wysłać fakturę e-mailem. Kolumny „Wysłano” i „Data wysyłki” pokazują status z lokalnej bazy. REST i Swagger wymagają zalogowanej sesji.
 ## Dokumentacja zmian
 
 - [CHANGELOG.md](CHANGELOG.md) — historia zmian z odnośnikami do notatek implementacyjnych

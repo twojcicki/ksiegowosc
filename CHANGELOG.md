@@ -6,6 +6,7 @@ Format oparty na [Keep a Changelog](https://keepachangelog.com/pl/1.1.0/).
 
 ### Added
 
+- Shell UI wzorowany na [vaadin-demo](https://github.com/vaadin/vaadin-demo): `AppLayout`, `SideNav`, motyw Aura; logowanie Spring Security (`app_user`, seed `admin`/`admin`).
 - Wystawianie faktury Merit z zamówienia Allegro (przycisk w tabeli Sprzedane, zapis numeru w DB).
   Notatka: [docs/plans/allegro-issue-invoice.md](docs/plans/allegro-issue-invoice.md)
 - Integracja Allegro Sandbox: OAuth2, lista ofert i sprzedanych pozycji (REST + Vaadin `/allegro`).

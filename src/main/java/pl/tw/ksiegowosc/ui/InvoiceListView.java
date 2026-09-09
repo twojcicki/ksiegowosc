@@ -11,27 +11,40 @@ import java.util.Locale;
 import org.springframework.web.client.RestClientResponseException;
 import org.springframework.web.server.ResponseStatusException;
 
+import com.vaadin.flow.component.applayout.DrawerToggle;
 import com.vaadin.flow.component.button.Button;
 import com.vaadin.flow.component.button.ButtonVariant;
 import com.vaadin.flow.component.confirmdialog.ConfirmDialog;
 import com.vaadin.flow.component.datepicker.DatePicker;
+import com.vaadin.flow.component.dialog.Dialog;
 import com.vaadin.flow.component.grid.Grid;
-import com.vaadin.flow.component.html.H2;
+import com.vaadin.flow.component.grid.GridVariant;
+import com.vaadin.flow.component.html.Div;
+import com.vaadin.flow.component.html.H1;
+import com.vaadin.flow.component.html.Span;
 import com.vaadin.flow.component.notification.Notification;
 import com.vaadin.flow.component.notification.NotificationVariant;
 import com.vaadin.flow.component.orderedlayout.HorizontalLayout;
-import com.vaadin.flow.component.orderedlayout.VerticalLayout;
 import com.vaadin.flow.router.PageTitle;
 import com.vaadin.flow.router.Route;
-import com.vaadin.flow.router.RouterLink;
 
+import jakarta.annotation.security.PermitAll;
 import pl.tw.ksiegowosc.client.MeritErrorMessages;
+import pl.tw.ksiegowosc.dto.SalesInvoiceDetailsDto;
 import pl.tw.ksiegowosc.dto.SalesInvoiceDto;
+import pl.tw.ksiegowosc.dto.SalesInvoiceHeaderDto;
+import pl.tw.ksiegowosc.dto.SalesInvoiceLineDto;
 import pl.tw.ksiegowosc.service.InvoicesService;
+import pl.tw.ksiegowosc.ui.component.View;
+import pl.tw.ksiegowosc.ui.component.ViewHeader;
+import pl.tw.ksiegowosc.ui.util.Aura;
+import pl.tw.ksiegowosc.ui.util.Lucide;
+import pl.tw.ksiegowosc.ui.util.Notifications;
 
 @Route("")
 @PageTitle("Faktury")
-public class InvoiceListView extends VerticalLayout {
+@PermitAll
+public class InvoiceListView extends View {
 
     private static final Locale PL = Locale.forLanguageTag("pl-PL");
     private static final ZoneId ZONE = ZoneId.of("Europe/Warsaw");
@@ -49,60 +62,44 @@ public class InvoiceListView extends VerticalLayout {
         this.amountFormat.setMinimumFractionDigits(2);
         this.amountFormat.setMaximumFractionDigits(2);
 
-        setSizeFull();
-        setPadding(true);
-        setSpacing(true);
+        addClassNames(Aura.SURFACE_SOLID, "invoices-view");
+        add(createHeader(), createFilters(), createGrid());
+        loadInvoices();
+    }
 
+    private ViewHeader createHeader() {
+        DrawerToggle toggle = new DrawerToggle();
+        toggle.addThemeVariants(ButtonVariant.TERTIARY);
+
+        H1 title = new H1("Faktury");
+
+        Button addInvoice = new Button("Dodaj fakturę", Lucide.PLUS.create(), e -> openCreateInvoiceDialog());
+        addInvoice.addThemeVariants(ButtonVariant.PRIMARY);
+
+        return new ViewHeader(toggle, title, addInvoice);
+    }
+
+    private HorizontalLayout createFilters() {
         fromPicker.setLocale(PL);
         toPicker.setLocale(PL);
         LocalDate today = LocalDate.now();
         fromPicker.setValue(today.minusDays(30));
         toPicker.setValue(today);
 
-        Button search = new Button("Szukaj", event -> loadInvoices());
-        search.addThemeVariants(ButtonVariant.LUMO_PRIMARY);
-
-        Button addInvoice = new Button("Dodaj fakturę", event -> openCreateInvoiceDialog());
-        addInvoice.addThemeVariants(ButtonVariant.LUMO_PRIMARY);
-
-        HorizontalLayout titleRow = new HorizontalLayout(addInvoice, new H2("Faktury"));
-        titleRow.setAlignItems(Alignment.CENTER);
-        titleRow.setWidthFull();
-
-        RouterLink allegroLink = new RouterLink("Allegro", AllegroView.class);
-        HorizontalLayout nav = new HorizontalLayout(allegroLink);
-        nav.setWidthFull();
+        Button search = new Button("Szukaj", e -> loadInvoices());
+        search.addThemeVariants(ButtonVariant.PRIMARY);
 
         HorizontalLayout filters = new HorizontalLayout(fromPicker, toPicker, search);
-        filters.setAlignItems(Alignment.END);
+        filters.addClassName("filters");
         filters.setWidthFull();
-
-        configureGrid();
-
-        add(nav, titleRow, filters, grid);
-        setFlexGrow(1, grid);
-
-        loadInvoices();
+        return filters;
     }
 
-    private void openCreateInvoiceDialog() {
-        CreateInvoiceDialog dialog = new CreateInvoiceDialog(invoicesService, this::loadInvoices);
-        dialog.open();
-    }
-
-    private void configureGrid() {
-        grid.addColumn(SalesInvoiceDto::invoiceNo)
-                .setHeader("Numer")
-                .setAutoWidth(true)
-                .setSortable(true);
-        grid.addColumn(SalesInvoiceDto::documentDate)
-                .setHeader("Data")
-                .setAutoWidth(true)
-                .setSortable(true);
-        grid.addColumn(SalesInvoiceDto::customerName)
-                .setHeader("Klient")
-                .setFlexGrow(1)
-                .setSortable(true);
+    private Grid<SalesInvoiceDto> createGrid() {
+        grid.addThemeVariants(GridVariant.NO_BORDER);
+        grid.addColumn(SalesInvoiceDto::invoiceNo).setHeader("Numer").setAutoWidth(true).setSortable(true);
+        grid.addColumn(SalesInvoiceDto::documentDate).setHeader("Data").setAutoWidth(true).setSortable(true);
+        grid.addColumn(SalesInvoiceDto::customerName).setHeader("Klient").setFlexGrow(1).setSortable(true);
         grid.addColumn(invoice -> invoice.totalAmount() == null ? "" : amountFormat.format(invoice.totalAmount()))
                 .setHeader("Kwota")
                 .setAutoWidth(true);
@@ -118,18 +115,100 @@ public class InvoiceListView extends VerticalLayout {
                 .setHeader("Data wysyłki")
                 .setAutoWidth(true)
                 .setSortable(true);
-        grid.addComponentColumn(invoice -> createEmailButton(invoice))
-                .setHeader("Akcje")
-                .setAutoWidth(true);
+        grid.addComponentColumn(invoice -> {
+            Button details = new Button(Lucide.SQUARE_PEN.create(), e -> openDetailsDialog(invoice));
+            details.addThemeVariants(ButtonVariant.TERTIARY);
+            details.setAriaLabel("Szczegóły");
+            details.setTooltipText("Szczegóły");
+
+            Button email = new Button("E-mail");
+            email.addThemeVariants(ButtonVariant.LUMO_SMALL, ButtonVariant.LUMO_TERTIARY);
+            email.setEnabled(invoice.sihId() != null && !invoice.sihId().isBlank());
+            email.addClickListener(e -> confirmSendEmail(invoice, email));
+
+            return new HorizontalLayout(details, email);
+        }).setHeader("Akcje").setAutoWidth(true).setFlexGrow(0).setFrozenToEnd(true);
         grid.setSizeFull();
+        return grid;
     }
 
-    private Button createEmailButton(SalesInvoiceDto invoice) {
-        Button emailButton = new Button("E-mail");
-        emailButton.addThemeVariants(ButtonVariant.LUMO_SMALL, ButtonVariant.LUMO_TERTIARY);
-        emailButton.setEnabled(invoice.sihId() != null && !invoice.sihId().isBlank());
-        emailButton.addClickListener(event -> confirmSendEmail(invoice, emailButton));
-        return emailButton;
+    private void openCreateInvoiceDialog() {
+        CreateInvoiceDialog dialog = new CreateInvoiceDialog(invoicesService, this::loadInvoices);
+        dialog.open();
+    }
+
+    private void openDetailsDialog(SalesInvoiceDto invoice) {
+        if (invoice.sihId() == null || invoice.sihId().isBlank()) {
+            showError("Brak identyfikatora faktury.");
+            return;
+        }
+        try {
+            SalesInvoiceDetailsDto details = invoicesService.getInvoiceDetails(invoice.sihId(), false);
+            String title = invoice.invoiceNo() == null || invoice.invoiceNo().isBlank()
+                    ? invoice.sihId()
+                    : invoice.invoiceNo();
+
+            Div content = new Div();
+            content.addClassName("dialog-content");
+            SalesInvoiceHeaderDto header = details.header();
+            if (header != null) {
+                content.add(detailRow("Klient", header.customerName()));
+                content.add(detailRow("Data dokumentu", header.documentDate()));
+                content.add(detailRow("Termin płatności", header.dueDate()));
+                content.add(detailRow(
+                        "Kwota",
+                        header.totalAmount() == null
+                                ? null
+                                : amountFormat.format(header.totalAmount())
+                                        + (header.currencyCode() == null ? "" : " " + header.currencyCode())));
+                content.add(detailRow("NIP", header.vatRegNo()));
+                content.add(detailRow("Komentarz", header.headerComment()));
+            } else {
+                content.add(detailRow("Klient", invoice.customerName()));
+            }
+
+            List<SalesInvoiceLineDto> lines = details.lines();
+            if (lines != null && !lines.isEmpty()) {
+                Div linesBox = new Div();
+                linesBox.addClassName("dialog-lines");
+                linesBox.add(new Span("Pozycje"));
+                for (SalesInvoiceLineDto line : lines) {
+                    String desc = line.description() == null || line.description().isBlank()
+                            ? line.articleCode()
+                            : line.description();
+                    String amount = line.amountInclVat() == null ? "" : amountFormat.format(line.amountInclVat());
+                    linesBox.add(detailRow(desc, amount));
+                }
+                content.add(linesBox);
+            }
+
+            Dialog dialog = new Dialog(content);
+            dialog.addClassName("invoice-details-dialog");
+            dialog.setHeaderTitle(title);
+            dialog.setWidth("480px");
+            Button close = new Button("Zamknij", e -> dialog.close());
+            close.addThemeVariants(ButtonVariant.TERTIARY);
+            dialog.getFooter().add(close);
+            dialog.open();
+        } catch (ResponseStatusException ex) {
+            showError(reason(ex));
+        } catch (RestClientResponseException ex) {
+            showError(MeritErrorMessages.from(ex));
+        } catch (RuntimeException ex) {
+            showError("Nie udało się pobrać szczegółów faktury.");
+        }
+    }
+
+    private Div detailRow(String label, String value) {
+        Span labelSpan = new Span(label == null ? "" : label);
+        labelSpan.getStyle().set("color", "var(--vaadin-text-color-secondary)");
+        labelSpan.getStyle().set("font-size", "var(--vaadin-font-size-s)");
+        Span valueSpan = new Span(value == null || value.isBlank() ? "—" : value);
+        Div row = new Div(labelSpan, valueSpan);
+        row.getStyle().set("display", "flex");
+        row.getStyle().set("flex-direction", "column");
+        row.getStyle().set("gap", "2px");
+        return row;
     }
 
     private void confirmSendEmail(SalesInvoiceDto invoice, Button emailButton) {
@@ -160,7 +239,7 @@ public class InvoiceListView extends VerticalLayout {
                 : invoice.invoiceNo();
         try {
             invoicesService.sendInvoiceByEmail(invoice.sihId(), false);
-            showSuccess("Wysłano fakturę " + invoiceNo + ".");
+            Notifications.show("Wysłano fakturę " + invoiceNo + ".", NotificationVariant.SUCCESS);
             loadInvoices();
         } catch (ResponseStatusException ex) {
             showError(emailErrorMessage(ex, invoiceNo));
@@ -211,11 +290,6 @@ public class InvoiceListView extends VerticalLayout {
             return "Nie udało się wysłać faktury " + invoiceNo + ".";
         }
         return ex.getReason();
-    }
-
-    private static void showSuccess(String message) {
-        Notification notification = Notification.show(message, 5000, Notification.Position.TOP_END);
-        notification.addThemeVariants(NotificationVariant.LUMO_SUCCESS);
     }
 
     private static void showError(String message) {
