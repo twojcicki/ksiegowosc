@@ -15,6 +15,7 @@ hr {
 .allegro-view .filters {
   align-items: end;
   display: flex;
+  flex: none;
   flex-wrap: wrap;
   gap: var(--vaadin-gap-s);
   padding: 0 var(--vaadin-padding-m) var(--vaadin-padding-s);
