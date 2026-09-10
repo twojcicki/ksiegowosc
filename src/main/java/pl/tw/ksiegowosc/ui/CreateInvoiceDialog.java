@@ -1,20 +1,24 @@
 package pl.tw.ksiegowosc.ui;
 
 import java.math.BigDecimal;
-import java.math.RoundingMode;
+import java.text.NumberFormat;
 import java.time.LocalDate;
+import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 
 import org.springframework.web.client.RestClientResponseException;
 import org.springframework.web.server.ResponseStatusException;
 
 import com.vaadin.flow.component.button.Button;
 import com.vaadin.flow.component.button.ButtonVariant;
-import com.vaadin.flow.component.combobox.ComboBox;
 import com.vaadin.flow.component.datepicker.DatePicker;
 import com.vaadin.flow.component.dialog.Dialog;
 import com.vaadin.flow.component.formlayout.FormLayout;
+import com.vaadin.flow.component.grid.Grid;
+import com.vaadin.flow.component.grid.GridVariant;
 import com.vaadin.flow.component.html.H3;
 import com.vaadin.flow.component.notification.Notification;
 import com.vaadin.flow.component.notification.NotificationVariant;
@@ -22,10 +26,10 @@ import com.vaadin.flow.component.orderedlayout.FlexComponent;
 import com.vaadin.flow.component.orderedlayout.HorizontalLayout;
 import com.vaadin.flow.component.orderedlayout.Scroller;
 import com.vaadin.flow.component.orderedlayout.VerticalLayout;
-import com.vaadin.flow.component.select.Select;
 import com.vaadin.flow.component.textfield.NumberField;
 import com.vaadin.flow.component.textfield.TextArea;
 import com.vaadin.flow.component.textfield.TextField;
+import com.vaadin.flow.data.provider.ListDataProvider;
 
 import pl.tw.ksiegowosc.client.MeritErrorMessages;
 import pl.tw.ksiegowosc.dto.CreateInvoiceLineRequest;
@@ -37,6 +41,7 @@ import pl.tw.ksiegowosc.dto.MeritUnitDto;
 import pl.tw.ksiegowosc.service.InvoicesService;
 import pl.tw.ksiegowosc.service.TaxesService;
 import pl.tw.ksiegowosc.service.UnitsService;
+import pl.tw.ksiegowosc.ui.util.Lucide;
 
 public class CreateInvoiceDialog extends Dialog {
 
@@ -46,6 +51,7 @@ public class CreateInvoiceDialog extends Dialog {
     private final TaxesService taxesService;
     private final UnitsService unitsService;
     private final Runnable onSuccess;
+    private final NumberFormat amountFormat;
 
     private final TextField customerId = new TextField("Klient (customerId)");
     private final TextField invoiceNo = new TextField("Numer faktury");
@@ -55,15 +61,15 @@ public class CreateInvoiceDialog extends Dialog {
     private final TextArea headerComment = new TextArea("Komentarz górny");
     private final TextArea footerComment = new TextArea("Komentarz dolny");
     private final NumberField totalAmount = new NumberField("Kwota netto");
+    private final NumberField totalTaxAmount = new NumberField("Suma VAT");
 
-    private final TextField itemCode = new TextField("Kod pozycji");
-    private final TextField description = new TextField("Opis");
-    private final Select<Integer> itemType = new Select<>();
-    private final ComboBox<MeritUnitDto> uom = new ComboBox<>("Jednostka miary");
-    private final NumberField quantity = new NumberField("Ilość");
-    private final NumberField price = new NumberField("Cena");
-    private final ComboBox<MeritTaxDto> taxRate = new ComboBox<>("Stawka VAT");
-    private final NumberField taxAmount = new NumberField("Kwota VAT");
+    private final List<InvoiceLineDraft> lines = new ArrayList<>();
+    private final ListDataProvider<InvoiceLineDraft> linesProvider = new ListDataProvider<>(lines);
+    private final Grid<InvoiceLineDraft> linesGrid = new Grid<>(InvoiceLineDraft.class, false);
+
+    private List<MeritTaxDto> taxes = List.of();
+    private List<MeritUnitDto> units = List.of();
+    private MeritUnitDto defaultUnit;
 
     private final Button saveButton = new Button("Zapisz");
 
@@ -76,9 +82,12 @@ public class CreateInvoiceDialog extends Dialog {
         this.taxesService = taxesService;
         this.unitsService = unitsService;
         this.onSuccess = onSuccess;
+        this.amountFormat = NumberFormat.getNumberInstance(PL);
+        this.amountFormat.setMinimumFractionDigits(2);
+        this.amountFormat.setMaximumFractionDigits(2);
 
         setHeaderTitle("Nowa faktura");
-        setWidth("640px");
+        setWidth("800px");
         setMaxWidth("95vw");
         setCloseOnEsc(true);
         setCloseOnOutsideClick(false);
@@ -86,6 +95,7 @@ public class CreateInvoiceDialog extends Dialog {
         configureFields();
         loadTaxes();
         loadUnits();
+        configureLinesGrid();
 
         FormLayout headerForm = new FormLayout(
                 customerId,
@@ -94,26 +104,27 @@ public class CreateInvoiceDialog extends Dialog {
                 dueDate,
                 currencyCode,
                 totalAmount,
+                totalTaxAmount,
                 headerComment,
                 footerComment);
-        headerForm.setResponsiveSteps(new FormLayout.ResponsiveStep("0", 1), new FormLayout.ResponsiveStep("480px", 2));
+        headerForm.setResponsiveSteps(
+                new FormLayout.ResponsiveStep("0", 1),
+                new FormLayout.ResponsiveStep("480px", 2));
         headerForm.setColspan(headerComment, 2);
         headerForm.setColspan(footerComment, 2);
 
-        FormLayout lineForm = new FormLayout(itemCode, description, itemType, uom, quantity, price, taxRate);
-        lineForm.setResponsiveSteps(new FormLayout.ResponsiveStep("0", 1), new FormLayout.ResponsiveStep("480px", 2));
+        Button addLineButton = new Button("Dodaj pozycję", Lucide.PLUS.create(), e -> openLineDialog(null));
+        addLineButton.addThemeVariants(ButtonVariant.LUMO_PRIMARY);
 
-        FormLayout taxForm = new FormLayout(taxAmount);
-        taxForm.setResponsiveSteps(new FormLayout.ResponsiveStep("0", 1));
+        HorizontalLayout linesHeader = new HorizontalLayout(new H3("Pozycje"), addLineButton);
+        linesHeader.setWidthFull();
+        linesHeader.setAlignItems(FlexComponent.Alignment.CENTER);
+        linesHeader.setJustifyContentMode(FlexComponent.JustifyContentMode.BETWEEN);
 
-        VerticalLayout content = new VerticalLayout(
-                headerForm,
-                new H3("Pozycja"),
-                lineForm,
-                new H3("VAT"),
-                taxForm);
+        VerticalLayout content = new VerticalLayout(headerForm, linesHeader, linesGrid);
         content.setPadding(false);
         content.setSpacing(true);
+        content.setWidthFull();
 
         Scroller scroller = new Scroller(content);
         scroller.setMaxHeight("70vh");
@@ -128,6 +139,8 @@ public class CreateInvoiceDialog extends Dialog {
         footer.setJustifyContentMode(FlexComponent.JustifyContentMode.END);
         footer.setWidthFull();
         getFooter().add(footer);
+
+        refreshTotals();
     }
 
     private void configureFields() {
@@ -147,124 +160,122 @@ public class CreateInvoiceDialog extends Dialog {
         currencyCode.setRequiredIndicatorVisible(true);
         headerComment.setRequiredIndicatorVisible(true);
         footerComment.setRequiredIndicatorVisible(true);
-        totalAmount.setRequiredIndicatorVisible(true);
-        totalAmount.setMin(0);
 
-        itemCode.setRequiredIndicatorVisible(true);
-        description.setRequiredIndicatorVisible(true);
-        itemType.setLabel("Typ pozycji");
-        itemType.setItems(1, 2, 3);
-        itemType.setItemLabelGenerator(type -> switch (type) {
-            case 1 -> "1 — towar magazynowy";
-            case 2 -> "2 — usługa";
-            case 3 -> "3 — pozycja";
-            default -> String.valueOf(type);
-        });
-        itemType.setValue(1);
-        itemType.setRequiredIndicatorVisible(true);
-        itemType.addValueChangeListener(e -> updateUomRequirement());
-        uom.setItemLabelGenerator(this::formatUnit);
-        uom.setWidthFull();
-        uom.setHelperText("Jednostki z Merit (Ustawienia → Jednostki miary)");
-        updateUomRequirement();
-        quantity.setRequiredIndicatorVisible(true);
-        quantity.setValue(1.0);
-        quantity.setMin(0.000001);
-        price.setLabel("Cena netto");
-        price.setReadOnly(true);
-        price.setHelperText("Wyliczana z kwoty netto / ilość");
-        taxRate.setRequiredIndicatorVisible(true);
-        taxRate.setItemLabelGenerator(this::formatTax);
-        taxRate.setWidthFull();
-        taxAmount.setReadOnly(true);
-        taxAmount.setHelperText("Wyliczana z kwoty netto × stawka VAT");
-
-        totalAmount.addValueChangeListener(e -> recalculateDerivedAmounts());
-        quantity.addValueChangeListener(e -> recalculateDerivedAmounts());
-        taxRate.addValueChangeListener(e -> recalculateDerivedAmounts());
+        totalAmount.setReadOnly(true);
+        totalAmount.setHelperText("Suma kwot netto pozycji");
+        totalTaxAmount.setReadOnly(true);
+        totalTaxAmount.setHelperText("Suma VAT z pozycji");
 
         headerComment.setWidthFull();
         footerComment.setWidthFull();
     }
 
-    private void updateUomRequirement() {
-        boolean stockItem = Integer.valueOf(1).equals(itemType.getValue());
-        uom.setRequiredIndicatorVisible(stockItem);
+    private void configureLinesGrid() {
+        linesGrid.addThemeVariants(GridVariant.LUMO_COMPACT, GridVariant.NO_BORDER);
+        linesGrid.setDataProvider(linesProvider);
+        linesGrid.setAllRowsVisible(true);
+        linesGrid.setWidthFull();
+
+        linesGrid.addColumn(InvoiceLineDraft::getItemCode).setHeader("Kod").setAutoWidth(true).setFlexGrow(0);
+        linesGrid.addColumn(InvoiceLineDraft::getDescription).setHeader("Opis").setFlexGrow(1);
+        linesGrid
+                .addColumn(line -> formatAmount(line.getQuantity()))
+                .setHeader("Ilość")
+                .setAutoWidth(true)
+                .setFlexGrow(0);
+        linesGrid
+                .addColumn(line -> formatAmount(line.getPrice()))
+                .setHeader("Cena")
+                .setAutoWidth(true)
+                .setFlexGrow(0);
+        linesGrid
+                .addColumn(line -> formatAmount(line.getLineNet()))
+                .setHeader("Netto")
+                .setAutoWidth(true)
+                .setFlexGrow(0);
+        linesGrid.addColumn(InvoiceLineDraft::taxLabel).setHeader("VAT").setAutoWidth(true).setFlexGrow(0);
+        linesGrid
+                .addColumn(line -> line.uomName() == null ? "" : line.uomName())
+                .setHeader("JM")
+                .setAutoWidth(true)
+                .setFlexGrow(0);
+        linesGrid
+                .addComponentColumn(line -> {
+                    Button edit = new Button("Edytuj", e -> openLineDialog(line));
+                    edit.addThemeVariants(ButtonVariant.LUMO_TERTIARY, ButtonVariant.LUMO_SMALL);
+                    Button remove = new Button("Usuń", e -> removeLine(line));
+                    remove.addThemeVariants(
+                            ButtonVariant.LUMO_TERTIARY, ButtonVariant.LUMO_ERROR, ButtonVariant.LUMO_SMALL);
+                    HorizontalLayout actions = new HorizontalLayout(edit, remove);
+                    actions.setSpacing(true);
+                    return actions;
+                })
+                .setHeader("Akcje")
+                .setAutoWidth(true)
+                .setFlexGrow(0);
+    }
+
+    private void openLineDialog(InvoiceLineDraft existing) {
+        InvoiceLineDialog dialog = new InvoiceLineDialog(
+                taxes,
+                units,
+                defaultUnit,
+                existing,
+                draft -> {
+                    if (existing == null) {
+                        lines.add(draft);
+                    }
+                    linesProvider.refreshAll();
+                    refreshTotals();
+                });
+        dialog.open();
+    }
+
+    private void removeLine(InvoiceLineDraft line) {
+        lines.remove(line);
+        linesProvider.refreshAll();
+        refreshTotals();
+    }
+
+    private void refreshTotals() {
+        BigDecimal netSum = BigDecimal.ZERO;
+        BigDecimal vatSum = BigDecimal.ZERO;
+        for (InvoiceLineDraft line : lines) {
+            if (line.getLineNet() != null) {
+                netSum = netSum.add(line.getLineNet());
+            }
+            if (line.getTaxAmount() != null) {
+                vatSum = vatSum.add(line.getTaxAmount());
+            }
+        }
+        if (lines.isEmpty()) {
+            totalAmount.clear();
+            totalTaxAmount.clear();
+        } else {
+            totalAmount.setValue(netSum.doubleValue());
+            totalTaxAmount.setValue(vatSum.doubleValue());
+        }
     }
 
     private void loadUnits() {
         try {
-            List<MeritUnitDto> units = unitsService.listUnits();
-            uom.setItems(units);
+            units = unitsService.listUnits();
             if (!units.isEmpty()) {
-                uom.setValue(unitsService.requireDefaultUnit(units));
+                defaultUnit = unitsService.requireDefaultUnit(units);
             }
         } catch (RuntimeException ex) {
+            units = List.of();
             showError("Nie udało się pobrać jednostek miary z Merit.");
         }
     }
 
-    private String formatUnit(MeritUnitDto unit) {
-        if (unit == null) {
-            return "";
-        }
-        String name = unit.name() == null || unit.name().isBlank() ? "?" : unit.name();
-        if (unit.code() == null || unit.code().isBlank() || unit.code().equals(name)) {
-            return name;
-        }
-        return unit.code() + " — " + name;
-    }
-
-    private void recalculateDerivedAmounts() {
-        Double netValue = totalAmount.getValue();
-        Double qtyValue = quantity.getValue();
-        MeritTaxDto tax = taxRate.getValue();
-
-        if (netValue == null || qtyValue == null || qtyValue <= 0) {
-            price.clear();
-        } else {
-            BigDecimal unitNet = BigDecimal.valueOf(netValue)
-                    .divide(BigDecimal.valueOf(qtyValue), 2, RoundingMode.HALF_UP);
-            price.setValue(unitNet.doubleValue());
-        }
-
-        if (netValue == null || tax == null || tax.taxPct() == null) {
-            taxAmount.clear();
-            return;
-        }
-        BigDecimal vat = BigDecimal.valueOf(netValue)
-                .multiply(tax.taxPct())
-                .divide(new BigDecimal("100"), 2, RoundingMode.HALF_UP);
-        taxAmount.setValue(vat.doubleValue());
-    }
-
     private void loadTaxes() {
         try {
-            List<MeritTaxDto> taxes = taxesService.listTaxes();
-            taxRate.setItems(taxes);
-            taxes.stream()
-                    .filter(tax -> tax.taxPct() != null
-                            && tax.taxPct().compareTo(TaxesService.FALLBACK_VAT_PERCENT) == 0)
-                    .findFirst()
-                    .ifPresentOrElse(taxRate::setValue, () -> {
-                        if (!taxes.isEmpty()) {
-                            taxRate.setValue(taxes.getFirst());
-                        }
-                    });
-            recalculateDerivedAmounts();
+            taxes = taxesService.listTaxes();
         } catch (RuntimeException ex) {
+            taxes = List.of();
             showError("Nie udało się pobrać stawek VAT z Merit.");
         }
-    }
-
-    private String formatTax(MeritTaxDto tax) {
-        if (tax == null) {
-            return "";
-        }
-        String pct = tax.taxPct() == null ? "?" : tax.taxPct().stripTrailingZeros().toPlainString();
-        String code = tax.code() == null || tax.code().isBlank() ? "" : tax.code() + " — ";
-        String name = tax.name() == null || tax.name().isBlank() ? "VAT" : tax.name();
-        return code + name + " (" + pct + "%)";
     }
 
     private void save() {
@@ -298,26 +309,37 @@ public class CreateInvoiceDialog extends Dialog {
                 || dueDate.getValue() == null
                 || isBlank(currencyCode.getValue())
                 || isBlank(headerComment.getValue())
-                || isBlank(footerComment.getValue())
-                || totalAmount.getValue() == null
-                || isBlank(itemCode.getValue())
-                || isBlank(description.getValue())
-                || itemType.getValue() == null
-                || (Integer.valueOf(1).equals(itemType.getValue())
-                        && (uom.getValue() == null || isBlank(uom.getValue().name())))
-                || quantity.getValue() == null
-                || price.getValue() == null
-                || taxRate.getValue() == null
-                || isBlank(taxRate.getValue().id())
-                || taxAmount.getValue() == null) {
+                || isBlank(footerComment.getValue())) {
             showError("Uzupełnij wszystkie wymagane pola.");
             return null;
         }
+        if (lines.isEmpty()) {
+            showError("Dodaj co najmniej jedną pozycję.");
+            return null;
+        }
 
-        String taxIdValue = taxRate.getValue().id().trim();
-        String uomValue = uom.getValue() == null || isBlank(uom.getValue().name())
-                ? null
-                : uom.getValue().name().trim();
+        BigDecimal totalNet = BigDecimal.ZERO;
+        Map<String, BigDecimal> vatByTaxId = new LinkedHashMap<>();
+        List<CreateInvoiceLineRequest> lineRequests = new ArrayList<>();
+
+        for (InvoiceLineDraft line : lines) {
+            if (line.getLineNet() == null
+                    || line.getTaxAmount() == null
+                    || isBlank(line.taxId())
+                    || line.getQuantity() == null
+                    || line.getPrice() == null) {
+                showError("Pozycje faktury są niekompletne.");
+                return null;
+            }
+            totalNet = totalNet.add(line.getLineNet());
+            vatByTaxId.merge(line.taxId().trim(), line.getTaxAmount(), BigDecimal::add);
+            lineRequests.add(line.toRequest());
+        }
+
+        List<CreateInvoiceTaxAmountRequest> taxAmounts = vatByTaxId.entrySet().stream()
+                .map(entry -> new CreateInvoiceTaxAmountRequest(entry.getKey(), entry.getValue()))
+                .toList();
+
         return new CreateInvoiceRequest(
                 customerId.getValue().trim(),
                 invoiceNo.getValue().trim(),
@@ -326,18 +348,16 @@ public class CreateInvoiceDialog extends Dialog {
                 currencyCode.getValue().trim(),
                 headerComment.getValue().trim(),
                 footerComment.getValue().trim(),
-                BigDecimal.valueOf(totalAmount.getValue()),
-                List.of(new CreateInvoiceLineRequest(
-                        itemCode.getValue().trim(),
-                        description.getValue().trim(),
-                        itemType.getValue(),
-                        BigDecimal.valueOf(quantity.getValue()),
-                        BigDecimal.valueOf(price.getValue()),
-                        taxIdValue,
-                        uomValue)),
-                List.of(new CreateInvoiceTaxAmountRequest(
-                        taxIdValue,
-                        BigDecimal.valueOf(taxAmount.getValue()))));
+                totalNet,
+                lineRequests,
+                taxAmounts);
+    }
+
+    private String formatAmount(BigDecimal value) {
+        if (value == null) {
+            return "";
+        }
+        return amountFormat.format(value);
     }
 
     private static boolean isBlank(String value) {

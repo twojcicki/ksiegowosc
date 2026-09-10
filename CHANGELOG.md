@@ -6,6 +6,7 @@ Format oparty na [Keep a Changelog](https://keepachangelog.com/pl/1.1.0/).
 
 ### Changed
 
+- Formularz „Dodaj fakturę”: wiele pozycji (tabela + dialog szczegółów); kwota netto i VAT faktury sumowane z pozycji.
 - MapStruct: mapowania Allegro→faktura, checkout/oferty→DTO, CreateInvoice→Merit oraz token/sold-invoice→entity w pakiecie `mapper`.
 - Stawki VAT przy fakturach: GUID i procent z Merit `gettaxes`; przy Allegro dopasowanie do `lineItems[].tax.rate` (gdy puste → 23%).
 - Faktura z Allegro: `itemType=1`, kod z `offer.external.id` / `offer.id`, opis i komentarze z danych Allegro (bez fallbacków `ALLEGRO` / „Pozycja Allegro”).
