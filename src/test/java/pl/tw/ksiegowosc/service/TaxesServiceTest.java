@@ -38,6 +38,19 @@ class TaxesServiceTest {
     }
 
     @Test
+    void shouldPreferSalesTaxWithMatchingCodeOverOtherSamePercent() {
+        List<MeritTaxDto> taxes = List.of(
+                new MeritTaxDto("74ea3b66-127c-4c25-be23-097b811dd23c", "WSTO23", "WSTO 23%", new BigDecimal("23")),
+                new MeritTaxDto("tax-purchase", "Z23", "VAT zakup 23%", new BigDecimal("23")),
+                new MeritTaxDto("tax-23", "23", "VAT 23%", new BigDecimal("23.00")));
+
+        MeritTaxDto tax = taxesService.resolveByPercent(new BigDecimal("23.00"), taxes);
+
+        assertThat(tax.id()).isEqualTo("tax-23");
+        assertThat(tax.code()).isEqualTo("23");
+    }
+
+    @Test
     void shouldResolveFallbackTwentyThree() {
         when(meritApiClient.getTaxes()).thenReturn(List.of(
                 new MeritTaxDto("tax-23", "23", "VAT 23%", new BigDecimal("23"))));
