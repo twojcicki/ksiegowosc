@@ -5,6 +5,7 @@ import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.core.ParameterizedTypeReference;
@@ -24,6 +25,7 @@ import pl.tw.ksiegowosc.dto.MeritCreateCustomerResponse;
 import pl.tw.ksiegowosc.dto.MeritCreateInvoiceRequest;
 import pl.tw.ksiegowosc.dto.MeritCreateInvoiceResponse;
 import pl.tw.ksiegowosc.dto.MeritCustomersRequest;
+import pl.tw.ksiegowosc.dto.MeritTaxDto;
 import pl.tw.ksiegowosc.dto.SalesInvoiceDetailsDto;
 import pl.tw.ksiegowosc.dto.SalesInvoiceDto;
 import pl.tw.ksiegowosc.dto.SendInvoiceEmailRequest;
@@ -34,6 +36,9 @@ public class MeritApiClient {
     private static final DateTimeFormatter PERIOD_FORMAT = DateTimeFormatter.BASIC_ISO_DATE;
     private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
     private static final ParameterizedTypeReference<List<SalesInvoiceDto>> INVOICES_RESPONSE =
+            new ParameterizedTypeReference<>() {
+            };
+    private static final ParameterizedTypeReference<List<MeritTaxDto>> TAXES_RESPONSE =
             new ParameterizedTypeReference<>() {
             };
 
@@ -116,6 +121,16 @@ public class MeritApiClient {
                 .body(request)
                 .retrieve()
                 .body(MeritCreateCustomerResponse.class);
+    }
+
+    public List<MeritTaxDto> getTaxes() {
+        List<MeritTaxDto> taxes = meritRestClient.post()
+                .uri("/gettaxes")
+                .contentType(MediaType.APPLICATION_JSON)
+                .body(Map.of())
+                .retrieve()
+                .body(TAXES_RESPONSE);
+        return taxes == null ? List.of() : List.copyOf(taxes);
     }
 
     private static String blankToNull(String value) {

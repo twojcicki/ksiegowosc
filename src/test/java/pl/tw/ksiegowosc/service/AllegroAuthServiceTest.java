@@ -31,6 +31,7 @@ import org.springframework.web.client.RestClient;
 
 import pl.tw.ksiegowosc.config.AllegroApiProperties;
 import pl.tw.ksiegowosc.entity.AllegroToken;
+import pl.tw.ksiegowosc.mapper.MapperFixtures;
 import pl.tw.ksiegowosc.repository.AllegroTokenRepository;
 
 @ExtendWith(MockitoExtension.class)
@@ -65,7 +66,8 @@ class AllegroAuthServiceTest {
         clock = Clock.fixed(Instant.parse("2026-01-15T12:00:00Z"), ZoneOffset.UTC);
         RestClient.Builder builder = RestClient.builder().baseUrl(PROPERTIES.authUrl());
         server = MockRestServiceServer.bindTo(builder).build();
-        authService = new AllegroAuthService(PROPERTIES, tokenRepository, builder.build(), clock);
+        authService = new AllegroAuthService(
+                PROPERTIES, tokenRepository, builder.build(), MapperFixtures.tokenMapper(), clock);
     }
 
     @Test

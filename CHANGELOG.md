@@ -4,8 +4,15 @@ Format oparty na [Keep a Changelog](https://keepachangelog.com/pl/1.1.0/).
 
 ## [Unreleased]
 
+### Changed
+
+- MapStruct: mapowania Allegro→faktura, checkout/oferty→DTO, CreateInvoice→Merit oraz token/sold-invoice→entity w pakiecie `mapper`.
+- Stawki VAT przy fakturach: GUID i procent z Merit `gettaxes`; przy Allegro dopasowanie do `lineItems[].tax.rate` (gdy puste → 23%).
+- Faktura z Allegro: `itemType=1`, kod z `offer.external.id` / `offer.id`, opis i komentarze z danych Allegro (bez fallbacków `ALLEGRO` / „Pozycja Allegro”).
+
 ### Added
 
+- Endpoint listy stawek VAT (`GET /api/taxes`) oraz ComboBox stawek w formularzu „Dodaj fakturę”.
 - Shell UI wzorowany na [vaadin-demo](https://github.com/vaadin/vaadin-demo): `AppLayout`, `SideNav`, motyw Aura; logowanie Spring Security (`app_user`, seed `admin`/`admin`).
 - Wystawianie faktury Merit z zamówienia Allegro (przycisk w tabeli Sprzedane, zapis numeru w DB).
   Notatka: [docs/plans/allegro-issue-invoice.md](docs/plans/allegro-issue-invoice.md)

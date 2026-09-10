@@ -18,6 +18,7 @@ import pl.tw.ksiegowosc.dto.allegro.AllegroPrice;
 import pl.tw.ksiegowosc.dto.allegro.AllegroPublication;
 import pl.tw.ksiegowosc.dto.allegro.AllegroSellingMode;
 import pl.tw.ksiegowosc.dto.allegro.AllegroStock;
+import pl.tw.ksiegowosc.mapper.MapperFixtures;
 
 class AllegroOffersServiceTest {
 
@@ -29,7 +30,7 @@ class AllegroOffersServiceTest {
     void setUp() {
         allegroApiClient = mock(AllegroApiClient.class);
         authService = mock(AllegroAuthService.class);
-        offersService = new AllegroOffersService(allegroApiClient, authService);
+        offersService = new AllegroOffersService(allegroApiClient, authService, MapperFixtures.offerMapper());
     }
 
     @Test

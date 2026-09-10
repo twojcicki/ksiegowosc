@@ -1,6 +1,5 @@
 package pl.tw.ksiegowosc.service;
 
-import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -11,20 +10,22 @@ import pl.tw.ksiegowosc.client.AllegroApiClient;
 import pl.tw.ksiegowosc.dto.AllegroOfferDto;
 import pl.tw.ksiegowosc.dto.allegro.AllegroOfferItem;
 import pl.tw.ksiegowosc.dto.allegro.AllegroOffersResponse;
-import pl.tw.ksiegowosc.dto.allegro.AllegroPrice;
-import pl.tw.ksiegowosc.dto.allegro.AllegroPublication;
-import pl.tw.ksiegowosc.dto.allegro.AllegroSellingMode;
-import pl.tw.ksiegowosc.dto.allegro.AllegroStock;
+import pl.tw.ksiegowosc.mapper.AllegroOfferMapper;
 
 @Service
 public class AllegroOffersService {
 
     private final AllegroApiClient allegroApiClient;
     private final AllegroAuthService authService;
+    private final AllegroOfferMapper offerMapper;
 
-    public AllegroOffersService(AllegroApiClient allegroApiClient, AllegroAuthService authService) {
+    public AllegroOffersService(
+            AllegroApiClient allegroApiClient,
+            AllegroAuthService authService,
+            AllegroOfferMapper offerMapper) {
         this.allegroApiClient = allegroApiClient;
         this.authService = authService;
+        this.offerMapper = offerMapper;
     }
 
     public List<AllegroOfferDto> getOffers(int offset, int limit, String publicationStatus) {
@@ -35,31 +36,8 @@ public class AllegroOffersService {
         }
         List<AllegroOfferDto> offers = new ArrayList<>(response.offers().size());
         for (AllegroOfferItem item : response.offers()) {
-            offers.add(toDto(item));
+            offers.add(offerMapper.toDto(item));
         }
         return Collections.unmodifiableList(offers);
-    }
-
-    private static AllegroOfferDto toDto(AllegroOfferItem item) {
-        AllegroSellingMode sellingMode = item.sellingMode();
-        AllegroPrice price = sellingMode == null ? null : sellingMode.price();
-        AllegroStock stock = item.stock();
-        AllegroPublication publication = item.publication();
-
-        return new AllegroOfferDto(
-                item.id(),
-                item.name(),
-                parseAmount(price == null ? null : price.amount()),
-                price == null ? null : price.currency(),
-                stock == null ? null : stock.available(),
-                stock == null ? null : stock.sold(),
-                publication == null ? null : publication.status());
-    }
-
-    private static BigDecimal parseAmount(String amount) {
-        if (amount == null || amount.isBlank()) {
-            return null;
-        }
-        return new BigDecimal(amount);
     }
 }

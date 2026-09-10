@@ -35,6 +35,7 @@ import pl.tw.ksiegowosc.dto.SalesInvoiceDto;
 import pl.tw.ksiegowosc.dto.SalesInvoiceHeaderDto;
 import pl.tw.ksiegowosc.dto.SendInvoiceEmailResponse;
 import pl.tw.ksiegowosc.entity.InvoiceEmailStatus;
+import pl.tw.ksiegowosc.mapper.MapperFixtures;
 import pl.tw.ksiegowosc.repository.InvoiceEmailStatusRepository;
 
 class InvoicesServiceTest {
@@ -47,7 +48,8 @@ class InvoicesServiceTest {
     void setUp() {
         meritApiClient = mock(MeritApiClient.class);
         invoiceEmailStatusRepository = mock(InvoiceEmailStatusRepository.class);
-        invoicesService = new InvoicesService(meritApiClient, invoiceEmailStatusRepository);
+        invoicesService = new InvoicesService(
+                meritApiClient, invoiceEmailStatusRepository, MapperFixtures.meritInvoiceMapper());
     }
 
     @Test

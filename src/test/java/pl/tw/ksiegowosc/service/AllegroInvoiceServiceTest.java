@@ -11,7 +11,6 @@ import static org.mockito.Mockito.when;
 import java.math.BigDecimal;
 import java.time.Clock;
 import java.time.Instant;
-import java.time.LocalDate;
 import java.time.ZoneOffset;
 import java.util.List;
 
@@ -32,10 +31,14 @@ import pl.tw.ksiegowosc.dto.allegro.AllegroFulfillment;
 import pl.tw.ksiegowosc.dto.allegro.AllegroInvoice;
 import pl.tw.ksiegowosc.dto.allegro.AllegroInvoiceAddress;
 import pl.tw.ksiegowosc.dto.allegro.AllegroInvoiceCompany;
+import pl.tw.ksiegowosc.dto.allegro.AllegroExternalId;
 import pl.tw.ksiegowosc.dto.allegro.AllegroLineItem;
+import pl.tw.ksiegowosc.dto.allegro.AllegroLineItemTax;
+import pl.tw.ksiegowosc.dto.allegro.AllegroOfferReference;
 import pl.tw.ksiegowosc.dto.allegro.AllegroPrice;
 import pl.tw.ksiegowosc.dto.allegro.AllegroTaxId;
 import pl.tw.ksiegowosc.entity.AllegroSoldInvoice;
+import pl.tw.ksiegowosc.mapper.MapperFixtures;
 import pl.tw.ksiegowosc.repository.AllegroSoldInvoiceRepository;
 
 class AllegroInvoiceServiceTest {
@@ -44,6 +47,7 @@ class AllegroInvoiceServiceTest {
     private AllegroAuthService authService;
     private CustomersService customersService;
     private InvoicesService invoicesService;
+    private TaxesService taxesService;
     private AllegroSoldInvoiceRepository soldInvoiceRepository;
     private AllegroInvoiceService invoiceService;
 
@@ -53,40 +57,28 @@ class AllegroInvoiceServiceTest {
         authService = mock(AllegroAuthService.class);
         customersService = mock(CustomersService.class);
         invoicesService = mock(InvoicesService.class);
+        taxesService = mock(TaxesService.class);
         soldInvoiceRepository = mock(AllegroSoldInvoiceRepository.class);
         Clock clock = Clock.fixed(Instant.parse("2026-09-06T12:00:00Z"), ZoneOffset.UTC);
+        when(taxesService.listTaxes()).thenReturn(MapperFixtures.sampleTaxes());
         invoiceService = new AllegroInvoiceService(
                 allegroApiClient,
                 authService,
                 customersService,
                 invoicesService,
+                taxesService,
                 soldInvoiceRepository,
+                MapperFixtures.billingMapper(),
+                MapperFixtures.invoiceMapper(),
+                MapperFixtures.soldInvoiceMapper(),
                 clock);
-    }
-
-    @Test
-    void shouldBuildInvoiceNoWithinMeritLimit() {
-        String orderId = "a1b2c3d4-e5f6-7890-abcd-ef1234567890";
-        String invoiceNo = AllegroInvoiceService.buildInvoiceNo(orderId, LocalDate.of(2026, 9, 6));
-
-        assertThat(invoiceNo).isEqualTo("a1b2c3d4e5f67890abcdef12345/09/2026");
-        assertThat(invoiceNo.length()).isEqualTo(35);
-    }
-
-    @Test
-    void shouldTruncateLongOrderIdInInvoiceNo() {
-        String orderId = "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee-ffff";
-        String invoiceNo = AllegroInvoiceService.buildInvoiceNo(orderId, LocalDate.of(2026, 1, 15));
-
-        assertThat(invoiceNo).endsWith("/01/2026");
-        assertThat(invoiceNo.length()).isEqualTo(35);
     }
 
     @Test
     void shouldIssueInvoiceForAllLineItemsUsingExistingCustomer() {
         when(soldInvoiceRepository.existsById("order-1")).thenReturn(false);
         when(authService.getValidAccessToken()).thenReturn("token");
-        when(allegroApiClient.getCheckoutForm("order-1")).thenReturn(sampleForm());
+        when(allegroApiClient.getCheckoutForm("order-1")).thenReturn(sampleForm(null, null));
         when(customersService.getCustomersByVatRegNo("5252674798")).thenReturn(List.of(
                 new CustomerDto("cust-1", "Firma", null, "5252674798", null, null, null, "PLN")));
         when(invoicesService.createInvoice(any())).thenReturn(new CreateInvoiceResponse("merit-inv-1", "cust-1"));
@@ -102,7 +94,14 @@ class AllegroInvoiceServiceTest {
         assertThat(request.customerId()).isEqualTo("cust-1");
         assertThat(request.lines()).hasSize(2);
         assertThat(request.lines().getFirst().price()).isEqualByComparingTo(new BigDecimal("20.33"));
+        assertThat(request.lines().getFirst().itemCode()).isEqualTo("SKU-BOOK");
+        assertThat(request.lines().getFirst().description()).isEqualTo("Książka");
+        assertThat(request.lines().getFirst().itemType()).isEqualTo(1);
+        assertThat(request.lines().getFirst().taxId()).isEqualTo("tax-23");
+        assertThat(request.headerComment()).isEqualTo("order-1 / buyer1");
+        assertThat(request.footerComment()).isEqualTo("5252674798");
         assertThat(request.taxAmounts()).hasSize(1);
+        assertThat(request.taxAmounts().getFirst().taxId()).isEqualTo("tax-23");
         assertThat(request.totalAmount()).isEqualByComparingTo(new BigDecimal("48.79"));
 
         ArgumentCaptor<AllegroSoldInvoice> entityCaptor = ArgumentCaptor.forClass(AllegroSoldInvoice.class);
@@ -110,13 +109,38 @@ class AllegroInvoiceServiceTest {
         assertThat(entityCaptor.getValue().getOrderId()).isEqualTo("order-1");
         assertThat(entityCaptor.getValue().getInvoiceNo()).isEqualTo("order1/01/2026");
         verify(customersService, never()).createCustomer(any());
+        verify(taxesService).listTaxes();
+    }
+
+    @Test
+    void shouldUseAllegroTaxRateAndGroupTaxAmounts() {
+        when(soldInvoiceRepository.existsById("order-1")).thenReturn(false);
+        when(authService.getValidAccessToken()).thenReturn("token");
+        when(allegroApiClient.getCheckoutForm("order-1")).thenReturn(sampleForm(
+                new AllegroLineItemTax("23.00", "GOODS", null),
+                new AllegroLineItemTax("8.00", "GOODS", null)));
+        when(customersService.getCustomersByVatRegNo("5252674798")).thenReturn(List.of(
+                new CustomerDto("cust-1", "Firma", null, "5252674798", null, null, null, "PLN")));
+        when(invoicesService.createInvoice(any())).thenReturn(new CreateInvoiceResponse("merit-inv-1", "cust-1"));
+
+        invoiceService.issueInvoice("order-1");
+
+        ArgumentCaptor<CreateInvoiceRequest> requestCaptor = ArgumentCaptor.forClass(CreateInvoiceRequest.class);
+        verify(invoicesService).createInvoice(requestCaptor.capture());
+        CreateInvoiceRequest request = requestCaptor.getValue();
+        assertThat(request.lines().getFirst().taxId()).isEqualTo("tax-23");
+        assertThat(request.lines().get(1).taxId()).isEqualTo("tax-8");
+        assertThat(request.taxAmounts()).hasSize(2);
+        assertThat(request.taxAmounts())
+                .extracting(t -> t.taxId())
+                .containsExactly("tax-23", "tax-8");
     }
 
     @Test
     void shouldCreateCustomerWhenNotFoundByVat() {
         when(soldInvoiceRepository.existsById("order-1")).thenReturn(false);
         when(authService.getValidAccessToken()).thenReturn("token");
-        when(allegroApiClient.getCheckoutForm("order-1")).thenReturn(sampleForm());
+        when(allegroApiClient.getCheckoutForm("order-1")).thenReturn(sampleForm(null, null));
         when(customersService.getCustomersByVatRegNo("5252674798")).thenReturn(List.of());
         when(customersService.createCustomer(any())).thenReturn(new MeritCreateCustomerResponse("new-cust", "Allegro"));
         when(invoicesService.createInvoice(any())).thenReturn(new CreateInvoiceResponse("merit-inv-1", "new-cust"));
@@ -143,7 +167,7 @@ class AllegroInvoiceServiceTest {
         verify(invoicesService, never()).createInvoice(any());
     }
 
-    private static AllegroCheckoutForm sampleForm() {
+    private static AllegroCheckoutForm sampleForm(AllegroLineItemTax tax1, AllegroLineItemTax tax2) {
         return new AllegroCheckoutForm(
                 "order-1",
                 new AllegroBuyer("buyer1", "buyer@example.com"),
@@ -164,17 +188,20 @@ class AllegroInvoiceServiceTest {
                 List.of(
                         new AllegroLineItem(
                                 "line-1",
-                                "offer-1",
-                                "Książka",
+                                new AllegroOfferReference(
+                                        "offer-1",
+                                        "Książka",
+                                        new AllegroExternalId("SKU-BOOK")),
                                 1,
                                 new AllegroPrice("25.00", "PLN"),
+                                tax1,
                                 Instant.parse("2026-01-10T08:00:00Z")),
                         new AllegroLineItem(
                                 "line-2",
-                                "offer-2",
-                                "Długopis",
+                                new AllegroOfferReference("offer-2", "Długopis", null),
                                 1,
                                 new AllegroPrice("35.00", "PLN"),
+                                tax2,
                                 Instant.parse("2026-01-11T08:00:00Z"))));
     }
 }

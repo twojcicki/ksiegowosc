@@ -418,4 +418,55 @@ class MeritApiClientTest {
         assertThat(response.name()).isEqualTo("Klient");
         server.verify();
     }
+
+    @Test
+    void shouldFetchTaxes() {
+        Clock clock = Clock.fixed(Instant.parse("2026-08-18T10:00:00Z"), ZoneOffset.UTC);
+        MeritApiProperties properties = new MeritApiProperties(
+                "https://program.360ksiegowosc.pl/api/v1",
+                "test-api-id",
+                "test-api-key",
+                "https://program.360ksiegowosc.pl/api/v2");
+        MeritAuthInterceptor interceptor = new MeritAuthInterceptor(properties, clock);
+
+        RestClient.Builder builder = RestClient.builder()
+                .baseUrl(properties.baseUrl())
+                .requestInterceptor(interceptor);
+        MockRestServiceServer server = MockRestServiceServer.bindTo(builder).build();
+        MeritApiClient client = new MeritApiClient(builder.build(), RestClient.builder().build());
+
+        String expectedBody = "{}";
+        String expectedSignature = interceptor.sign("20260818100000", expectedBody);
+
+        server.expect(requestTo(startsWith("https://program.360ksiegowosc.pl/api/v1/gettaxes")))
+                .andExpect(method(HttpMethod.POST))
+                .andExpect(queryParam("apiId", "test-api-id"))
+                .andExpect(queryParam("timestamp", "20260818100000"))
+                .andExpect(queryParam("signature", URLEncoder.encode(expectedSignature, StandardCharsets.UTF_8)))
+                .andExpect(content().json(expectedBody, true))
+                .andRespond(withSuccess("""
+                        [
+                          {
+                            "Id": "973a4395-665f-47a6-a5b6-5384dd24f8d0",
+                            "Code": "23",
+                            "Name": "VAT 23%",
+                            "TaxPct": 23.00
+                          },
+                          {
+                            "Id": "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee",
+                            "Code": "8",
+                            "Name": "VAT 8%",
+                            "TaxPct": 8.00
+                          }
+                        ]
+                        """, MediaType.APPLICATION_JSON));
+
+        List<pl.tw.ksiegowosc.dto.MeritTaxDto> taxes = client.getTaxes();
+
+        assertThat(taxes).hasSize(2);
+        assertThat(taxes.getFirst().id()).isEqualTo("973a4395-665f-47a6-a5b6-5384dd24f8d0");
+        assertThat(taxes.getFirst().taxPct()).isEqualByComparingTo("23.00");
+        assertThat(taxes.get(1).code()).isEqualTo("8");
+        server.verify();
+    }
 }

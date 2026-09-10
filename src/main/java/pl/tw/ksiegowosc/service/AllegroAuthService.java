@@ -15,13 +15,14 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.LinkedMultiValueMap;
 import org.springframework.util.MultiValueMap;
+import org.springframework.web.client.RestClient;
 import org.springframework.web.server.ResponseStatusException;
 
 import pl.tw.ksiegowosc.config.AllegroApiProperties;
 import pl.tw.ksiegowosc.dto.AllegroTokenResponse;
 import pl.tw.ksiegowosc.entity.AllegroToken;
+import pl.tw.ksiegowosc.mapper.AllegroTokenMapper;
 import pl.tw.ksiegowosc.repository.AllegroTokenRepository;
-import org.springframework.web.client.RestClient;
 
 @Service
 public class AllegroAuthService {
@@ -31,16 +32,19 @@ public class AllegroAuthService {
     private final AllegroApiProperties properties;
     private final AllegroTokenRepository tokenRepository;
     private final RestClient allegroAuthRestClient;
+    private final AllegroTokenMapper tokenMapper;
     private final Clock clock;
 
     public AllegroAuthService(
             AllegroApiProperties properties,
             AllegroTokenRepository tokenRepository,
             @Qualifier("allegroAuthRestClient") RestClient allegroAuthRestClient,
+            AllegroTokenMapper tokenMapper,
             Clock clock) {
         this.properties = properties;
         this.tokenRepository = tokenRepository;
         this.allegroAuthRestClient = allegroAuthRestClient;
+        this.tokenMapper = tokenMapper;
         this.clock = clock;
     }
 
@@ -85,23 +89,14 @@ public class AllegroAuthService {
         form.add("grant_type", "refresh_token");
         form.add("refresh_token", token.getRefreshToken());
         AllegroTokenResponse response = requestToken(form);
-        token.setAccessToken(response.accessToken());
-        token.setRefreshToken(response.refreshToken());
-        token.setExpiresAt(clock.instant().plusSeconds(response.expiresIn()));
-        token.setUpdatedAt(clock.instant());
+        tokenMapper.updateEntity(response, token, clock);
         tokenRepository.save(token);
         return token.getAccessToken();
     }
 
     private void saveToken(AllegroTokenResponse response) {
-        Instant now = clock.instant();
-        AllegroToken token = tokenRepository.findById(AllegroToken.SINGLETON_ID)
-                .orElseGet(AllegroToken::new);
-        token.setId(AllegroToken.SINGLETON_ID);
-        token.setAccessToken(response.accessToken());
-        token.setRefreshToken(response.refreshToken());
-        token.setExpiresAt(now.plusSeconds(response.expiresIn()));
-        token.setUpdatedAt(now);
+        AllegroToken existing = tokenRepository.findById(AllegroToken.SINGLETON_ID).orElse(null);
+        AllegroToken token = tokenMapper.apply(response, existing, clock);
         tokenRepository.save(token);
     }
 

@@ -10,6 +10,7 @@ import org.springframework.web.server.ResponseStatusException;
 
 import com.vaadin.flow.component.button.Button;
 import com.vaadin.flow.component.button.ButtonVariant;
+import com.vaadin.flow.component.combobox.ComboBox;
 import com.vaadin.flow.component.datepicker.DatePicker;
 import com.vaadin.flow.component.dialog.Dialog;
 import com.vaadin.flow.component.formlayout.FormLayout;
@@ -30,13 +31,16 @@ import pl.tw.ksiegowosc.dto.CreateInvoiceLineRequest;
 import pl.tw.ksiegowosc.dto.CreateInvoiceRequest;
 import pl.tw.ksiegowosc.dto.CreateInvoiceResponse;
 import pl.tw.ksiegowosc.dto.CreateInvoiceTaxAmountRequest;
+import pl.tw.ksiegowosc.dto.MeritTaxDto;
 import pl.tw.ksiegowosc.service.InvoicesService;
+import pl.tw.ksiegowosc.service.TaxesService;
 
 public class CreateInvoiceDialog extends Dialog {
 
     private static final Locale PL = Locale.forLanguageTag("pl-PL");
 
     private final InvoicesService invoicesService;
+    private final TaxesService taxesService;
     private final Runnable onSuccess;
 
     private final TextField customerId = new TextField("Klient (customerId)");
@@ -53,13 +57,14 @@ public class CreateInvoiceDialog extends Dialog {
     private final Select<Integer> itemType = new Select<>();
     private final NumberField quantity = new NumberField("Ilość");
     private final NumberField price = new NumberField("Cena");
-    private final TextField taxId = new TextField("Stawka VAT (taxId)");
+    private final ComboBox<MeritTaxDto> taxRate = new ComboBox<>("Stawka VAT");
     private final NumberField taxAmount = new NumberField("Kwota VAT");
 
     private final Button saveButton = new Button("Zapisz");
 
-    public CreateInvoiceDialog(InvoicesService invoicesService, Runnable onSuccess) {
+    public CreateInvoiceDialog(InvoicesService invoicesService, TaxesService taxesService, Runnable onSuccess) {
         this.invoicesService = invoicesService;
+        this.taxesService = taxesService;
         this.onSuccess = onSuccess;
 
         setHeaderTitle("Nowa faktura");
@@ -69,6 +74,7 @@ public class CreateInvoiceDialog extends Dialog {
         setCloseOnOutsideClick(false);
 
         configureFields();
+        loadTaxes();
 
         FormLayout headerForm = new FormLayout(
                 customerId,
@@ -83,7 +89,7 @@ public class CreateInvoiceDialog extends Dialog {
         headerForm.setColspan(headerComment, 2);
         headerForm.setColspan(footerComment, 2);
 
-        FormLayout lineForm = new FormLayout(itemCode, description, itemType, quantity, price, taxId);
+        FormLayout lineForm = new FormLayout(itemCode, description, itemType, quantity, price, taxRate);
         lineForm.setResponsiveSteps(new FormLayout.ResponsiveStep("0", 1), new FormLayout.ResponsiveStep("480px", 2));
 
         FormLayout taxForm = new FormLayout(taxAmount);
@@ -143,21 +149,49 @@ public class CreateInvoiceDialog extends Dialog {
             case 3 -> "3 — pozycja";
             default -> String.valueOf(type);
         });
-        itemType.setValue(2);
+        itemType.setValue(1);
         itemType.setRequiredIndicatorVisible(true);
         quantity.setRequiredIndicatorVisible(true);
         quantity.setValue(1.0);
         quantity.setMin(0);
         price.setRequiredIndicatorVisible(true);
         price.setMin(0);
-        taxId.setRequiredIndicatorVisible(true);
-        taxId.setValue("973a4395-665f-47a6-a5b6-5384dd24f8d0");
-        taxId.setHelperText("GUID stawki VAT z Merit (Ustawienia → VAT)");
+        taxRate.setRequiredIndicatorVisible(true);
+        taxRate.setItemLabelGenerator(this::formatTax);
+        taxRate.setWidthFull();
         taxAmount.setRequiredIndicatorVisible(true);
         taxAmount.setMin(0);
 
         headerComment.setWidthFull();
         footerComment.setWidthFull();
+    }
+
+    private void loadTaxes() {
+        try {
+            List<MeritTaxDto> taxes = taxesService.listTaxes();
+            taxRate.setItems(taxes);
+            taxes.stream()
+                    .filter(tax -> tax.taxPct() != null
+                            && tax.taxPct().compareTo(TaxesService.FALLBACK_VAT_PERCENT) == 0)
+                    .findFirst()
+                    .ifPresentOrElse(taxRate::setValue, () -> {
+                        if (!taxes.isEmpty()) {
+                            taxRate.setValue(taxes.getFirst());
+                        }
+                    });
+        } catch (RuntimeException ex) {
+            showError("Nie udało się pobrać stawek VAT z Merit.");
+        }
+    }
+
+    private String formatTax(MeritTaxDto tax) {
+        if (tax == null) {
+            return "";
+        }
+        String pct = tax.taxPct() == null ? "?" : tax.taxPct().stripTrailingZeros().toPlainString();
+        String code = tax.code() == null || tax.code().isBlank() ? "" : tax.code() + " — ";
+        String name = tax.name() == null || tax.name().isBlank() ? "VAT" : tax.name();
+        return code + name + " (" + pct + "%)";
     }
 
     private void save() {
@@ -198,13 +232,14 @@ public class CreateInvoiceDialog extends Dialog {
                 || itemType.getValue() == null
                 || quantity.getValue() == null
                 || price.getValue() == null
-                || isBlank(taxId.getValue())
+                || taxRate.getValue() == null
+                || isBlank(taxRate.getValue().id())
                 || taxAmount.getValue() == null) {
             showError("Uzupełnij wszystkie wymagane pola.");
             return null;
         }
 
-        String taxIdValue = taxId.getValue().trim();
+        String taxIdValue = taxRate.getValue().id().trim();
         return new CreateInvoiceRequest(
                 customerId.getValue().trim(),
                 invoiceNo.getValue().trim(),

@@ -88,10 +88,10 @@ class AllegroApiClientTest {
                               "lineItems": [
                                 {
                                   "id": "line-1",
-                                  "offerId": "123",
-                                  "name": "Sold item",
+                                  "offer": { "id": "123", "name": "Sold item" },
                                   "quantity": 1,
                                   "price": { "amount": "49.99", "currency": "PLN" },
+                                  "tax": { "rate": "23.00", "subject": "GOODS" },
                                   "boughtAt": "2026-01-15T10:00:00.000Z"
                                 }
                               ]
@@ -110,7 +110,7 @@ class AllegroApiClientTest {
 
         assertThat(response.checkoutForms()).hasSize(1);
         assertThat(response.checkoutForms().getFirst().lineItems()).hasSize(1);
-        assertThat(response.checkoutForms().getFirst().lineItems().getFirst().name()).isEqualTo("Sold item");
+        assertThat(response.checkoutForms().getFirst().lineItems().getFirst().offer().name()).isEqualTo("Sold item");
         server.verify();
     }
 
@@ -149,10 +149,14 @@ class AllegroApiClientTest {
                           "lineItems": [
                             {
                               "id": "line-1",
-                              "offerId": "123",
-                              "name": "Sold item",
+                              "offer": {
+                                "id": "123",
+                                "name": "Sold item",
+                                "external": { "id": "SKU-001" }
+                              },
                               "quantity": 1,
                               "price": { "amount": "49.99", "currency": "PLN" },
+                              "tax": { "rate": "23.00", "subject": "GOODS", "exemption": null },
                               "boughtAt": "2026-01-15T10:00:00.000Z"
                             }
                           ]
@@ -165,6 +169,9 @@ class AllegroApiClientTest {
         assertThat(form.buyer().email()).isEqualTo("a@example.com");
         assertThat(form.invoice().address().company().taxId()).isEqualTo("5252674798");
         assertThat(form.lineItems()).hasSize(1);
+        assertThat(form.lineItems().getFirst().offer().id()).isEqualTo("123");
+        assertThat(form.lineItems().getFirst().offer().external().id()).isEqualTo("SKU-001");
+        assertThat(form.lineItems().getFirst().tax().rate()).isEqualTo("23.00");
         server.verify();
     }
 }

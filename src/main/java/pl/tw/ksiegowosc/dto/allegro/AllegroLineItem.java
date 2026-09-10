@@ -7,9 +7,9 @@ import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 @JsonIgnoreProperties(ignoreUnknown = true)
 public record AllegroLineItem(
         String id,
-        String offerId,
-        String name,
+        AllegroOfferReference offer,
         Integer quantity,
         AllegroPrice price,
+        AllegroLineItemTax tax,
         Instant boughtAt) {
 }

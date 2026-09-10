@@ -23,8 +23,10 @@ import pl.tw.ksiegowosc.dto.allegro.AllegroCheckoutForm;
 import pl.tw.ksiegowosc.dto.allegro.AllegroCheckoutFormsResponse;
 import pl.tw.ksiegowosc.dto.allegro.AllegroFulfillment;
 import pl.tw.ksiegowosc.dto.allegro.AllegroLineItem;
+import pl.tw.ksiegowosc.dto.allegro.AllegroOfferReference;
 import pl.tw.ksiegowosc.dto.allegro.AllegroPrice;
 import pl.tw.ksiegowosc.entity.AllegroSoldInvoice;
+import pl.tw.ksiegowosc.mapper.MapperFixtures;
 import pl.tw.ksiegowosc.repository.AllegroSoldInvoiceRepository;
 
 class AllegroOrdersServiceTest {
@@ -39,7 +41,8 @@ class AllegroOrdersServiceTest {
         allegroApiClient = mock(AllegroApiClient.class);
         authService = mock(AllegroAuthService.class);
         soldInvoiceRepository = mock(AllegroSoldInvoiceRepository.class);
-        ordersService = new AllegroOrdersService(allegroApiClient, authService, soldInvoiceRepository);
+        ordersService = new AllegroOrdersService(
+                allegroApiClient, authService, soldInvoiceRepository, MapperFixtures.soldItemMapper());
     }
 
     @Test
@@ -56,17 +59,17 @@ class AllegroOrdersServiceTest {
                         List.of(
                                 new AllegroLineItem(
                                         "line-1",
-                                        "offer-1",
-                                        "Książka",
+                                        new AllegroOfferReference("offer-1", "Książka", null),
                                         2,
                                         new AllegroPrice("25.00", "PLN"),
+                                        null,
                                         Instant.parse("2026-01-10T08:00:00Z")),
                                 new AllegroLineItem(
                                         "line-2",
-                                        "offer-2",
-                                        "Długopis",
+                                        new AllegroOfferReference("offer-2", "Długopis", null),
                                         1,
                                         new AllegroPrice("10.00", "PLN"),
+                                        null,
                                         Instant.parse("2026-01-11T08:00:00Z"))))),
                 1,
                 1));
@@ -101,10 +104,10 @@ class AllegroOrdersServiceTest {
                         null,
                         List.of(new AllegroLineItem(
                                 "line-1",
-                                "offer-1",
-                                "Książka",
+                                new AllegroOfferReference("offer-1", "Książka", null),
                                 1,
                                 new AllegroPrice("25.00", "PLN"),
+                                null,
                                 Instant.parse("2026-01-10T08:00:00Z"))))),
                 1,
                 1));
