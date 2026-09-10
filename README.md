@@ -140,6 +140,15 @@ curl "http://localhost:8080/api/taxes"
 Wywołanie idzie do `POST https://program.360ksiegowosc.pl/api/v1/gettaxes`
 z body `{}`.
 
+Lista jednostek miary z Merit (wymagane dla pozycji magazynowych):
+
+```bash
+curl "http://localhost:8080/api/units"
+```
+
+Wywołanie idzie do `POST https://program.360ksiegowosc.pl/api/v1/getunits`
+z body `{}`.
+
 Szczegóły pojedynczej faktury (`SIHId` z listy). Opcjonalny parametr `addAttachment=true` dołącza PDF w base64:
 
 ```bash

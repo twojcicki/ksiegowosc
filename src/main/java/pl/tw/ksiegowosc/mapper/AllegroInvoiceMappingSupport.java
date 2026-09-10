@@ -10,7 +10,6 @@ import pl.tw.ksiegowosc.dto.allegro.AllegroOfferReference;
 public final class AllegroInvoiceMappingSupport {
 
     public static final int ITEM_TYPE_STOCK = 1;
-    public static final String DEFAULT_UOM_NAME = "szt";
     public static final BigDecimal FALLBACK_VAT_PERCENT = new BigDecimal("23");
     private static final int ITEM_CODE_MAX = 20;
 

@@ -9,7 +9,7 @@ Format oparty na [Keep a Changelog](https://keepachangelog.com/pl/1.1.0/).
 - MapStruct: mapowania Allegro→faktura, checkout/oferty→DTO, CreateInvoice→Merit oraz token/sold-invoice→entity w pakiecie `mapper`.
 - Stawki VAT przy fakturach: GUID i procent z Merit `gettaxes`; przy Allegro dopasowanie do `lineItems[].tax.rate` (gdy puste → 23%).
 - Faktura z Allegro: `itemType=1`, kod z `offer.external.id` / `offer.id`, opis i komentarze z danych Allegro (bez fallbacków `ALLEGRO` / „Pozycja Allegro”).
-- Formularz faktury: pole jednostki miary (`UOMName`) wymagane dla towaru magazynowego.
+- Formularz faktury: jednostka miary z listy Merit `getunits` (ComboBox); Allegro bierze domyślną jednostkę z Merit.
 
 ### Added
 

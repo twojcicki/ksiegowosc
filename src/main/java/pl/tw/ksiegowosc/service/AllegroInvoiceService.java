@@ -39,6 +39,7 @@ public class AllegroInvoiceService {
     private final CustomersService customersService;
     private final InvoicesService invoicesService;
     private final TaxesService taxesService;
+    private final UnitsService unitsService;
     private final AllegroSoldInvoiceRepository soldInvoiceRepository;
     private final AllegroBillingMapper billingMapper;
     private final AllegroInvoiceMapper invoiceMapper;
@@ -51,6 +52,7 @@ public class AllegroInvoiceService {
             CustomersService customersService,
             InvoicesService invoicesService,
             TaxesService taxesService,
+            UnitsService unitsService,
             AllegroSoldInvoiceRepository soldInvoiceRepository,
             AllegroBillingMapper billingMapper,
             AllegroInvoiceMapper invoiceMapper,
@@ -61,6 +63,7 @@ public class AllegroInvoiceService {
         this.customersService = customersService;
         this.invoicesService = invoicesService;
         this.taxesService = taxesService;
+        this.unitsService = unitsService;
         this.soldInvoiceRepository = soldInvoiceRepository;
         this.billingMapper = billingMapper;
         this.invoiceMapper = invoiceMapper;
@@ -92,9 +95,16 @@ public class AllegroInvoiceService {
         String invoiceNo = invoiceMapper.buildInvoiceNo(trimmedOrderId, docDate);
 
         String customerId = resolveCustomerId(form);
+        String uomName = unitsService.requireDefaultUnit().name();
+        if (uomName == null || uomName.isBlank()) {
+            throw new ResponseStatusException(
+                    HttpStatus.BAD_REQUEST,
+                    "Wybrana jednostka miary z Merit nie ma nazwy.");
+        }
         CreateInvoiceRequest request = invoiceMapper.toCreateInvoiceRequest(
                 form,
-                new AllegroInvoiceMappingContext(customerId, invoiceNo, docDate, taxesService.listTaxes()));
+                new AllegroInvoiceMappingContext(
+                        customerId, invoiceNo, docDate, taxesService.listTaxes(), uomName.trim()));
         CreateInvoiceResponse created = invoicesService.createInvoice(request);
 
         AllegroSoldInvoice entity = soldInvoiceMapper.toEntity(

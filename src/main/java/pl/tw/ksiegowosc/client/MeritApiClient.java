@@ -26,6 +26,7 @@ import pl.tw.ksiegowosc.dto.MeritCreateInvoiceRequest;
 import pl.tw.ksiegowosc.dto.MeritCreateInvoiceResponse;
 import pl.tw.ksiegowosc.dto.MeritCustomersRequest;
 import pl.tw.ksiegowosc.dto.MeritTaxDto;
+import pl.tw.ksiegowosc.dto.MeritUnitDto;
 import pl.tw.ksiegowosc.dto.SalesInvoiceDetailsDto;
 import pl.tw.ksiegowosc.dto.SalesInvoiceDto;
 import pl.tw.ksiegowosc.dto.SendInvoiceEmailRequest;
@@ -39,6 +40,9 @@ public class MeritApiClient {
             new ParameterizedTypeReference<>() {
             };
     private static final ParameterizedTypeReference<List<MeritTaxDto>> TAXES_RESPONSE =
+            new ParameterizedTypeReference<>() {
+            };
+    private static final ParameterizedTypeReference<List<MeritUnitDto>> UNITS_RESPONSE =
             new ParameterizedTypeReference<>() {
             };
 
@@ -131,6 +135,16 @@ public class MeritApiClient {
                 .retrieve()
                 .body(TAXES_RESPONSE);
         return taxes == null ? List.of() : List.copyOf(taxes);
+    }
+
+    public List<MeritUnitDto> getUnits() {
+        List<MeritUnitDto> units = meritRestClient.post()
+                .uri("/getunits")
+                .contentType(MediaType.APPLICATION_JSON)
+                .body(Map.of())
+                .retrieve()
+                .body(UNITS_RESPONSE);
+        return units == null ? List.of() : List.copyOf(units);
     }
 
     private static String blankToNull(String value) {

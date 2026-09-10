@@ -25,6 +25,7 @@ import pl.tw.ksiegowosc.dto.CreateInvoiceResponse;
 import pl.tw.ksiegowosc.dto.CustomerDto;
 import pl.tw.ksiegowosc.dto.MeritCreateCustomerRequest;
 import pl.tw.ksiegowosc.dto.MeritCreateCustomerResponse;
+import pl.tw.ksiegowosc.dto.MeritUnitDto;
 import pl.tw.ksiegowosc.dto.allegro.AllegroBuyer;
 import pl.tw.ksiegowosc.dto.allegro.AllegroCheckoutForm;
 import pl.tw.ksiegowosc.dto.allegro.AllegroFulfillment;
@@ -48,6 +49,7 @@ class AllegroInvoiceServiceTest {
     private CustomersService customersService;
     private InvoicesService invoicesService;
     private TaxesService taxesService;
+    private UnitsService unitsService;
     private AllegroSoldInvoiceRepository soldInvoiceRepository;
     private AllegroInvoiceService invoiceService;
 
@@ -58,15 +60,18 @@ class AllegroInvoiceServiceTest {
         customersService = mock(CustomersService.class);
         invoicesService = mock(InvoicesService.class);
         taxesService = mock(TaxesService.class);
+        unitsService = mock(UnitsService.class);
         soldInvoiceRepository = mock(AllegroSoldInvoiceRepository.class);
         Clock clock = Clock.fixed(Instant.parse("2026-09-06T12:00:00Z"), ZoneOffset.UTC);
         when(taxesService.listTaxes()).thenReturn(MapperFixtures.sampleTaxes());
+        when(unitsService.requireDefaultUnit()).thenReturn(new MeritUnitDto("SZT", "szt."));
         invoiceService = new AllegroInvoiceService(
                 allegroApiClient,
                 authService,
                 customersService,
                 invoicesService,
                 taxesService,
+                unitsService,
                 soldInvoiceRepository,
                 MapperFixtures.billingMapper(),
                 MapperFixtures.invoiceMapper(),
@@ -97,7 +102,7 @@ class AllegroInvoiceServiceTest {
         assertThat(request.lines().getFirst().itemCode()).isEqualTo("SKU-BOOK");
         assertThat(request.lines().getFirst().description()).isEqualTo("Książka");
         assertThat(request.lines().getFirst().itemType()).isEqualTo(1);
-        assertThat(request.lines().getFirst().uomName()).isEqualTo("szt");
+        assertThat(request.lines().getFirst().uomName()).isEqualTo("szt.");
         assertThat(request.lines().getFirst().taxId()).isEqualTo("tax-23");
         assertThat(request.headerComment()).isEqualTo("order-1 / buyer1");
         assertThat(request.footerComment()).isEqualTo("5252674798");

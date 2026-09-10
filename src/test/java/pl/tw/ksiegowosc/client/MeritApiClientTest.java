@@ -469,4 +469,43 @@ class MeritApiClientTest {
         assertThat(taxes.get(1).code()).isEqualTo("8");
         server.verify();
     }
+
+    @Test
+    void shouldFetchUnits() {
+        Clock clock = Clock.fixed(Instant.parse("2026-08-18T10:00:00Z"), ZoneOffset.UTC);
+        MeritApiProperties properties = new MeritApiProperties(
+                "https://program.360ksiegowosc.pl/api/v1",
+                "test-api-id",
+                "test-api-key",
+                "https://program.360ksiegowosc.pl/api/v2");
+        MeritAuthInterceptor interceptor = new MeritAuthInterceptor(properties, clock);
+
+        RestClient.Builder builder = RestClient.builder()
+                .baseUrl(properties.baseUrl())
+                .requestInterceptor(interceptor);
+        MockRestServiceServer server = MockRestServiceServer.bindTo(builder).build();
+        MeritApiClient client = new MeritApiClient(builder.build(), RestClient.builder().build());
+
+        String expectedBody = "{}";
+        String expectedSignature = interceptor.sign("20260818100000", expectedBody);
+
+        server.expect(requestTo(startsWith("https://program.360ksiegowosc.pl/api/v1/getunits")))
+                .andExpect(method(HttpMethod.POST))
+                .andExpect(queryParam("apiId", "test-api-id"))
+                .andExpect(queryParam("timestamp", "20260818100000"))
+                .andExpect(queryParam("signature", URLEncoder.encode(expectedSignature, StandardCharsets.UTF_8)))
+                .andExpect(content().json(expectedBody, true))
+                .andRespond(withSuccess("""
+                        [
+                          { "Code": "KG", "Name": "kg" },
+                          { "Code": "SZT", "Name": "szt." }
+                        ]
+                        """, MediaType.APPLICATION_JSON));
+
+        List<pl.tw.ksiegowosc.dto.MeritUnitDto> units = client.getUnits();
+
+        assertThat(units).hasSize(2);
+        assertThat(units.get(1).name()).isEqualTo("szt.");
+        server.verify();
+    }
 }

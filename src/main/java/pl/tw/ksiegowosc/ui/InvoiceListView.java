@@ -36,6 +36,7 @@ import pl.tw.ksiegowosc.dto.SalesInvoiceHeaderDto;
 import pl.tw.ksiegowosc.dto.SalesInvoiceLineDto;
 import pl.tw.ksiegowosc.service.InvoicesService;
 import pl.tw.ksiegowosc.service.TaxesService;
+import pl.tw.ksiegowosc.service.UnitsService;
 import pl.tw.ksiegowosc.ui.component.View;
 import pl.tw.ksiegowosc.ui.component.ViewHeader;
 import pl.tw.ksiegowosc.ui.util.Aura;
@@ -53,14 +54,17 @@ public class InvoiceListView extends View {
 
     private final InvoicesService invoicesService;
     private final TaxesService taxesService;
+    private final UnitsService unitsService;
     private final DatePicker fromPicker = new DatePicker("Od");
     private final DatePicker toPicker = new DatePicker("Do");
     private final Grid<SalesInvoiceDto> grid = new Grid<>(SalesInvoiceDto.class, false);
     private final NumberFormat amountFormat;
 
-    public InvoiceListView(InvoicesService invoicesService, TaxesService taxesService) {
+    public InvoiceListView(
+            InvoicesService invoicesService, TaxesService taxesService, UnitsService unitsService) {
         this.invoicesService = invoicesService;
         this.taxesService = taxesService;
+        this.unitsService = unitsService;
         this.amountFormat = NumberFormat.getNumberInstance(PL);
         this.amountFormat.setMinimumFractionDigits(2);
         this.amountFormat.setMaximumFractionDigits(2);
@@ -136,7 +140,8 @@ public class InvoiceListView extends View {
     }
 
     private void openCreateInvoiceDialog() {
-        CreateInvoiceDialog dialog = new CreateInvoiceDialog(invoicesService, taxesService, this::loadInvoices);
+        CreateInvoiceDialog dialog =
+                new CreateInvoiceDialog(invoicesService, taxesService, unitsService, this::loadInvoices);
         dialog.open();
     }
 

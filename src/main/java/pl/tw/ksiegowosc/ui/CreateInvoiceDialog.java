@@ -33,8 +33,10 @@ import pl.tw.ksiegowosc.dto.CreateInvoiceRequest;
 import pl.tw.ksiegowosc.dto.CreateInvoiceResponse;
 import pl.tw.ksiegowosc.dto.CreateInvoiceTaxAmountRequest;
 import pl.tw.ksiegowosc.dto.MeritTaxDto;
+import pl.tw.ksiegowosc.dto.MeritUnitDto;
 import pl.tw.ksiegowosc.service.InvoicesService;
 import pl.tw.ksiegowosc.service.TaxesService;
+import pl.tw.ksiegowosc.service.UnitsService;
 
 public class CreateInvoiceDialog extends Dialog {
 
@@ -42,6 +44,7 @@ public class CreateInvoiceDialog extends Dialog {
 
     private final InvoicesService invoicesService;
     private final TaxesService taxesService;
+    private final UnitsService unitsService;
     private final Runnable onSuccess;
 
     private final TextField customerId = new TextField("Klient (customerId)");
@@ -56,7 +59,7 @@ public class CreateInvoiceDialog extends Dialog {
     private final TextField itemCode = new TextField("Kod pozycji");
     private final TextField description = new TextField("Opis");
     private final Select<Integer> itemType = new Select<>();
-    private final TextField uomName = new TextField("Jednostka miary");
+    private final ComboBox<MeritUnitDto> uom = new ComboBox<>("Jednostka miary");
     private final NumberField quantity = new NumberField("Ilość");
     private final NumberField price = new NumberField("Cena");
     private final ComboBox<MeritTaxDto> taxRate = new ComboBox<>("Stawka VAT");
@@ -64,9 +67,14 @@ public class CreateInvoiceDialog extends Dialog {
 
     private final Button saveButton = new Button("Zapisz");
 
-    public CreateInvoiceDialog(InvoicesService invoicesService, TaxesService taxesService, Runnable onSuccess) {
+    public CreateInvoiceDialog(
+            InvoicesService invoicesService,
+            TaxesService taxesService,
+            UnitsService unitsService,
+            Runnable onSuccess) {
         this.invoicesService = invoicesService;
         this.taxesService = taxesService;
+        this.unitsService = unitsService;
         this.onSuccess = onSuccess;
 
         setHeaderTitle("Nowa faktura");
@@ -77,6 +85,7 @@ public class CreateInvoiceDialog extends Dialog {
 
         configureFields();
         loadTaxes();
+        loadUnits();
 
         FormLayout headerForm = new FormLayout(
                 customerId,
@@ -91,7 +100,7 @@ public class CreateInvoiceDialog extends Dialog {
         headerForm.setColspan(headerComment, 2);
         headerForm.setColspan(footerComment, 2);
 
-        FormLayout lineForm = new FormLayout(itemCode, description, itemType, uomName, quantity, price, taxRate);
+        FormLayout lineForm = new FormLayout(itemCode, description, itemType, uom, quantity, price, taxRate);
         lineForm.setResponsiveSteps(new FormLayout.ResponsiveStep("0", 1), new FormLayout.ResponsiveStep("480px", 2));
 
         FormLayout taxForm = new FormLayout(taxAmount);
@@ -154,9 +163,9 @@ public class CreateInvoiceDialog extends Dialog {
         itemType.setValue(1);
         itemType.setRequiredIndicatorVisible(true);
         itemType.addValueChangeListener(e -> updateUomRequirement());
-        uomName.setValue("szt");
-        uomName.setMaxLength(64);
-        uomName.setHelperText("Wymagana dla towaru magazynowego (typ 1)");
+        uom.setItemLabelGenerator(this::formatUnit);
+        uom.setWidthFull();
+        uom.setHelperText("Jednostki z Merit (Ustawienia → Jednostki miary)");
         updateUomRequirement();
         quantity.setRequiredIndicatorVisible(true);
         quantity.setValue(1.0);
@@ -180,10 +189,30 @@ public class CreateInvoiceDialog extends Dialog {
 
     private void updateUomRequirement() {
         boolean stockItem = Integer.valueOf(1).equals(itemType.getValue());
-        uomName.setRequiredIndicatorVisible(stockItem);
-        if (stockItem && isBlank(uomName.getValue())) {
-            uomName.setValue("szt");
+        uom.setRequiredIndicatorVisible(stockItem);
+    }
+
+    private void loadUnits() {
+        try {
+            List<MeritUnitDto> units = unitsService.listUnits();
+            uom.setItems(units);
+            if (!units.isEmpty()) {
+                uom.setValue(unitsService.requireDefaultUnit(units));
+            }
+        } catch (RuntimeException ex) {
+            showError("Nie udało się pobrać jednostek miary z Merit.");
         }
+    }
+
+    private String formatUnit(MeritUnitDto unit) {
+        if (unit == null) {
+            return "";
+        }
+        String name = unit.name() == null || unit.name().isBlank() ? "?" : unit.name();
+        if (unit.code() == null || unit.code().isBlank() || unit.code().equals(name)) {
+            return name;
+        }
+        return unit.code() + " — " + name;
     }
 
     private void recalculateDerivedAmounts() {
@@ -274,7 +303,8 @@ public class CreateInvoiceDialog extends Dialog {
                 || isBlank(itemCode.getValue())
                 || isBlank(description.getValue())
                 || itemType.getValue() == null
-                || (Integer.valueOf(1).equals(itemType.getValue()) && isBlank(uomName.getValue()))
+                || (Integer.valueOf(1).equals(itemType.getValue())
+                        && (uom.getValue() == null || isBlank(uom.getValue().name())))
                 || quantity.getValue() == null
                 || price.getValue() == null
                 || taxRate.getValue() == null
@@ -285,7 +315,9 @@ public class CreateInvoiceDialog extends Dialog {
         }
 
         String taxIdValue = taxRate.getValue().id().trim();
-        String uom = isBlank(uomName.getValue()) ? null : uomName.getValue().trim();
+        String uomValue = uom.getValue() == null || isBlank(uom.getValue().name())
+                ? null
+                : uom.getValue().name().trim();
         return new CreateInvoiceRequest(
                 customerId.getValue().trim(),
                 invoiceNo.getValue().trim(),
@@ -302,7 +334,7 @@ public class CreateInvoiceDialog extends Dialog {
                         BigDecimal.valueOf(quantity.getValue()),
                         BigDecimal.valueOf(price.getValue()),
                         taxIdValue,
-                        uom)),
+                        uomValue)),
                 List.of(new CreateInvoiceTaxAmountRequest(
                         taxIdValue,
                         BigDecimal.valueOf(taxAmount.getValue()))));

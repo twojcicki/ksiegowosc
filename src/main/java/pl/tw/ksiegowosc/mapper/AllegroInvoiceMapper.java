@@ -101,7 +101,7 @@ public abstract class AllegroInvoiceMapper {
                     BigDecimal.valueOf(qty),
                     unitNet,
                     tax.id(),
-                    AllegroInvoiceMappingSupport.DEFAULT_UOM_NAME));
+                    context.uomName()));
         }
 
         BuyerBilling billing = billingMapper.toBuyerBilling(form);
