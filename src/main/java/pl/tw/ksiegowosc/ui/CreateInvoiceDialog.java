@@ -1,6 +1,7 @@
 package pl.tw.ksiegowosc.ui;
 
 import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.Locale;
@@ -153,17 +154,45 @@ public class CreateInvoiceDialog extends Dialog {
         itemType.setRequiredIndicatorVisible(true);
         quantity.setRequiredIndicatorVisible(true);
         quantity.setValue(1.0);
-        quantity.setMin(0);
-        price.setRequiredIndicatorVisible(true);
-        price.setMin(0);
+        quantity.setMin(0.000001);
+        price.setLabel("Cena netto");
+        price.setReadOnly(true);
+        price.setHelperText("Wyliczana z kwoty netto / ilość");
         taxRate.setRequiredIndicatorVisible(true);
         taxRate.setItemLabelGenerator(this::formatTax);
         taxRate.setWidthFull();
-        taxAmount.setRequiredIndicatorVisible(true);
-        taxAmount.setMin(0);
+        taxAmount.setReadOnly(true);
+        taxAmount.setHelperText("Wyliczana z kwoty netto × stawka VAT");
+
+        totalAmount.addValueChangeListener(e -> recalculateDerivedAmounts());
+        quantity.addValueChangeListener(e -> recalculateDerivedAmounts());
+        taxRate.addValueChangeListener(e -> recalculateDerivedAmounts());
 
         headerComment.setWidthFull();
         footerComment.setWidthFull();
+    }
+
+    private void recalculateDerivedAmounts() {
+        Double netValue = totalAmount.getValue();
+        Double qtyValue = quantity.getValue();
+        MeritTaxDto tax = taxRate.getValue();
+
+        if (netValue == null || qtyValue == null || qtyValue <= 0) {
+            price.clear();
+        } else {
+            BigDecimal unitNet = BigDecimal.valueOf(netValue)
+                    .divide(BigDecimal.valueOf(qtyValue), 2, RoundingMode.HALF_UP);
+            price.setValue(unitNet.doubleValue());
+        }
+
+        if (netValue == null || tax == null || tax.taxPct() == null) {
+            taxAmount.clear();
+            return;
+        }
+        BigDecimal vat = BigDecimal.valueOf(netValue)
+                .multiply(tax.taxPct())
+                .divide(new BigDecimal("100"), 2, RoundingMode.HALF_UP);
+        taxAmount.setValue(vat.doubleValue());
     }
 
     private void loadTaxes() {
@@ -179,6 +208,7 @@ public class CreateInvoiceDialog extends Dialog {
                             taxRate.setValue(taxes.getFirst());
                         }
                     });
+            recalculateDerivedAmounts();
         } catch (RuntimeException ex) {
             showError("Nie udało się pobrać stawek VAT z Merit.");
         }
