@@ -97,6 +97,7 @@ class AllegroInvoiceServiceTest {
         assertThat(request.lines().getFirst().itemCode()).isEqualTo("SKU-BOOK");
         assertThat(request.lines().getFirst().description()).isEqualTo("Książka");
         assertThat(request.lines().getFirst().itemType()).isEqualTo(1);
+        assertThat(request.lines().getFirst().uomName()).isEqualTo("szt");
         assertThat(request.lines().getFirst().taxId()).isEqualTo("tax-23");
         assertThat(request.headerComment()).isEqualTo("order-1 / buyer1");
         assertThat(request.footerComment()).isEqualTo("5252674798");

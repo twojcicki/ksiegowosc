@@ -100,7 +100,8 @@ public abstract class AllegroInvoiceMapper {
                     AllegroInvoiceMappingSupport.ITEM_TYPE_STOCK,
                     BigDecimal.valueOf(qty),
                     unitNet,
-                    tax.id()));
+                    tax.id(),
+                    AllegroInvoiceMappingSupport.DEFAULT_UOM_NAME));
         }
 
         BuyerBilling billing = billingMapper.toBuyerBilling(form);

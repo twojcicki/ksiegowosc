@@ -39,6 +39,7 @@ public interface MeritInvoiceMapper {
     @Mapping(target = "code", source = "itemCode")
     @Mapping(target = "description", source = "description")
     @Mapping(target = "type", source = "itemType")
+    @Mapping(target = "uomName", source = "uomName")
     MeritCreateInvoiceItem toItem(CreateInvoiceLineRequest line);
 
     MeritCreateInvoiceTaxAmount toTaxAmount(CreateInvoiceTaxAmountRequest tax);

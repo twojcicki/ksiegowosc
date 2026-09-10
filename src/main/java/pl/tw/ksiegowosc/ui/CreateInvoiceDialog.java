@@ -56,6 +56,7 @@ public class CreateInvoiceDialog extends Dialog {
     private final TextField itemCode = new TextField("Kod pozycji");
     private final TextField description = new TextField("Opis");
     private final Select<Integer> itemType = new Select<>();
+    private final TextField uomName = new TextField("Jednostka miary");
     private final NumberField quantity = new NumberField("Ilość");
     private final NumberField price = new NumberField("Cena");
     private final ComboBox<MeritTaxDto> taxRate = new ComboBox<>("Stawka VAT");
@@ -90,7 +91,7 @@ public class CreateInvoiceDialog extends Dialog {
         headerForm.setColspan(headerComment, 2);
         headerForm.setColspan(footerComment, 2);
 
-        FormLayout lineForm = new FormLayout(itemCode, description, itemType, quantity, price, taxRate);
+        FormLayout lineForm = new FormLayout(itemCode, description, itemType, uomName, quantity, price, taxRate);
         lineForm.setResponsiveSteps(new FormLayout.ResponsiveStep("0", 1), new FormLayout.ResponsiveStep("480px", 2));
 
         FormLayout taxForm = new FormLayout(taxAmount);
@@ -152,6 +153,11 @@ public class CreateInvoiceDialog extends Dialog {
         });
         itemType.setValue(1);
         itemType.setRequiredIndicatorVisible(true);
+        itemType.addValueChangeListener(e -> updateUomRequirement());
+        uomName.setValue("szt");
+        uomName.setMaxLength(64);
+        uomName.setHelperText("Wymagana dla towaru magazynowego (typ 1)");
+        updateUomRequirement();
         quantity.setRequiredIndicatorVisible(true);
         quantity.setValue(1.0);
         quantity.setMin(0.000001);
@@ -170,6 +176,14 @@ public class CreateInvoiceDialog extends Dialog {
 
         headerComment.setWidthFull();
         footerComment.setWidthFull();
+    }
+
+    private void updateUomRequirement() {
+        boolean stockItem = Integer.valueOf(1).equals(itemType.getValue());
+        uomName.setRequiredIndicatorVisible(stockItem);
+        if (stockItem && isBlank(uomName.getValue())) {
+            uomName.setValue("szt");
+        }
     }
 
     private void recalculateDerivedAmounts() {
@@ -260,6 +274,7 @@ public class CreateInvoiceDialog extends Dialog {
                 || isBlank(itemCode.getValue())
                 || isBlank(description.getValue())
                 || itemType.getValue() == null
+                || (Integer.valueOf(1).equals(itemType.getValue()) && isBlank(uomName.getValue()))
                 || quantity.getValue() == null
                 || price.getValue() == null
                 || taxRate.getValue() == null
@@ -270,6 +285,7 @@ public class CreateInvoiceDialog extends Dialog {
         }
 
         String taxIdValue = taxRate.getValue().id().trim();
+        String uom = isBlank(uomName.getValue()) ? null : uomName.getValue().trim();
         return new CreateInvoiceRequest(
                 customerId.getValue().trim(),
                 invoiceNo.getValue().trim(),
@@ -285,7 +301,8 @@ public class CreateInvoiceDialog extends Dialog {
                         itemType.getValue(),
                         BigDecimal.valueOf(quantity.getValue()),
                         BigDecimal.valueOf(price.getValue()),
-                        taxIdValue)),
+                        taxIdValue,
+                        uom)),
                 List.of(new CreateInvoiceTaxAmountRequest(
                         taxIdValue,
                         BigDecimal.valueOf(taxAmount.getValue()))));

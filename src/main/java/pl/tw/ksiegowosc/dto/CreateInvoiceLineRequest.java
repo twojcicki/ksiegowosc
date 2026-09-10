@@ -11,6 +11,7 @@ public record CreateInvoiceLineRequest(
         @NotNull Integer itemType,
         @NotNull BigDecimal quantity,
         @NotNull BigDecimal price,
-        @NotBlank String taxId
+        @NotBlank String taxId,
+        String uomName
 ) {
 }

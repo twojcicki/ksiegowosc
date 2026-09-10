@@ -288,7 +288,8 @@ class InvoicesServiceTest {
                         2,
                         new BigDecimal("1"),
                         new BigDecimal("100.00"),
-                        "665f01a4-357a-4a6b-a565-2f17e6e1da13")),
+                        "665f01a4-357a-4a6b-a565-2f17e6e1da13",
+                        null)),
                 List.of(new CreateInvoiceTaxAmountRequest(
                         "665f01a4-357a-4a6b-a565-2f17e6e1da13",
                         new BigDecimal("23.00"))));

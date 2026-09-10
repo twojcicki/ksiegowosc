@@ -197,7 +197,7 @@ class MeritApiClientTest {
                 "FV/2026/01/01",
                 "PLN",
                 List.of(new MeritCreateInvoiceRow(
-                        new MeritCreateInvoiceItem("USLUGA", "Usluga", 2),
+                        new MeritCreateInvoiceItem("USLUGA", "Usluga", 2, null),
                         new BigDecimal("1.00"),
                         new BigDecimal("100.00"),
                         "665f01a4-357a-4a6b-a565-2f17e6e1da13")),
