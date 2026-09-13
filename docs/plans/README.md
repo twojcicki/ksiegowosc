@@ -18,6 +18,7 @@ Indeks planów zmian w repozytorium. Każdy wpis w [CHANGELOG.md](../CHANGELOG.m
 | [postgres-invoice-email-status.md](postgres-invoice-email-status.md) | — | PostgreSQL + status wysyłki e-mail na liście |
 | [allegro-sandbox-integration.md](allegro-sandbox-integration.md) | — | Allegro Sandbox — OAuth, oferty, sprzedane pozycje |
 | [allegro-issue-invoice.md](allegro-issue-invoice.md) | — | Wystawianie faktury Merit z zamówienia Allegro |
+| [user-api-settings.md](user-api-settings.md) | — | Ustawienia API Merit/Allegro per użytkownik |
 
 Commity bez osobnej notatki (wpisy tylko w CHANGELOG):
 

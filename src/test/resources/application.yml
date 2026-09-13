@@ -16,13 +16,9 @@ vaadin:
 clients:
   merit:
     base-url: https://example.test/api/v1
-    api-id: test-id
-    api-key: test-key
     v2-base-url: https://example.test/api/v2
   allegro:
     api-base-url: https://api.allegro.test
     auth-url: https://allegro.test
-    client-id: test-client-id
-    client-secret: test-client-secret
     redirect-uri: http://localhost:8080/api/allegro/auth/callback
     scopes: allegro:api:sale:offers:read allegro:api:orders:read

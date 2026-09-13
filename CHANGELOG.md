@@ -4,6 +4,11 @@ Format oparty na [Keep a Changelog](https://keepachangelog.com/pl/1.1.0/).
 
 ## [Unreleased]
 
+### Added
+
+- Ustawienia API per użytkownik (Merit Api Id/Key, Allegro Client ID/Secret w DB; Usuń powiązanie Allegro).
+  Notatka: [docs/plans/user-api-settings.md](docs/plans/user-api-settings.md)
+
 ### Changed
 
 - Wybór stawki VAT z Merit: preferencja `Code` równego procentowi (np. `23`), pomijanie stawek zakupowych przy fakturze sprzedaży.

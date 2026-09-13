@@ -4,5 +4,5 @@ import org.springframework.data.jpa.repository.JpaRepository;
 
 import pl.tw.ksiegowosc.entity.AllegroToken;
 
-public interface AllegroTokenRepository extends JpaRepository<AllegroToken, String> {
+public interface AllegroTokenRepository extends JpaRepository<AllegroToken, Long> {
 }

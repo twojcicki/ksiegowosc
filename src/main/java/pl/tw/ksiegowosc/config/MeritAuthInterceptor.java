@@ -7,6 +7,7 @@ import java.time.Clock;
 import java.time.ZoneOffset;
 import java.time.format.DateTimeFormatter;
 import java.util.Base64;
+import java.util.function.Supplier;
 
 import javax.crypto.Mac;
 import javax.crypto.spec.SecretKeySpec;
@@ -18,16 +19,18 @@ import org.springframework.http.client.ClientHttpResponse;
 import org.springframework.http.client.support.HttpRequestWrapper;
 import org.springframework.web.util.UriComponentsBuilder;
 
+import pl.tw.ksiegowosc.dto.MeritCredentials;
+
 public class MeritAuthInterceptor implements ClientHttpRequestInterceptor {
 
     private static final DateTimeFormatter TIMESTAMP_FORMAT =
             DateTimeFormatter.ofPattern("yyyyMMddHHmmss").withZone(ZoneOffset.UTC);
 
-    private final MeritApiProperties properties;
+    private final Supplier<MeritCredentials> credentialsSupplier;
     private final Clock clock;
 
-    public MeritAuthInterceptor(MeritApiProperties properties, Clock clock) {
-        this.properties = properties;
+    public MeritAuthInterceptor(Supplier<MeritCredentials> credentialsSupplier, Clock clock) {
+        this.credentialsSupplier = credentialsSupplier;
         this.clock = clock;
     }
 
@@ -36,17 +39,18 @@ public class MeritAuthInterceptor implements ClientHttpRequestInterceptor {
             HttpRequest request,
             byte[] body,
             ClientHttpRequestExecution execution) throws IOException {
+        MeritCredentials credentials = credentialsSupplier.get();
         byte[] payload = body != null ? body : new byte[0];
         String timestamp = TIMESTAMP_FORMAT.format(clock.instant());
         String httpBody = new String(payload, StandardCharsets.UTF_8);
-        String signature = sign(timestamp, httpBody);
+        String signature = sign(credentials.apiId(), credentials.apiKey(), timestamp, httpBody);
 
         URI signedUri = UriComponentsBuilder.fromUri(request.getURI())
                 .queryParam("apiId", "{apiId}")
                 .queryParam("timestamp", "{timestamp}")
                 .queryParam("signature", "{signature}")
                 .encode()
-                .buildAndExpand(properties.apiId(), timestamp, signature)
+                .buildAndExpand(credentials.apiId(), timestamp, signature)
                 .toUri();
 
         HttpRequest signedRequest = new HttpRequestWrapper(request) {
@@ -60,10 +64,15 @@ public class MeritAuthInterceptor implements ClientHttpRequestInterceptor {
     }
 
     public String sign(String timestamp, String httpBody) {
-        String dataToSign = properties.apiId() + timestamp + httpBody;
+        MeritCredentials credentials = credentialsSupplier.get();
+        return sign(credentials.apiId(), credentials.apiKey(), timestamp, httpBody);
+    }
+
+    public static String sign(String apiId, String apiKey, String timestamp, String httpBody) {
+        String dataToSign = apiId + timestamp + httpBody;
         try {
             Mac mac = Mac.getInstance("HmacSHA256");
-            mac.init(new SecretKeySpec(properties.apiKey().getBytes(StandardCharsets.US_ASCII), "HmacSHA256"));
+            mac.init(new SecretKeySpec(apiKey.getBytes(StandardCharsets.US_ASCII), "HmacSHA256"));
             byte[] signatureBytes = mac.doFinal(dataToSign.getBytes(StandardCharsets.UTF_8));
             return Base64.getEncoder().encodeToString(signatureBytes);
         } catch (Exception ex) {

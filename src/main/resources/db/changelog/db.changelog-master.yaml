@@ -9,3 +9,5 @@ databaseChangeLog:
       file: db/changelog/changes/004-allegro-sold-invoice.yaml
   - include:
       file: db/changelog/changes/005-app-user.yaml
+  - include:
+      file: db/changelog/changes/006-user-api-credentials.yaml

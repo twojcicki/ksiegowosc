@@ -27,8 +27,10 @@ public class HttpClientsConfig {
     }
 
     @Bean
-    MeritAuthInterceptor meritAuthInterceptor(MeritApiProperties properties, Clock clock) {
-        return new MeritAuthInterceptor(properties, clock);
+    MeritAuthInterceptor meritAuthInterceptor(
+            pl.tw.ksiegowosc.service.CurrentUserApiCredentialsService credentialsService,
+            Clock clock) {
+        return new MeritAuthInterceptor(credentialsService::requireMeritCredentials, clock);
     }
 
     @Bean

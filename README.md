@@ -13,14 +13,12 @@ Aplikacja pobiera listę faktur sprzedaży z Merit Aktiva (lokalizacja PL) z pod
 
 ## Konfiguracja
 
-Adres API i dane uwierzytelniające są w `src/main/resources/application.yml`.
-Klucze podawaj przez zmienne środowiskowe, bez wpisywania ich do repozytorium:
+Adresy bazowe API są w `src/main/resources/application.yml`.
+**Klucze Merit i Allegro** ustawiasz w UI: **Ustawienia API** (`/ustawienia-api`) — zapis per użytkownik w bazie (bez zmiennych `MERIT_*` / `ALLEGRO_CLIENT_*`).
+
+Opcjonalnie Redirect URI Allegro:
 
 ```bash
-set MERIT_API_ID=twoj-api-id
-set MERIT_API_KEY=twoj-api-key
-set ALLEGRO_CLIENT_ID=twoj-client-id
-set ALLEGRO_CLIENT_SECRET=twoj-client-secret
 set ALLEGRO_REDIRECT_URI=http://localhost:8080/api/allegro/auth/callback
 ```
 
@@ -28,24 +26,20 @@ set ALLEGRO_REDIRECT_URI=http://localhost:8080/api/allegro/auth/callback
 clients:
   merit:
     base-url: https://program.360ksiegowosc.pl/api/v1
-    api-id: ${MERIT_API_ID:change-me}
-    api-key: ${MERIT_API_KEY:change-me}
     v2-base-url: https://program.360ksiegowosc.pl/api/v2
   allegro:
     api-base-url: https://api.allegro.pl.allegrosandbox.pl
     auth-url: https://allegro.pl.allegrosandbox.pl
-    client-id: ${ALLEGRO_CLIENT_ID:change-me}
-    client-secret: ${ALLEGRO_CLIENT_SECRET:change-me}
     redirect-uri: ${ALLEGRO_REDIRECT_URI:http://localhost:8080/api/allegro/auth/callback}
     scopes: allegro:api:sale:offers:read allegro:api:orders:read
 ```
 
-Allegro Sandbox: zarejestruj aplikację na [apps.developer.allegro.pl.allegrosandbox.pl](https://apps.developer.allegro.pl.allegrosandbox.pl/) i ustaw ten sam Redirect URI co w konfiguracji. Połączenie konta: `GET /api/allegro/auth/connect` lub link na stronie `/allegro`.
+Allegro Sandbox: zarejestruj aplikację na [apps.developer.allegro.pl.allegrosandbox.pl](https://apps.developer.allegro.pl.allegrosandbox.pl/) i ustaw ten sam Redirect URI co w konfiguracji. Wpisz Client ID/Secret w Ustawieniach API, potem połącz konto (link na `/ustawienia-api` lub `/allegro`). Przycisk **Usuń powiązanie** kasuje tokeny OAuth użytkownika.
 
 Klient podpisuje każde żądanie HMAC-SHA256 zgodnie z dokumentacją Merit:
-`signature = Base64(HMAC-SHA256(apiId + timestamp + body, apiKey))`.
+`signature = Base64(HMAC-SHA256(apiId + timestamp + body, apiKey))` — klucze z Ustawień API bieżącego użytkownika.
 
-Baza PostgreSQL (status wysyłki e-mail faktur) — lokalnie domyślnie `jdbc:postgresql://localhost:5432/ksiegowosc` (użytkownik/hasło: `ksiegowosc`). Na Renderze ustaw `SPRING_DATASOURCE_URL`, `SPRING_DATASOURCE_USERNAME`, `SPRING_DATASOURCE_PASSWORD` z Managed Postgres.
+Baza PostgreSQL — lokalnie domyślnie `jdbc:postgresql://localhost:5432/ksiegowosc` (użytkownik/hasło: `ksiegowosc`). Na Renderze ustaw `SPRING_DATASOURCE_URL`, `SPRING_DATASOURCE_USERNAME`, `SPRING_DATASOURCE_PASSWORD` z Managed Postgres.
 
 ## Uruchomienie
 
@@ -61,7 +55,7 @@ Aplikacja:
 mvn spring-boot:run
 ```
 
-Aplikacja wystartuje domyślnie na `http://localhost:8080`. UI używa motywu **Aura** i layoutu jak w [vaadin-demo](https://github.com/vaadin/vaadin-demo) (`AppLayout` + `SideNav`): **Faktury** (`/`) i **Allegro** (`/allegro`).
+Aplikacja wystartuje domyślnie na `http://localhost:8080`. UI używa motywu **Aura** i layoutu jak w [vaadin-demo](https://github.com/vaadin/vaadin-demo) (`AppLayout` + `SideNav`): **Faktury** (`/`), **Allegro** (`/allegro`) i **Ustawienia API** (`/ustawienia-api`).
 
 **Logowanie:** widoki wymagają sesji. Startowy użytkownik (seed przy pierwszym uruchomieniu, jeśli brak w DB): login `admin`, hasło `admin` — zmień hasło w produkcji. Wylogowanie: menu avatara w stopce nawigacji.
 
@@ -77,7 +71,7 @@ Zbuduj i uruchom obraz lokalnie:
 
 ```bash
 docker build -t ksiegowosc .
-docker run --rm -p 8080:8080 -e MERIT_API_ID=twoj-api-id -e MERIT_API_KEY=twoj-api-key ksiegowosc
+docker run --rm -p 8080:8080 ksiegowosc
 ```
 
 Aplikacja czyta port ze zmiennej `PORT` (domyślnie `8080`). Render wstrzykuje własne `PORT`.
@@ -87,9 +81,8 @@ Aplikacja czyta port ze zmiennej `PORT` (domyślnie `8080`). Render wstrzykuje w
 1. W Renderze utwórz **Web Service** i podłącz repozytorium GitHub.
 2. Jako runtime wybierz **Docker** (Render wykryje `Dockerfile` w katalogu głównym).
 3. Dodaj sekrety środowiskowe:
-   - `MERIT_API_ID`
-   - `MERIT_API_KEY`
    - `SPRING_DATASOURCE_URL`, `SPRING_DATASOURCE_USERNAME`, `SPRING_DATASOURCE_PASSWORD` (z Render Managed Postgres)
+   - opcjonalnie `ALLEGRO_REDIRECT_URI` (publiczny URL callbacku OAuth)
 
 Obraz budowany jest z profilem Maven `production` (zoptymalizowany frontend Vaadin). Po deployu UI listy faktur będzie pod `/`, Allegro pod `/allegro`, Swagger pod `/swagger-ui.html`, lista REST pod `/api/invoices?from=2026-01-01&to=2026-01-31`, tworzenie faktury pod `POST /api/invoices`, szczegóły pod `/api/invoices/{id}`, wysyłka e-mail pod `POST /api/invoices/{id}/email`, klienci pod `/api/customers`, stawki VAT pod `/api/taxes`, oferty Allegro pod `/api/allegro/offers`, sprzedane zamówienia pod `/api/allegro/sold-items?from=...&to=...`, wystawienie faktury z Allegro pod `POST /api/allegro/sold-items/invoice`.
 

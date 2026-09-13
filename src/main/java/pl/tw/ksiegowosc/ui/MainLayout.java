@@ -68,6 +68,7 @@ public class MainLayout extends AppLayout {
         nav.addThemeVariants(SideNavVariant.AURA_FILLED);
         nav.addItem(new SideNavItem("Faktury", InvoiceListView.class, Lucide.RECEIPT.create()));
         nav.addItem(new SideNavItem("Allegro", AllegroView.class, Lucide.SHOPPING_BAG.create()));
+        nav.addItem(new SideNavItem("Ustawienia API", ApiSettingsView.class, Lucide.SETTINGS.create()));
 
         Scroller scroller = new Scroller();
         scroller.addThemeVariants(ScrollerVariant.OVERFLOW_INDICATORS);

@@ -3,7 +3,9 @@ package pl.tw.ksiegowosc.service;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.hamcrest.Matchers.startsWith;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.lenient;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.client.match.MockRestRequestMatchers.content;
 import static org.springframework.test.web.client.match.MockRestRequestMatchers.header;
@@ -30,23 +32,29 @@ import org.springframework.test.web.client.MockRestServiceServer;
 import org.springframework.web.client.RestClient;
 
 import pl.tw.ksiegowosc.config.AllegroApiProperties;
+import pl.tw.ksiegowosc.dto.AllegroClientCredentials;
 import pl.tw.ksiegowosc.entity.AllegroToken;
+import pl.tw.ksiegowosc.entity.AppUser;
 import pl.tw.ksiegowosc.mapper.MapperFixtures;
 import pl.tw.ksiegowosc.repository.AllegroTokenRepository;
 
 @ExtendWith(MockitoExtension.class)
 class AllegroAuthServiceTest {
 
+    private static final Long USER_ID = 42L;
     private static final AllegroApiProperties PROPERTIES = new AllegroApiProperties(
             "https://api.allegro.pl.allegrosandbox.pl",
             "https://allegro.pl.allegrosandbox.pl",
-            "client-id",
-            "client-secret",
             "http://localhost:8080/api/allegro/auth/callback",
             "allegro:api:sale:offers:read allegro:api:orders:read");
+    private static final AllegroClientCredentials CLIENT =
+            new AllegroClientCredentials("client-id", "client-secret");
 
     @Mock
     private AllegroTokenRepository tokenRepository;
+
+    @Mock
+    private CurrentUserApiCredentialsService credentialsService;
 
     private final AtomicReference<AllegroToken> storedToken = new AtomicReference<>();
     private MockRestServiceServer server;
@@ -55,19 +63,30 @@ class AllegroAuthServiceTest {
 
     @BeforeEach
     void setUp() {
+        lenient().when(credentialsService.requireCurrentUserId()).thenReturn(USER_ID);
+        lenient().when(credentialsService.requireUserById(USER_ID)).thenReturn(new AppUser());
+        lenient().when(credentialsService.requireAllegroClientCredentials()).thenReturn(CLIENT);
+        lenient().when(credentialsService.requireAllegroClientCredentialsForUser(USER_ID)).thenReturn(CLIENT);
+        lenient().when(tokenRepository.existsById(USER_ID))
+                .thenAnswer(invocation -> storedToken.get() != null);
         lenient().when(tokenRepository.save(any(AllegroToken.class))).thenAnswer(invocation -> {
             AllegroToken token = invocation.getArgument(0);
             storedToken.set(token);
             return token;
         });
-        lenient().when(tokenRepository.findById(AllegroToken.SINGLETON_ID))
+        lenient().when(tokenRepository.findById(USER_ID))
                 .thenAnswer(invocation -> Optional.ofNullable(storedToken.get()));
 
         clock = Clock.fixed(Instant.parse("2026-01-15T12:00:00Z"), ZoneOffset.UTC);
         RestClient.Builder builder = RestClient.builder().baseUrl(PROPERTIES.authUrl());
         server = MockRestServiceServer.bindTo(builder).build();
         authService = new AllegroAuthService(
-                PROPERTIES, tokenRepository, builder.build(), MapperFixtures.tokenMapper(), clock);
+                PROPERTIES,
+                tokenRepository,
+                credentialsService,
+                builder.build(),
+                MapperFixtures.tokenMapper(),
+                clock);
     }
 
     @Test
@@ -89,17 +108,18 @@ class AllegroAuthServiceTest {
                         }
                         """, MediaType.APPLICATION_JSON));
 
-        authService.exchangeAuthorizationCode("auth-code");
+        authService.exchangeAuthorizationCode("auth-code", String.valueOf(USER_ID));
 
         assertThat(authService.isConnected()).isTrue();
         assertThat(authService.getValidAccessToken()).isEqualTo("access-1");
+        assertThat(storedToken.get().getUserId()).isEqualTo(USER_ID);
         server.verify();
     }
 
     @Test
     void shouldRefreshExpiredToken() {
         AllegroToken token = new AllegroToken();
-        token.setId(AllegroToken.SINGLETON_ID);
+        token.setUserId(USER_ID);
         token.setAccessToken("old-access");
         token.setRefreshToken("refresh-1");
         token.setExpiresAt(Instant.parse("2026-01-15T11:00:00Z"));
@@ -125,12 +145,24 @@ class AllegroAuthServiceTest {
     }
 
     @Test
-    void shouldBuildAuthorizationUrl() {
+    void shouldBuildAuthorizationUrlWithState() {
         String url = authService.buildAuthorizationUrl();
 
         assertThat(url).startsWith("https://allegro.pl.allegrosandbox.pl/auth/oauth/authorize?");
         assertThat(url).contains("client_id=client-id");
         assertThat(url).contains("redirect_uri=");
         assertThat(url).contains("scope=");
+        assertThat(url).contains("state=42");
+    }
+
+    @Test
+    void shouldDisconnectAndDeleteToken() {
+        AllegroToken token = new AllegroToken();
+        token.setUserId(USER_ID);
+        storedToken.set(token);
+
+        authService.disconnect();
+
+        verify(tokenRepository).deleteById(eq(USER_ID));
     }
 }

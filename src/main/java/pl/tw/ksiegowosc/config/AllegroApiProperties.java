@@ -9,8 +9,6 @@ import org.springframework.validation.annotation.Validated;
 public record AllegroApiProperties(
         @NotBlank String apiBaseUrl,
         @NotBlank String authUrl,
-        @NotBlank String clientId,
-        @NotBlank String clientSecret,
         @NotBlank String redirectUri,
         @NotBlank String scopes
 ) {

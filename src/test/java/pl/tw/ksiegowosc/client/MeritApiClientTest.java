@@ -25,6 +25,7 @@ import org.springframework.web.client.RestClient;
 
 import pl.tw.ksiegowosc.config.MeritApiProperties;
 import pl.tw.ksiegowosc.config.MeritAuthInterceptor;
+import pl.tw.ksiegowosc.dto.MeritCredentials;
 import pl.tw.ksiegowosc.dto.CustomerDto;
 import pl.tw.ksiegowosc.dto.MeritCreateInvoiceCustomer;
 import pl.tw.ksiegowosc.dto.MeritCreateInvoiceItem;
@@ -42,10 +43,9 @@ class MeritApiClientTest {
         Clock clock = Clock.fixed(Instant.parse("2026-08-18T10:00:00Z"), ZoneOffset.UTC);
         MeritApiProperties properties = new MeritApiProperties(
                 "https://program.360ksiegowosc.pl/api/v1",
-                "test-api-id",
-                "test-api-key",
                 "https://program.360ksiegowosc.pl/api/v2");
-        MeritAuthInterceptor interceptor = new MeritAuthInterceptor(properties, clock);
+        MeritAuthInterceptor interceptor = new MeritAuthInterceptor(
+                () -> new MeritCredentials("test-api-id", "test-api-key"), clock);
 
         RestClient.Builder builder = RestClient.builder()
                 .baseUrl(properties.baseUrl())
@@ -90,10 +90,9 @@ class MeritApiClientTest {
         Clock clock = Clock.fixed(Instant.parse("2026-08-18T10:00:00Z"), ZoneOffset.UTC);
         MeritApiProperties properties = new MeritApiProperties(
                 "https://program.360ksiegowosc.pl/api/v1",
-                "test-api-id",
-                "test-api-key",
                 "https://program.360ksiegowosc.pl/api/v2");
-        MeritAuthInterceptor interceptor = new MeritAuthInterceptor(properties, clock);
+        MeritAuthInterceptor interceptor = new MeritAuthInterceptor(
+                () -> new MeritCredentials("test-api-id", "test-api-key"), clock);
 
         RestClient.Builder builder = RestClient.builder()
                 .baseUrl(properties.baseUrl())
@@ -144,10 +143,9 @@ class MeritApiClientTest {
         Clock clock = Clock.fixed(Instant.parse("2026-08-18T10:00:00Z"), ZoneOffset.UTC);
         MeritApiProperties properties = new MeritApiProperties(
                 "https://program.360ksiegowosc.pl/api/v1",
-                "test-api-id",
-                "test-api-key",
                 "https://program.360ksiegowosc.pl/api/v2");
-        MeritAuthInterceptor interceptor = new MeritAuthInterceptor(properties, clock);
+        MeritAuthInterceptor interceptor = new MeritAuthInterceptor(
+                () -> new MeritCredentials("test-api-id", "test-api-key"), clock);
 
         RestClient.Builder builder = RestClient.builder()
                 .baseUrl(properties.v2BaseUrl())
@@ -178,10 +176,9 @@ class MeritApiClientTest {
         Clock clock = Clock.fixed(Instant.parse("2026-08-18T10:00:00Z"), ZoneOffset.UTC);
         MeritApiProperties properties = new MeritApiProperties(
                 "https://program.360ksiegowosc.pl/api/v1",
-                "test-api-id",
-                "test-api-key",
                 "https://program.360ksiegowosc.pl/api/v2");
-        MeritAuthInterceptor interceptor = new MeritAuthInterceptor(properties, clock);
+        MeritAuthInterceptor interceptor = new MeritAuthInterceptor(
+                () -> new MeritCredentials("test-api-id", "test-api-key"), clock);
 
         RestClient.Builder builder = RestClient.builder()
                 .baseUrl(properties.baseUrl())
@@ -254,10 +251,9 @@ class MeritApiClientTest {
         Clock clock = Clock.fixed(Instant.parse("2026-08-18T10:00:00Z"), ZoneOffset.UTC);
         MeritApiProperties properties = new MeritApiProperties(
                 "https://program.360ksiegowosc.pl/api/v1",
-                "test-api-id",
-                "test-api-key",
                 "https://program.360ksiegowosc.pl/api/v2");
-        MeritAuthInterceptor interceptor = new MeritAuthInterceptor(properties, clock);
+        MeritAuthInterceptor interceptor = new MeritAuthInterceptor(
+                () -> new MeritCredentials("test-api-id", "test-api-key"), clock);
 
         RestClient.Builder builder = RestClient.builder()
                 .baseUrl(properties.baseUrl())
@@ -297,10 +293,9 @@ class MeritApiClientTest {
         Clock clock = Clock.fixed(Instant.parse("2026-08-18T10:00:00Z"), ZoneOffset.UTC);
         MeritApiProperties properties = new MeritApiProperties(
                 "https://program.360ksiegowosc.pl/api/v1",
-                "test-api-id",
-                "test-api-key",
                 "https://program.360ksiegowosc.pl/api/v2");
-        MeritAuthInterceptor interceptor = new MeritAuthInterceptor(properties, clock);
+        MeritAuthInterceptor interceptor = new MeritAuthInterceptor(
+                () -> new MeritCredentials("test-api-id", "test-api-key"), clock);
 
         RestClient.Builder builder = RestClient.builder()
                 .baseUrl(properties.baseUrl())
@@ -332,10 +327,9 @@ class MeritApiClientTest {
         Clock clock = Clock.fixed(Instant.parse("2026-08-18T10:00:00Z"), ZoneOffset.UTC);
         MeritApiProperties properties = new MeritApiProperties(
                 "https://program.360ksiegowosc.pl/api/v1",
-                "test-api-id",
-                "test-api-key",
                 "https://program.360ksiegowosc.pl/api/v2");
-        MeritAuthInterceptor interceptor = new MeritAuthInterceptor(properties, clock);
+        MeritAuthInterceptor interceptor = new MeritAuthInterceptor(
+                () -> new MeritCredentials("test-api-id", "test-api-key"), clock);
 
         RestClient.Builder builder = RestClient.builder()
                 .baseUrl(properties.baseUrl())
@@ -366,10 +360,9 @@ class MeritApiClientTest {
         Clock clock = Clock.fixed(Instant.parse("2026-08-18T10:00:00Z"), ZoneOffset.UTC);
         MeritApiProperties properties = new MeritApiProperties(
                 "https://program.360ksiegowosc.pl/api/v1",
-                "test-api-id",
-                "test-api-key",
                 "https://program.360ksiegowosc.pl/api/v2");
-        MeritAuthInterceptor interceptor = new MeritAuthInterceptor(properties, clock);
+        MeritAuthInterceptor interceptor = new MeritAuthInterceptor(
+                () -> new MeritCredentials("test-api-id", "test-api-key"), clock);
 
         RestClient.Builder v2Builder = RestClient.builder()
                 .baseUrl(properties.v2BaseUrl())
@@ -424,10 +417,9 @@ class MeritApiClientTest {
         Clock clock = Clock.fixed(Instant.parse("2026-08-18T10:00:00Z"), ZoneOffset.UTC);
         MeritApiProperties properties = new MeritApiProperties(
                 "https://program.360ksiegowosc.pl/api/v1",
-                "test-api-id",
-                "test-api-key",
                 "https://program.360ksiegowosc.pl/api/v2");
-        MeritAuthInterceptor interceptor = new MeritAuthInterceptor(properties, clock);
+        MeritAuthInterceptor interceptor = new MeritAuthInterceptor(
+                () -> new MeritCredentials("test-api-id", "test-api-key"), clock);
 
         RestClient.Builder builder = RestClient.builder()
                 .baseUrl(properties.baseUrl())
@@ -475,10 +467,9 @@ class MeritApiClientTest {
         Clock clock = Clock.fixed(Instant.parse("2026-08-18T10:00:00Z"), ZoneOffset.UTC);
         MeritApiProperties properties = new MeritApiProperties(
                 "https://program.360ksiegowosc.pl/api/v1",
-                "test-api-id",
-                "test-api-key",
                 "https://program.360ksiegowosc.pl/api/v2");
-        MeritAuthInterceptor interceptor = new MeritAuthInterceptor(properties, clock);
+        MeritAuthInterceptor interceptor = new MeritAuthInterceptor(
+                () -> new MeritCredentials("test-api-id", "test-api-key"), clock);
 
         RestClient.Builder builder = RestClient.builder()
                 .baseUrl(properties.baseUrl())
