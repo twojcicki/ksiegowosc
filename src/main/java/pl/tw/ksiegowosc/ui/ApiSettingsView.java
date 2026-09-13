@@ -2,11 +2,11 @@ package pl.tw.ksiegowosc.ui;
 
 import org.springframework.web.server.ResponseStatusException;
 
+import com.vaadin.flow.component.UI;
 import com.vaadin.flow.component.applayout.DrawerToggle;
 import com.vaadin.flow.component.button.Button;
 import com.vaadin.flow.component.button.ButtonVariant;
 import com.vaadin.flow.component.formlayout.FormLayout;
-import com.vaadin.flow.component.html.Anchor;
 import com.vaadin.flow.component.html.H1;
 import com.vaadin.flow.component.html.H3;
 import com.vaadin.flow.component.html.Paragraph;
@@ -85,13 +85,12 @@ public class ApiSettingsView extends View {
         Button saveAllegro = new Button("Zapisz Allegro", event -> saveAllegro());
         saveAllegro.addThemeVariants(ButtonVariant.LUMO_PRIMARY);
 
-        Anchor connectLink = new Anchor("/api/allegro/auth/connect", "Połącz z Allegro");
-        connectLink.getElement().setAttribute("router-ignore", true);
+        Button connectButton = new Button("Połącz z Allegro", event -> connectAllegro());
 
         disconnectButton.addThemeVariants(ButtonVariant.LUMO_ERROR, ButtonVariant.LUMO_TERTIARY);
         disconnectButton.addClickListener(event -> disconnectAllegro());
 
-        HorizontalLayout allegroActions = new HorizontalLayout(saveAllegro, connectLink, disconnectButton);
+        HorizontalLayout allegroActions = new HorizontalLayout(saveAllegro, connectButton, disconnectButton);
         allegroActions.setAlignItems(com.vaadin.flow.component.orderedlayout.FlexComponent.Alignment.CENTER);
 
         FormLayout allegroForm = new FormLayout(allegroClientId, allegroClientSecret);
@@ -150,6 +149,16 @@ public class ApiSettingsView extends View {
             Notifications.show(reason(ex), NotificationVariant.ERROR);
         } catch (RuntimeException ex) {
             Notifications.show("Nie udało się zapisać ustawień Allegro.", NotificationVariant.ERROR);
+        }
+    }
+
+    private void connectAllegro() {
+        try {
+            UI.getCurrent().getPage().setLocation(allegroAuthService.buildAuthorizationUrl());
+        } catch (ResponseStatusException ex) {
+            Notifications.show(reason(ex), NotificationVariant.ERROR);
+        } catch (RuntimeException ex) {
+            Notifications.show("Nie udało się rozpocząć połączenia z Allegro.", NotificationVariant.ERROR);
         }
     }
 

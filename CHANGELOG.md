@@ -4,6 +4,10 @@ Format oparty na [Keep a Changelog](https://keepachangelog.com/pl/1.1.0/).
 
 ## [Unreleased]
 
+### Fixed
+
+- OAuth Allegro: dostęp do `/api/**` dla zalogowanych użytkowników (Vaadin `denyAll` dawał 403 na „Połącz z Allegro”).
+
 ### Added
 
 - Ustawienia API per użytkownik (Merit Api Id/Key, Allegro Client ID/Secret w DB; Usuń powiązanie Allegro).

@@ -18,8 +18,12 @@ public class SecurityConfig {
 
     @Bean
     SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
+        // VaadinSecurityConfigurer defaults to denyAll for non-Vaadin URLs — allow REST for logged-in users.
         http.authorizeHttpRequests(auth -> auth
-                .requestMatchers("/api/allegro/auth/callback").permitAll());
+                .requestMatchers("/api/allegro/auth/callback").permitAll()
+                .requestMatchers("/api/**").authenticated()
+                .requestMatchers("/swagger-ui/**", "/v3/api-docs/**", "/v3/api-docs").permitAll());
+        http.csrf(csrf -> csrf.ignoringRequestMatchers("/api/**"));
         http.with(VaadinSecurityConfigurer.vaadin(), configurer -> configurer.loginView(LoginView.class));
         return http.build();
     }

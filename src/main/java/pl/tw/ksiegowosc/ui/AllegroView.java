@@ -11,13 +11,13 @@ import java.util.Locale;
 import org.springframework.web.client.RestClientResponseException;
 import org.springframework.web.server.ResponseStatusException;
 
+import com.vaadin.flow.component.UI;
 import com.vaadin.flow.component.applayout.DrawerToggle;
 import com.vaadin.flow.component.button.Button;
 import com.vaadin.flow.component.button.ButtonVariant;
 import com.vaadin.flow.component.datepicker.DatePicker;
 import com.vaadin.flow.component.grid.Grid;
 import com.vaadin.flow.component.grid.GridVariant;
-import com.vaadin.flow.component.html.Anchor;
 import com.vaadin.flow.component.html.Div;
 import com.vaadin.flow.component.html.H1;
 import com.vaadin.flow.component.html.Paragraph;
@@ -236,13 +236,23 @@ public class AllegroView extends View {
         connectBanner.addClassName("banner");
 
         if (!connected) {
-            Anchor connectLink = new Anchor("/api/allegro/auth/connect", "Połącz z Allegro");
-            connectLink.getElement().setAttribute("router-ignore", true);
+            Button connectButton = new Button("Połącz z Allegro", event -> connectAllegro());
+            connectButton.addThemeVariants(ButtonVariant.LUMO_PRIMARY);
             connectBanner.add(
                     new Paragraph("Konto Allegro nie jest połączone. Kliknij poniżej, aby autoryzować aplikację w Sandbox."),
-                    connectLink);
+                    connectButton);
         } else {
             loadOffers();
+        }
+    }
+
+    private void connectAllegro() {
+        try {
+            UI.getCurrent().getPage().setLocation(authService.buildAuthorizationUrl());
+        } catch (ResponseStatusException ex) {
+            showError(reason(ex));
+        } catch (RuntimeException ex) {
+            showError("Nie udało się rozpocząć połączenia z Allegro.");
         }
     }
 
