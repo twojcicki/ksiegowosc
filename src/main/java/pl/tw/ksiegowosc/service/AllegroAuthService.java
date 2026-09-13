@@ -17,6 +17,7 @@ import org.springframework.util.LinkedMultiValueMap;
 import org.springframework.util.MultiValueMap;
 import org.springframework.web.client.RestClient;
 import org.springframework.web.server.ResponseStatusException;
+import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
 
 import pl.tw.ksiegowosc.config.AllegroApiProperties;
 import pl.tw.ksiegowosc.dto.AllegroClientCredentials;
@@ -62,9 +63,30 @@ public class AllegroAuthService {
         return properties.authUrl()
                 + "/auth/oauth/authorize?response_type=code"
                 + "&client_id=" + encode(client.clientId())
-                + "&redirect_uri=" + encode(properties.redirectUri())
+                + "&redirect_uri=" + encode(resolveRedirectUri())
                 + "&scope=" + encode(properties.scopes())
                 + "&state=" + encode(String.valueOf(userId));
+    }
+
+    /**
+     * Redirect URI must match the one registered in Allegro Developer Apps exactly.
+     * Prefer {@code ALLEGRO_REDIRECT_URI}; otherwise derive from the current request (Render-friendly).
+     */
+    public String resolveRedirectUri() {
+        String configured = properties.redirectUri();
+        if (configured != null && !configured.isBlank()) {
+            return configured.trim();
+        }
+        try {
+            return ServletUriComponentsBuilder.fromCurrentContextPath()
+                    .path("/api/allegro/auth/callback")
+                    .build()
+                    .toUriString();
+        } catch (IllegalStateException ex) {
+            throw new ResponseStatusException(
+                    HttpStatus.BAD_REQUEST,
+                    "Ustaw zmienną ALLEGRO_REDIRECT_URI (brak kontekstu HTTP do auto-wykrycia callbacku).");
+        }
     }
 
     @Transactional
@@ -76,7 +98,7 @@ public class AllegroAuthService {
         MultiValueMap<String, String> form = new LinkedMultiValueMap<>();
         form.add("grant_type", "authorization_code");
         form.add("code", code);
-        form.add("redirect_uri", properties.redirectUri());
+        form.add("redirect_uri", resolveRedirectUri());
         saveToken(userId, requestToken(client, form));
     }
 
@@ -144,6 +166,7 @@ public class AllegroAuthService {
     }
 
     private static String encode(String value) {
-        return URLEncoder.encode(value, StandardCharsets.UTF_8);
+        // OAuth query params should use %20, not + (Allegro rejects mismatched encoding).
+        return URLEncoder.encode(value, StandardCharsets.UTF_8).replace("+", "%20");
     }
 }

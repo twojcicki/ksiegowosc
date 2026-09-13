@@ -16,10 +16,10 @@ Aplikacja pobiera listę faktur sprzedaży z Merit Aktiva (lokalizacja PL) z pod
 Adresy bazowe API są w `src/main/resources/application.yml`.
 **Klucze Merit i Allegro** ustawiasz w UI: **Ustawienia API** (`/ustawienia-api`) — zapis per użytkownik w bazie (bez zmiennych `MERIT_*` / `ALLEGRO_CLIENT_*`).
 
-Opcjonalnie Redirect URI Allegro:
+**Redirect URI Allegro** musi być **identyczny** w aplikacji Allegro Sandbox i w naszej appce. Domyślnie (puste `ALLEGRO_REDIRECT_URI`) callback jest wyliczany z aktualnego hosta, np. `https://ksiegowosc-a0yu.onrender.com/api/allegro/auth/callback`. Opcjonalnie nadpisz:
 
 ```bash
-set ALLEGRO_REDIRECT_URI=http://localhost:8080/api/allegro/auth/callback
+set ALLEGRO_REDIRECT_URI=https://ksiegowosc-a0yu.onrender.com/api/allegro/auth/callback
 ```
 
 ```yaml
@@ -30,11 +30,11 @@ clients:
   allegro:
     api-base-url: https://api.allegro.pl.allegrosandbox.pl
     auth-url: https://allegro.pl.allegrosandbox.pl
-    redirect-uri: ${ALLEGRO_REDIRECT_URI:http://localhost:8080/api/allegro/auth/callback}
+    redirect-uri: ${ALLEGRO_REDIRECT_URI:}
     scopes: allegro:api:sale:offers:read allegro:api:orders:read
 ```
 
-Allegro Sandbox: zarejestruj aplikację na [apps.developer.allegro.pl.allegrosandbox.pl](https://apps.developer.allegro.pl.allegrosandbox.pl/) i ustaw ten sam Redirect URI co w konfiguracji. Wpisz Client ID/Secret w Ustawieniach API, potem połącz konto (link na `/ustawienia-api` lub `/allegro`). Przycisk **Usuń powiązanie** kasuje tokeny OAuth użytkownika.
+Allegro Sandbox: zarejestruj aplikację na [apps.developer.allegro.pl.allegrosandbox.pl](https://apps.developer.allegro.pl.allegrosandbox.pl/), wklej **Redirect URI** widoczny w Ustawieniach API, zapisz Client ID/Secret w UI, potem **Połącz z Allegro**. Przycisk **Usuń powiązanie** kasuje tokeny OAuth użytkownika.
 
 Klient podpisuje każde żądanie HMAC-SHA256 zgodnie z dokumentacją Merit:
 `signature = Base64(HMAC-SHA256(apiId + timestamp + body, apiKey))` — klucze z Ustawień API bieżącego użytkownika.
@@ -82,7 +82,8 @@ Aplikacja czyta port ze zmiennej `PORT` (domyślnie `8080`). Render wstrzykuje w
 2. Jako runtime wybierz **Docker** (Render wykryje `Dockerfile` w katalogu głównym).
 3. Dodaj sekrety środowiskowe:
    - `SPRING_DATASOURCE_URL`, `SPRING_DATASOURCE_USERNAME`, `SPRING_DATASOURCE_PASSWORD` (z Render Managed Postgres)
-   - opcjonalnie `ALLEGRO_REDIRECT_URI` (publiczny URL callbacku OAuth)
+   - opcjonalnie `ALLEGRO_REDIRECT_URI` (np. `https://<twoja-usługa>.onrender.com/api/allegro/auth/callback`); bez niej callback jest auto-wykrywany z hosta
+4. W Allegro Sandbox Developer Apps ustaw **ten sam** Redirect URI co pokazuje Ustawienia API.
 
 Obraz budowany jest z profilem Maven `production` (zoptymalizowany frontend Vaadin). Po deployu UI listy faktur będzie pod `/`, Allegro pod `/allegro`, Swagger pod `/swagger-ui.html`, lista REST pod `/api/invoices?from=2026-01-01&to=2026-01-31`, tworzenie faktury pod `POST /api/invoices`, szczegóły pod `/api/invoices/{id}`, wysyłka e-mail pod `POST /api/invoices/{id}/email`, klienci pod `/api/customers`, stawki VAT pod `/api/taxes`, oferty Allegro pod `/api/allegro/offers`, sprzedane zamówienia pod `/api/allegro/sold-items?from=...&to=...`, wystawienie faktury z Allegro pod `POST /api/allegro/sold-items/invoice`.
 

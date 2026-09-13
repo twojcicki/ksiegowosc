@@ -7,6 +7,7 @@ Format oparty na [Keep a Changelog](https://keepachangelog.com/pl/1.1.0/).
 ### Fixed
 
 - OAuth Allegro: dostęp do `/api/**` dla zalogowanych użytkowników (Vaadin `denyAll` dawał 403 na „Połącz z Allegro”).
+- OAuth Allegro: auto Redirect URI z hosta (bez `localhost` na Render) + podpowiedź URI w Ustawieniach API.
 
 ### Added
 

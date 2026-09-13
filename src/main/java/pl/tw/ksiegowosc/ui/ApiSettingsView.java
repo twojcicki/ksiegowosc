@@ -93,12 +93,23 @@ public class ApiSettingsView extends View {
         HorizontalLayout allegroActions = new HorizontalLayout(saveAllegro, connectButton, disconnectButton);
         allegroActions.setAlignItems(com.vaadin.flow.component.orderedlayout.FlexComponent.Alignment.CENTER);
 
+        Span redirectUriHint = new Span();
+        redirectUriHint.getStyle().set("font-size", "var(--lumo-font-size-s)");
+        redirectUriHint.getStyle().set("word-break", "break-all");
+        try {
+            redirectUriHint.setText("Redirect URI (wpisz dokładnie to samo w Allegro Sandbox Developer Apps): "
+                    + allegroAuthService.resolveRedirectUri());
+        } catch (RuntimeException ex) {
+            redirectUriHint.setText("Redirect URI: ustaw ALLEGRO_REDIRECT_URI na Render.");
+        }
+
         FormLayout allegroForm = new FormLayout(allegroClientId, allegroClientSecret);
         allegroForm.setResponsiveSteps(new FormLayout.ResponsiveStep("0", 1));
         VerticalLayout allegroSection = new VerticalLayout(
                 new H3("Allegro"),
-                new Paragraph("Client ID i Client Secret aplikacji Allegro Sandbox. Redirect URI konfigurujesz w application.yml."),
+                new Paragraph("Client ID i Client Secret z apps.developer.allegro.pl.allegrosandbox.pl."),
                 allegroForm,
+                redirectUriHint,
                 allegroStatus,
                 allegroActions);
         allegroSection.setPadding(false);

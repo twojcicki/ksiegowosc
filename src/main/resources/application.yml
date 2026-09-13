@@ -14,6 +14,7 @@ spring:
 
 server:
   port: ${PORT:8080}
+  forward-headers-strategy: framework
 
 vaadin:
   launch-browser: false
@@ -26,5 +27,6 @@ clients:
   allegro:
     api-base-url: https://api.allegro.pl.allegrosandbox.pl
     auth-url: https://allegro.pl.allegrosandbox.pl
-    redirect-uri: ${ALLEGRO_REDIRECT_URI:http://localhost:8080/api/allegro/auth/callback}
+    # Empty = auto from request host (e.g. https://…onrender.com/api/allegro/auth/callback)
+    redirect-uri: ${ALLEGRO_REDIRECT_URI:}
     scopes: allegro:api:sale:offers:read allegro:api:orders:read

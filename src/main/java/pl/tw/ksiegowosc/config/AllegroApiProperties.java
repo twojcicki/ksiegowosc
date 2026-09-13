@@ -9,7 +9,8 @@ import org.springframework.validation.annotation.Validated;
 public record AllegroApiProperties(
         @NotBlank String apiBaseUrl,
         @NotBlank String authUrl,
-        @NotBlank String redirectUri,
+        /** Empty = derive from current request (needed on Render without env). */
+        String redirectUri,
         @NotBlank String scopes
 ) {
 }

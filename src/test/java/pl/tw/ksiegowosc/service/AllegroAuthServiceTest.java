@@ -150,9 +150,11 @@ class AllegroAuthServiceTest {
 
         assertThat(url).startsWith("https://allegro.pl.allegrosandbox.pl/auth/oauth/authorize?");
         assertThat(url).contains("client_id=client-id");
-        assertThat(url).contains("redirect_uri=");
-        assertThat(url).contains("scope=");
+        assertThat(url).contains("redirect_uri=http%3A%2F%2Flocalhost%3A8080%2Fapi%2Fallegro%2Fauth%2Fcallback");
+        assertThat(url).contains("scope=allegro%3Aapi%3Asale%3Aoffers%3Aread%20allegro%3Aapi%3Aorders%3Aread");
         assertThat(url).contains("state=42");
+        assertThat(authService.resolveRedirectUri())
+                .isEqualTo("http://localhost:8080/api/allegro/auth/callback");
     }
 
     @Test
