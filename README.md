@@ -41,6 +41,8 @@ Klient podpisuje każde żądanie HMAC-SHA256 zgodnie z dokumentacją Merit:
 
 Baza PostgreSQL — lokalnie domyślnie `jdbc:postgresql://localhost:5432/ksiegowosc` (użytkownik/hasło: `ksiegowosc`). Na Renderze ustaw `SPRING_DATASOURCE_URL`, `SPRING_DATASOURCE_USERNAME`, `SPRING_DATASOURCE_PASSWORD` z Managed Postgres.
 
+Migracje Liquibase: master w `db/changelog/db.changelog-master.yaml`, schemat startowy w `changes/000-baseline.sql` (formatted SQL). Kolejne changeSety dodawaj jako `changes/007-opis.sql` (`--liquibase formatted sql` + `--changeset ksiegowosc:007-opis`) i dopisz `include` w masterze. Po przejściu na SQL baseline istniejąca baza wymaga resetu (drop tabel aplikacji oraz `databasechangelog` / `databasechangeloglock`, albo drop całego schematu/DB) przed startem.
+
 ## Uruchomienie
 
 Lokalna baza:

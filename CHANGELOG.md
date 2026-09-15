@@ -17,6 +17,7 @@ Format oparty na [Keep a Changelog](https://keepachangelog.com/pl/1.1.0/).
 
 ### Changed
 
+- Liquibase: historia YAML 001–006 zwinięta do `000-baseline.sql`; kolejne migracje tylko jako formatted SQL (`007-….sql` + include w masterze). **Wymaga resetu DB** (drop schematu / tabel + `databasechangelog*`).
 - Wybór stawki VAT z Merit: preferencja `Code` równego procentowi (np. `23`), pomijanie stawek zakupowych przy fakturze sprzedaży.
 - Formularz „Dodaj fakturę”: wiele pozycji (tabela + dialog szczegółów); kwota netto i VAT faktury sumowane z pozycji.
 - MapStruct: mapowania Allegro→faktura, checkout/oferty→DTO, CreateInvoice→Merit oraz token/sold-invoice→entity w pakiecie `mapper`.
