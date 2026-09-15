@@ -29,6 +29,9 @@ public class AllegroAccount {
     @Column(name = "client_secret", nullable = false, length = 500)
     private String clientSecret;
 
+    @Column(name = "invoice_prefix", nullable = false, length = 20)
+    private String invoicePrefix;
+
     @Column(name = "created_at", nullable = false)
     private Instant createdAt;
 
@@ -73,6 +76,14 @@ public class AllegroAccount {
 
     public void setClientSecret(String clientSecret) {
         this.clientSecret = clientSecret;
+    }
+
+    public String getInvoicePrefix() {
+        return invoicePrefix;
+    }
+
+    public void setInvoicePrefix(String invoicePrefix) {
+        this.invoicePrefix = invoicePrefix;
     }
 
     public Instant getCreatedAt() {

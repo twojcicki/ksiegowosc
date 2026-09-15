@@ -9,6 +9,7 @@ import static org.mockito.Mockito.when;
 
 import java.time.Clock;
 import java.time.Instant;
+import java.time.LocalDate;
 import java.time.ZoneOffset;
 import java.util.List;
 import java.util.Optional;
@@ -25,6 +26,7 @@ class AllegroAccountServiceTest {
 
     private AllegroAccountRepository accountRepository;
     private AllegroTokenRepository tokenRepository;
+    private InvoicesService invoicesService;
     private CurrentUserApiCredentialsService credentialsService;
     private AllegroAccountService service;
 
@@ -32,17 +34,19 @@ class AllegroAccountServiceTest {
     void setUp() {
         accountRepository = mock(AllegroAccountRepository.class);
         tokenRepository = mock(AllegroTokenRepository.class);
+        invoicesService = mock(InvoicesService.class);
         credentialsService = mock(CurrentUserApiCredentialsService.class);
         when(credentialsService.requireCurrentUserId()).thenReturn(3L);
         service = new AllegroAccountService(
                 accountRepository,
                 tokenRepository,
+                invoicesService,
                 credentialsService,
                 Clock.fixed(Instant.parse("2026-09-15T10:00:00Z"), ZoneOffset.UTC));
     }
 
     @Test
-    void shouldAddAccount() {
+    void shouldAddAccountWithInvoicePrefix() {
         when(accountRepository.existsByUserIdAndClientId(3L, "cid")).thenReturn(false);
         when(accountRepository.save(any(AllegroAccount.class))).thenAnswer(inv -> {
             AllegroAccount account = inv.getArgument(0);
@@ -50,11 +54,12 @@ class AllegroAccountServiceTest {
             return account;
         });
 
-        var dto = service.addAccount("Sklep", "cid", "secret");
+        var dto = service.addAccount("Sklep", "cid", "secret", "FS");
 
         assertThat(dto.id()).isEqualTo(11L);
         assertThat(dto.name()).isEqualTo("Sklep");
         assertThat(dto.clientId()).isEqualTo("cid");
+        assertThat(dto.invoicePrefix()).isEqualTo("FS");
         assertThat(dto.connected()).isFalse();
         verify(accountRepository).save(any(AllegroAccount.class));
     }
@@ -63,35 +68,59 @@ class AllegroAccountServiceTest {
     void shouldRejectDuplicateClientId() {
         when(accountRepository.existsByUserIdAndClientId(3L, "cid")).thenReturn(true);
 
-        assertThatThrownBy(() -> service.addAccount("Sklep", "cid", "secret"))
+        assertThatThrownBy(() -> service.addAccount("Sklep", "cid", "secret", "FS"))
                 .isInstanceOf(ResponseStatusException.class)
                 .hasMessageContaining("już istnieje");
     }
 
     @Test
+    void shouldRejectBlankInvoicePrefix() {
+        assertThatThrownBy(() -> service.addAccount("Sklep", "cid", "secret", "  "))
+                .isInstanceOf(ResponseStatusException.class)
+                .hasMessageContaining("prefiks");
+    }
+
+    @Test
     void shouldListAccountsWithConnectionFlag() {
+        AllegroAccount account = ownedAccount();
+        when(accountRepository.findByUserIdOrderByNameAsc(3L)).thenReturn(List.of(account));
+        when(tokenRepository.findAllById(List.of(11L))).thenReturn(List.of());
+
+        assertThat(service.listAccounts()).hasSize(1);
+        assertThat(service.listAccounts().getFirst().connected()).isFalse();
+        assertThat(service.listAccounts().getFirst().invoicePrefix()).isEqualTo("FS");
+    }
+
+    @Test
+    void shouldDeleteOwnedAccount() {
+        AllegroAccount account = ownedAccount();
+        when(accountRepository.findByIdAndUserId(11L, 3L)).thenReturn(Optional.of(account));
+
+        service.deleteAccount(11L);
+
+        verify(accountRepository).delete(account);
+    }
+
+    @Test
+    void shouldAllocateInvoiceNoFromMerit() {
+        when(accountRepository.findByIdAndUserId(11L, 3L)).thenReturn(Optional.of(ownedAccount()));
+        when(invoicesService.nextInvoiceNoFromMerit("FS", LocalDate.of(2026, 9, 6)))
+                .thenReturn("FS/5/09/2026");
+
+        String invoiceNo = service.allocateInvoiceNo(11L, LocalDate.of(2026, 9, 6));
+
+        assertThat(invoiceNo).isEqualTo("FS/5/09/2026");
+        verify(invoicesService).nextInvoiceNoFromMerit("FS", LocalDate.of(2026, 9, 6));
+    }
+
+    private static AllegroAccount ownedAccount() {
         AllegroAccount account = new AllegroAccount();
         account.setId(11L);
         account.setUserId(3L);
         account.setName("Sklep");
         account.setClientId("cid");
         account.setClientSecret("secret");
-        when(accountRepository.findByUserIdOrderByNameAsc(3L)).thenReturn(List.of(account));
-        when(tokenRepository.findAllById(List.of(11L))).thenReturn(List.of());
-
-        assertThat(service.listAccounts()).hasSize(1);
-        assertThat(service.listAccounts().getFirst().connected()).isFalse();
-    }
-
-    @Test
-    void shouldDeleteOwnedAccount() {
-        AllegroAccount account = new AllegroAccount();
-        account.setId(11L);
-        account.setUserId(3L);
-        when(accountRepository.findByIdAndUserId(11L, 3L)).thenReturn(Optional.of(account));
-
-        service.deleteAccount(11L);
-
-        verify(accountRepository).delete(account);
+        account.setInvoicePrefix("FS");
+        return account;
     }
 }

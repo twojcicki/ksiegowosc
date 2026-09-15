@@ -3,3 +3,7 @@ databaseChangeLog:
       file: db/changelog/changes/000-baseline.sql
   - include:
       file: db/changelog/changes/007-allegro-accounts.sql
+  - include:
+      file: db/changelog/changes/008-allegro-invoice-prefix.sql
+  - include:
+      file: db/changelog/changes/009-drop-allegro-invoice-sequence.sql

@@ -1,6 +1,7 @@
 package pl.tw.ksiegowosc.mapper;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -13,21 +14,35 @@ import pl.tw.ksiegowosc.dto.allegro.AllegroOfferReference;
 class AllegroInvoiceMappingSupportTest {
 
     @Test
-    void shouldBuildInvoiceNoWithinMeritLimit() {
-        String orderId = "a1b2c3d4-e5f6-7890-abcd-ef1234567890";
-        String invoiceNo = AllegroInvoiceMappingSupport.buildInvoiceNo(orderId, LocalDate.of(2026, 9, 6));
+    void shouldBuildInvoiceNoAsPrefixSequenceMonthYear() {
+        String invoiceNo = AllegroInvoiceMappingSupport.buildInvoiceNo("FS", 5, LocalDate.of(2026, 9, 6));
 
-        assertThat(invoiceNo).isEqualTo("a1b2c3d4e5f67890abcdef12345/09/2026");
-        assertThat(invoiceNo.length()).isEqualTo(35);
+        assertThat(invoiceNo).isEqualTo("FS/5/09/2026");
     }
 
     @Test
-    void shouldTruncateLongOrderIdInInvoiceNo() {
-        String orderId = "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee-ffff";
-        String invoiceNo = AllegroInvoiceMappingSupport.buildInvoiceNo(orderId, LocalDate.of(2026, 1, 15));
+    void shouldKeepUnpaddedSequenceAndPaddedMonth() {
+        String invoiceNo = AllegroInvoiceMappingSupport.buildInvoiceNo("AL", 1, LocalDate.of(2026, 1, 15));
 
-        assertThat(invoiceNo).endsWith("/01/2026");
-        assertThat(invoiceNo.length()).isEqualTo(35);
+        assertThat(invoiceNo).isEqualTo("AL/1/01/2026");
+    }
+
+    @Test
+    void shouldComputeNextSequenceAsInvoiceCountPlusOne() {
+        assertThat(AllegroInvoiceMappingSupport.nextSequenceNumber(3)).isEqualTo(4);
+    }
+
+    @Test
+    void shouldStartFromOneWhenNoInvoicesInMonth() {
+        assertThat(AllegroInvoiceMappingSupport.nextSequenceNumber(0)).isEqualTo(1);
+    }
+
+    @Test
+    void shouldRejectInvoiceNoExceedingMeritLimit() {
+        assertThatThrownBy(() -> AllegroInvoiceMappingSupport.buildInvoiceNo(
+                        "VERYLONGPREFIXABCDEFGH", 123456789, LocalDate.of(2026, 12, 1)))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("35");
     }
 
     @Test

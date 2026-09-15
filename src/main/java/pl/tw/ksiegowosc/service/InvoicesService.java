@@ -24,6 +24,7 @@ import pl.tw.ksiegowosc.dto.SalesInvoiceDetailsDto;
 import pl.tw.ksiegowosc.dto.SalesInvoiceDto;
 import pl.tw.ksiegowosc.dto.SendInvoiceEmailResponse;
 import pl.tw.ksiegowosc.entity.InvoiceEmailStatus;
+import pl.tw.ksiegowosc.mapper.AllegroInvoiceMappingSupport;
 import pl.tw.ksiegowosc.mapper.MeritInvoiceMapper;
 import pl.tw.ksiegowosc.repository.InvoiceEmailStatusRepository;
 
@@ -83,6 +84,33 @@ public class InvoicesService {
                     ? ex.getStatusCode()
                     : HttpStatus.BAD_GATEWAY;
             throw new ResponseStatusException(status, MeritErrorMessages.from(ex), ex);
+        }
+    }
+
+    public String nextInvoiceNoFromMerit(String prefix, LocalDate docDate) {
+        if (prefix == null || prefix.isBlank()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Podaj prefiks faktury.");
+        }
+        if (docDate == null) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Podaj datę dokumentu faktury.");
+        }
+        LocalDate from = docDate.withDayOfMonth(1);
+        LocalDate to = docDate.withDayOfMonth(docDate.lengthOfMonth());
+        List<SalesInvoiceDto> invoices;
+        try {
+            invoices = meritApiClient.getInvoices(from, to);
+        } catch (RestClientResponseException ex) {
+            HttpStatusCode status = ex.getStatusCode().is4xxClientError()
+                    ? ex.getStatusCode()
+                    : HttpStatus.BAD_GATEWAY;
+            throw new ResponseStatusException(status, MeritErrorMessages.from(ex), ex);
+        }
+        int count = invoices == null ? 0 : invoices.size();
+        int next = AllegroInvoiceMappingSupport.nextSequenceNumber(count);
+        try {
+            return AllegroInvoiceMappingSupport.buildInvoiceNo(prefix.trim(), next, docDate);
+        } catch (IllegalArgumentException ex) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Nie udało się zbudować numeru faktury.", ex);
         }
     }
 

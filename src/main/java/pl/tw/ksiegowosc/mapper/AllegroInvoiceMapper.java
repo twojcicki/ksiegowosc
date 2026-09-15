@@ -143,8 +143,8 @@ public abstract class AllegroInvoiceMapper {
         return new BigDecimal(tax.rate().trim());
     }
 
-    public String buildInvoiceNo(String orderId, LocalDate docDate) {
-        return AllegroInvoiceMappingSupport.buildInvoiceNo(orderId, docDate);
+    public String buildInvoiceNo(String prefix, int sequenceNumber, LocalDate docDate) {
+        return AllegroInvoiceMappingSupport.buildInvoiceNo(prefix, sequenceNumber, docDate);
     }
 
     public BigDecimal toNet(BigDecimal gross, BigDecimal vatRate) {

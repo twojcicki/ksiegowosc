@@ -46,6 +46,7 @@ class AllegroInvoiceServiceTest {
 
     private AllegroApiClient allegroApiClient;
     private AllegroAuthService authService;
+    private AllegroAccountService accountService;
     private CustomersService customersService;
     private InvoicesService invoicesService;
     private TaxesService taxesService;
@@ -57,6 +58,7 @@ class AllegroInvoiceServiceTest {
     void setUp() {
         allegroApiClient = mock(AllegroApiClient.class);
         authService = mock(AllegroAuthService.class);
+        accountService = mock(AllegroAccountService.class);
         customersService = mock(CustomersService.class);
         invoicesService = mock(InvoicesService.class);
         taxesService = mock(TaxesService.class);
@@ -65,9 +67,11 @@ class AllegroInvoiceServiceTest {
         Clock clock = Clock.fixed(Instant.parse("2026-09-06T12:00:00Z"), ZoneOffset.UTC);
         when(taxesService.listTaxes()).thenReturn(MapperFixtures.sampleTaxes());
         when(unitsService.requireDefaultUnit()).thenReturn(new MeritUnitDto("SZT", "szt."));
+        when(accountService.allocateInvoiceNo(any(), any())).thenReturn("FS/1/01/2026");
         invoiceService = new AllegroInvoiceService(
                 allegroApiClient,
                 authService,
+                accountService,
                 customersService,
                 invoicesService,
                 taxesService,
@@ -90,7 +94,7 @@ class AllegroInvoiceServiceTest {
 
         var response = invoiceService.issueInvoice(9L, "order-1");
 
-        assertThat(response.invoiceNo()).isEqualTo("order1/01/2026");
+        assertThat(response.invoiceNo()).isEqualTo("FS/1/01/2026");
         assertThat(response.meritInvoiceId()).isEqualTo("merit-inv-1");
 
         ArgumentCaptor<CreateInvoiceRequest> requestCaptor = ArgumentCaptor.forClass(CreateInvoiceRequest.class);
@@ -113,9 +117,10 @@ class AllegroInvoiceServiceTest {
         ArgumentCaptor<AllegroSoldInvoice> entityCaptor = ArgumentCaptor.forClass(AllegroSoldInvoice.class);
         verify(soldInvoiceRepository).save(entityCaptor.capture());
         assertThat(entityCaptor.getValue().getOrderId()).isEqualTo("order-1");
-        assertThat(entityCaptor.getValue().getInvoiceNo()).isEqualTo("order1/01/2026");
+        assertThat(entityCaptor.getValue().getInvoiceNo()).isEqualTo("FS/1/01/2026");
         verify(customersService, never()).createCustomer(any());
         verify(taxesService).listTaxes();
+        verify(accountService).allocateInvoiceNo(9L, java.time.LocalDate.of(2026, 1, 10));
     }
 
     @Test

@@ -20,14 +20,31 @@ public final class AllegroInvoiceMappingSupport {
     private AllegroInvoiceMappingSupport() {
     }
 
-    public static String buildInvoiceNo(String orderId, LocalDate docDate) {
-        String suffix = "/" + docDate.format(MONTH) + "/" + docDate.format(YEAR);
-        int maxIdLen = INVOICE_NO_MAX - suffix.length();
-        String compact = orderId.replace("-", "");
-        if (compact.length() > maxIdLen) {
-            compact = compact.substring(0, maxIdLen);
+    public static String buildInvoiceNo(String prefix, int sequenceNumber, LocalDate docDate) {
+        if (prefix == null || prefix.isBlank()) {
+            throw new IllegalArgumentException("prefix is required");
         }
-        return compact + suffix;
+        if (sequenceNumber < 1) {
+            throw new IllegalArgumentException("sequenceNumber must be >= 1");
+        }
+        String invoiceNo = prefix.trim()
+                + "/"
+                + sequenceNumber
+                + "/"
+                + docDate.format(MONTH)
+                + "/"
+                + docDate.format(YEAR);
+        if (invoiceNo.length() > INVOICE_NO_MAX) {
+            throw new IllegalArgumentException("InvoiceNo exceeds Merit limit of " + INVOICE_NO_MAX);
+        }
+        return invoiceNo;
+    }
+
+    public static int nextSequenceNumber(int invoiceCountInMonth) {
+        if (invoiceCountInMonth < 0) {
+            throw new IllegalArgumentException("invoiceCountInMonth must be >= 0");
+        }
+        return invoiceCountInMonth + 1;
     }
 
     public static BigDecimal toNet(BigDecimal gross, BigDecimal vatRate) {

@@ -36,6 +36,7 @@ public class AllegroInvoiceService {
 
     private final AllegroApiClient allegroApiClient;
     private final AllegroAuthService authService;
+    private final AllegroAccountService accountService;
     private final CustomersService customersService;
     private final InvoicesService invoicesService;
     private final TaxesService taxesService;
@@ -49,6 +50,7 @@ public class AllegroInvoiceService {
     public AllegroInvoiceService(
             AllegroApiClient allegroApiClient,
             AllegroAuthService authService,
+            AllegroAccountService accountService,
             CustomersService customersService,
             InvoicesService invoicesService,
             TaxesService taxesService,
@@ -60,6 +62,7 @@ public class AllegroInvoiceService {
             Clock clock) {
         this.allegroApiClient = allegroApiClient;
         this.authService = authService;
+        this.accountService = accountService;
         this.customersService = customersService;
         this.invoicesService = invoicesService;
         this.taxesService = taxesService;
@@ -95,7 +98,12 @@ public class AllegroInvoiceService {
         LocalDate docDate = boughtAt == null
                 ? LocalDate.now(clock.withZone(ZONE))
                 : boughtAt.atZone(ZONE).toLocalDate();
-        String invoiceNo = invoiceMapper.buildInvoiceNo(trimmedOrderId, docDate);
+        String invoiceNo;
+        try {
+            invoiceNo = accountService.allocateInvoiceNo(accountId, docDate);
+        } catch (IllegalArgumentException ex) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Nie udało się zbudować numeru faktury.", ex);
+        }
 
         String customerId = resolveCustomerId(form);
         String uomName = unitsService.requireDefaultUnit().name();

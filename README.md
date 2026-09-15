@@ -14,7 +14,7 @@ Aplikacja pobiera listę faktur sprzedaży z Merit Aktiva (lokalizacja PL) z pod
 ## Konfiguracja
 
 Adresy bazowe API są w `src/main/resources/application.yml`.
-**Klucze Merit** ustawiasz w UI: **Ustawienia API** (`/ustawienia-api`) — zapis per użytkownik w bazie. **Konta Allegro** dodajesz na tej samej stronie (nazwa, Client ID, Client Secret w plaintext w DB); każde konto ma **Połącz** / **Usuń**. Oferty i sprzedane pokazują towary ze wszystkich połączonych kont z kolumną „Konto”.
+**Klucze Merit** ustawiasz w UI: **Ustawienia API** (`/ustawienia-api`) — zapis per użytkownik w bazie. **Konta Allegro** dodajesz na tej samej stronie (nazwa, Client ID, Client Secret w plaintext w DB, prefiks faktury); każde konto ma **Połącz** / **Usuń**. Faktury z Allegro dostają numer `prefiks/kolejny/MM/rrrr` (np. `FS/5/09/2026`); kolejny numer = liczba faktur w Merit w danym miesiącu + 1. Oferty i sprzedane pokazują towary ze wszystkich połączonych kont z kolumną „Konto”.
 
 **Redirect URI Allegro** musi być **identyczny** w aplikacji Allegro Sandbox i w naszej appce. Domyślnie (puste `ALLEGRO_REDIRECT_URI`) callback jest wyliczany z aktualnego hosta, np. `https://ksiegowosc-a0yu.onrender.com/api/allegro/auth/callback`. Opcjonalnie nadpisz:
 

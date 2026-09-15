@@ -49,6 +49,7 @@ public class ApiSettingsView extends View {
     private final TextField allegroName = new TextField("Nazwa konta");
     private final TextField allegroClientId = new TextField("Allegro Client ID");
     private final PasswordField allegroClientSecret = new PasswordField("Allegro Client Secret");
+    private final TextField allegroInvoicePrefix = new TextField("Prefiks faktury");
     private final Grid<AllegroAccountDto> allegroAccountsGrid = new Grid<>(AllegroAccountDto.class, false);
 
     public ApiSettingsView(
@@ -94,6 +95,9 @@ public class ApiSettingsView extends View {
         allegroName.setWidthFull();
         allegroClientId.setWidthFull();
         allegroClientSecret.setWidthFull();
+        allegroInvoicePrefix.setWidthFull();
+        allegroInvoicePrefix.setMaxLength(20);
+        allegroInvoicePrefix.setHelperText("Numer faktury: prefiks/kolejny/MM/rrrr, np. FS/5/09/2026");
 
         Button addAllegro = new Button("Dodaj konto", event -> addAllegroAccount());
         addAllegro.addThemeVariants(ButtonVariant.LUMO_PRIMARY);
@@ -108,11 +112,12 @@ public class ApiSettingsView extends View {
             redirectUriHint.setText("Redirect URI: ustaw ALLEGRO_REDIRECT_URI na Render.");
         }
 
-        FormLayout allegroForm = new FormLayout(allegroName, allegroClientId, allegroClientSecret);
+        FormLayout allegroForm = new FormLayout(
+                allegroName, allegroClientId, allegroClientSecret, allegroInvoicePrefix);
         allegroForm.setResponsiveSteps(new FormLayout.ResponsiveStep("0", 1));
         VerticalLayout allegroSection = new VerticalLayout(
                 new H3("Allegro"),
-                new Paragraph("Dodaj aplikacje Allegro (Client ID/Secret). Połącz każde konto osobno."),
+                new Paragraph("Dodaj aplikacje Allegro (Client ID/Secret i prefiks faktury). Połącz każde konto osobno."),
                 allegroForm,
                 addAllegro,
                 redirectUriHint,
@@ -134,6 +139,22 @@ public class ApiSettingsView extends View {
         allegroAccountsGrid.setWidthFull();
         allegroAccountsGrid.addColumn(AllegroAccountDto::name).setHeader("Nazwa").setFlexGrow(1);
         allegroAccountsGrid.addColumn(AllegroAccountDto::clientId).setHeader("Client ID").setFlexGrow(1);
+        allegroAccountsGrid
+                .addComponentColumn(account -> {
+                    TextField prefixField = new TextField();
+                    prefixField.setValue(nullToEmpty(account.invoicePrefix()));
+                    prefixField.setMaxLength(20);
+                    prefixField.setWidth("7rem");
+                    Button savePrefix = new Button("Zapisz", e -> updateInvoicePrefix(account.id(), prefixField.getValue()));
+                    savePrefix.addThemeVariants(ButtonVariant.LUMO_SMALL, ButtonVariant.LUMO_TERTIARY);
+                    HorizontalLayout prefixEditor = new HorizontalLayout(prefixField, savePrefix);
+                    prefixEditor.setAlignItems(FlexComponent.Alignment.CENTER);
+                    prefixEditor.setSpacing(true);
+                    return prefixEditor;
+                })
+                .setHeader("Prefiks")
+                .setAutoWidth(true)
+                .setFlexGrow(0);
         allegroAccountsGrid
                 .addColumn(account -> account.clientSecretSet() ? "••••••••" : "—")
                 .setHeader("Secret")
@@ -187,16 +208,32 @@ public class ApiSettingsView extends View {
     private void addAllegroAccount() {
         try {
             allegroAccountService.addAccount(
-                    allegroName.getValue(), allegroClientId.getValue(), allegroClientSecret.getValue());
+                    allegroName.getValue(),
+                    allegroClientId.getValue(),
+                    allegroClientSecret.getValue(),
+                    allegroInvoicePrefix.getValue());
             Notifications.show("Dodano konto Allegro.", NotificationVariant.SUCCESS);
             allegroName.clear();
             allegroClientId.clear();
             allegroClientSecret.clear();
+            allegroInvoicePrefix.clear();
             loadAllegroAccounts();
         } catch (ResponseStatusException ex) {
             Notifications.show(reason(ex), NotificationVariant.ERROR);
         } catch (RuntimeException ex) {
             Notifications.show("Nie udało się dodać konta Allegro.", NotificationVariant.ERROR);
+        }
+    }
+
+    private void updateInvoicePrefix(Long accountId, String invoicePrefix) {
+        try {
+            allegroAccountService.updateInvoicePrefix(accountId, invoicePrefix);
+            Notifications.show("Zapisano prefiks faktury.", NotificationVariant.SUCCESS);
+            loadAllegroAccounts();
+        } catch (ResponseStatusException ex) {
+            Notifications.show(reason(ex), NotificationVariant.ERROR);
+        } catch (RuntimeException ex) {
+            Notifications.show("Nie udało się zapisać prefiksu faktury.", NotificationVariant.ERROR);
         }
     }
 

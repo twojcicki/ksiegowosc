@@ -272,6 +272,30 @@ class InvoicesServiceTest {
         assertThat(meritRequest.taxAmount()).hasSize(1);
     }
 
+    @Test
+    void shouldAllocateNextInvoiceNoFromMeritMonthList() {
+        LocalDate docDate = LocalDate.of(2026, 9, 15);
+        when(meritApiClient.getInvoices(LocalDate.of(2026, 9, 1), LocalDate.of(2026, 9, 30)))
+                .thenReturn(List.of(
+                        new SalesInvoiceDto("a", "FS/2/09/2026", null, null, null, null, null, null),
+                        new SalesInvoiceDto("b", "FS/5/09/2026", null, null, null, null, null, null),
+                        new SalesInvoiceDto("c", "OTHER/9/09/2026", null, null, null, null, null, null)));
+
+        String invoiceNo = invoicesService.nextInvoiceNoFromMerit("FS", docDate);
+
+        assertThat(invoiceNo).isEqualTo("FS/4/09/2026");
+        verify(meritApiClient).getInvoices(LocalDate.of(2026, 9, 1), LocalDate.of(2026, 9, 30));
+    }
+
+    @Test
+    void shouldAllocateFirstInvoiceNoWhenMeritHasNoneInMonth() {
+        when(meritApiClient.getInvoices(LocalDate.of(2026, 1, 1), LocalDate.of(2026, 1, 31)))
+                .thenReturn(List.of());
+
+        assertThat(invoicesService.nextInvoiceNoFromMerit("FS", LocalDate.of(2026, 1, 10)))
+                .isEqualTo("FS/1/01/2026");
+    }
+
     private static CreateInvoiceRequest validCreateInvoiceRequest() {
         return new CreateInvoiceRequest(
                 "665f01a4-357a-4a6b-a565-2f17e6e1da13",
