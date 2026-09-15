@@ -82,13 +82,13 @@ class AllegroInvoiceServiceTest {
     @Test
     void shouldIssueInvoiceForAllLineItemsUsingExistingCustomer() {
         when(soldInvoiceRepository.existsById("order-1")).thenReturn(false);
-        when(authService.getValidAccessToken()).thenReturn("token");
-        when(allegroApiClient.getCheckoutForm("order-1")).thenReturn(sampleForm(null, null));
+        when(authService.getValidAccessToken(9L)).thenReturn("token");
+        when(allegroApiClient.getCheckoutForm("token", "order-1")).thenReturn(sampleForm(null, null));
         when(customersService.getCustomersByVatRegNo("5252674798")).thenReturn(List.of(
                 new CustomerDto("cust-1", "Firma", null, "5252674798", null, null, null, "PLN")));
         when(invoicesService.createInvoice(any())).thenReturn(new CreateInvoiceResponse("merit-inv-1", "cust-1"));
 
-        var response = invoiceService.issueInvoice("order-1");
+        var response = invoiceService.issueInvoice(9L, "order-1");
 
         assertThat(response.invoiceNo()).isEqualTo("order1/01/2026");
         assertThat(response.meritInvoiceId()).isEqualTo("merit-inv-1");
@@ -121,15 +121,15 @@ class AllegroInvoiceServiceTest {
     @Test
     void shouldUseAllegroTaxRateAndGroupTaxAmounts() {
         when(soldInvoiceRepository.existsById("order-1")).thenReturn(false);
-        when(authService.getValidAccessToken()).thenReturn("token");
-        when(allegroApiClient.getCheckoutForm("order-1")).thenReturn(sampleForm(
+        when(authService.getValidAccessToken(9L)).thenReturn("token");
+        when(allegroApiClient.getCheckoutForm("token", "order-1")).thenReturn(sampleForm(
                 new AllegroLineItemTax("23.00", "GOODS", null),
                 new AllegroLineItemTax("8.00", "GOODS", null)));
         when(customersService.getCustomersByVatRegNo("5252674798")).thenReturn(List.of(
                 new CustomerDto("cust-1", "Firma", null, "5252674798", null, null, null, "PLN")));
         when(invoicesService.createInvoice(any())).thenReturn(new CreateInvoiceResponse("merit-inv-1", "cust-1"));
 
-        invoiceService.issueInvoice("order-1");
+        invoiceService.issueInvoice(9L, "order-1");
 
         ArgumentCaptor<CreateInvoiceRequest> requestCaptor = ArgumentCaptor.forClass(CreateInvoiceRequest.class);
         verify(invoicesService).createInvoice(requestCaptor.capture());
@@ -145,13 +145,13 @@ class AllegroInvoiceServiceTest {
     @Test
     void shouldCreateCustomerWhenNotFoundByVat() {
         when(soldInvoiceRepository.existsById("order-1")).thenReturn(false);
-        when(authService.getValidAccessToken()).thenReturn("token");
-        when(allegroApiClient.getCheckoutForm("order-1")).thenReturn(sampleForm(null, null));
+        when(authService.getValidAccessToken(9L)).thenReturn("token");
+        when(allegroApiClient.getCheckoutForm("token", "order-1")).thenReturn(sampleForm(null, null));
         when(customersService.getCustomersByVatRegNo("5252674798")).thenReturn(List.of());
         when(customersService.createCustomer(any())).thenReturn(new MeritCreateCustomerResponse("new-cust", "Allegro"));
         when(invoicesService.createInvoice(any())).thenReturn(new CreateInvoiceResponse("merit-inv-1", "new-cust"));
 
-        invoiceService.issueInvoice("order-1");
+        invoiceService.issueInvoice(9L, "order-1");
 
         ArgumentCaptor<MeritCreateCustomerRequest> customerCaptor =
                 ArgumentCaptor.forClass(MeritCreateCustomerRequest.class);
@@ -165,11 +165,11 @@ class AllegroInvoiceServiceTest {
     void shouldRejectAlreadyInvoicedOrder() {
         when(soldInvoiceRepository.existsById("order-1")).thenReturn(true);
 
-        assertThatThrownBy(() -> invoiceService.issueInvoice("order-1"))
+        assertThatThrownBy(() -> invoiceService.issueInvoice(9L, "order-1"))
                 .isInstanceOf(ResponseStatusException.class)
                 .hasMessageContaining("już wystawiona");
 
-        verify(allegroApiClient, never()).getCheckoutForm(any());
+        verify(allegroApiClient, never()).getCheckoutForm(any(), any());
         verify(invoicesService, never()).createInvoice(any());
     }
 

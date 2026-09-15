@@ -21,12 +21,6 @@ public class UserApiCredentials {
     @Column(name = "merit_api_key", length = 500)
     private String meritApiKey;
 
-    @Column(name = "allegro_client_id", length = 200)
-    private String allegroClientId;
-
-    @Column(name = "allegro_client_secret", length = 500)
-    private String allegroClientSecret;
-
     @Column(name = "updated_at", nullable = false)
     private Instant updatedAt;
 
@@ -52,22 +46,6 @@ public class UserApiCredentials {
 
     public void setMeritApiKey(String meritApiKey) {
         this.meritApiKey = meritApiKey;
-    }
-
-    public String getAllegroClientId() {
-        return allegroClientId;
-    }
-
-    public void setAllegroClientId(String allegroClientId) {
-        this.allegroClientId = allegroClientId;
-    }
-
-    public String getAllegroClientSecret() {
-        return allegroClientSecret;
-    }
-
-    public void setAllegroClientSecret(String allegroClientSecret) {
-        this.allegroClientSecret = allegroClientSecret;
     }
 
     public Instant getUpdatedAt() {

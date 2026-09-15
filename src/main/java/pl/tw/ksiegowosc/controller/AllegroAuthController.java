@@ -28,9 +28,9 @@ public class AllegroAuthController {
     }
 
     @GetMapping("/connect")
-    @Operation(summary = "Rozpocznij autoryzację OAuth", description = "Przekierowuje do Allegro Sandbox w celu połączenia konta sprzedawcy.")
-    public void connect(HttpServletResponse response) throws IOException {
-        response.sendRedirect(authService.buildAuthorizationUrl());
+    @Operation(summary = "Rozpocznij autoryzację OAuth", description = "Przekierowuje do Allegro Sandbox w celu połączenia wybranego konta.")
+    public void connect(@RequestParam Long accountId, HttpServletResponse response) throws IOException {
+        response.sendRedirect(authService.buildAuthorizationUrl(accountId));
     }
 
     @GetMapping("/callback")
@@ -40,18 +40,11 @@ public class AllegroAuthController {
             @RequestParam String state,
             HttpServletResponse response) throws IOException {
         authService.exchangeAuthorizationCode(code, state);
-        response.sendRedirect("/allegro");
-    }
-
-    @PostMapping("/disconnect")
-    @ResponseStatus(HttpStatus.NO_CONTENT)
-    @Operation(summary = "Usuń powiązanie Allegro", description = "Kasuje tokeny OAuth bieżącego użytkownika.")
-    public void disconnect() {
-        authService.disconnect();
+        response.sendRedirect("/ustawienia-api");
     }
 
     @GetMapping("/status")
-    @Operation(summary = "Status połączenia z Allegro")
+    @Operation(summary = "Status — czy użytkownik ma jakiekolwiek połączone konto Allegro")
     public AllegroAuthStatusDto status() {
         return new AllegroAuthStatusDto(authService.isConnected());
     }

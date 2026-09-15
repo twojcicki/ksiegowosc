@@ -8,8 +8,6 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.http.MediaType;
 import org.springframework.web.client.RestClient;
 
-import pl.tw.ksiegowosc.service.AllegroAuthService;
-
 @Configuration
 @EnableConfigurationProperties({MeritApiProperties.class, AllegroApiProperties.class})
 public class HttpClientsConfig {
@@ -73,18 +71,10 @@ public class HttpClientsConfig {
     }
 
     @Bean
-    AllegroAuthInterceptor allegroAuthInterceptor(AllegroAuthService authService) {
-        return new AllegroAuthInterceptor(authService);
-    }
-
-    @Bean
-    RestClient allegroRestClient(
-            AllegroApiProperties properties,
-            AllegroAuthInterceptor allegroAuthInterceptor) {
+    RestClient allegroRestClient(AllegroApiProperties properties) {
         return RestClient.builder()
                 .baseUrl(properties.apiBaseUrl())
                 .defaultHeader("Accept", ALLEGRO_ACCEPT)
-                .requestInterceptor(allegroAuthInterceptor)
                 .build();
     }
 }

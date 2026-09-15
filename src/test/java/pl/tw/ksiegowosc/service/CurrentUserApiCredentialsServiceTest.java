@@ -23,7 +23,6 @@ import pl.tw.ksiegowosc.dto.MeritCredentials;
 import pl.tw.ksiegowosc.dto.UserApiSettingsDto;
 import pl.tw.ksiegowosc.entity.AppUser;
 import pl.tw.ksiegowosc.entity.UserApiCredentials;
-import pl.tw.ksiegowosc.repository.AllegroTokenRepository;
 import pl.tw.ksiegowosc.repository.AppUserRepository;
 import pl.tw.ksiegowosc.repository.UserApiCredentialsRepository;
 
@@ -31,17 +30,14 @@ class CurrentUserApiCredentialsServiceTest {
 
     private AppUserRepository appUserRepository;
     private UserApiCredentialsRepository credentialsRepository;
-    private AllegroTokenRepository allegroTokenRepository;
     private CurrentUserApiCredentialsService service;
 
     @BeforeEach
     void setUp() {
         appUserRepository = mock(AppUserRepository.class);
         credentialsRepository = mock(UserApiCredentialsRepository.class);
-        allegroTokenRepository = mock(AllegroTokenRepository.class);
         Clock clock = Clock.fixed(Instant.parse("2026-09-13T12:00:00Z"), ZoneOffset.UTC);
-        service = new CurrentUserApiCredentialsService(
-                appUserRepository, credentialsRepository, allegroTokenRepository, clock);
+        service = new CurrentUserApiCredentialsService(appUserRepository, credentialsRepository, clock);
 
         AppUser user = new AppUser();
         user.setId(7L);
@@ -103,17 +99,11 @@ class CurrentUserApiCredentialsServiceTest {
         existing.setUserId(7L);
         existing.setMeritApiId("merit-id");
         existing.setMeritApiKey("secret");
-        existing.setAllegroClientId("client");
-        existing.setAllegroClientSecret("secret2");
         when(credentialsRepository.findById(7L)).thenReturn(Optional.of(existing));
-        when(allegroTokenRepository.existsById(7L)).thenReturn(true);
 
         UserApiSettingsDto settings = service.getSettings();
 
         assertThat(settings.meritApiId()).isEqualTo("merit-id");
         assertThat(settings.meritApiKeySet()).isTrue();
-        assertThat(settings.allegroClientId()).isEqualTo("client");
-        assertThat(settings.allegroClientSecretSet()).isTrue();
-        assertThat(settings.allegroConnected()).isTrue();
     }
 }

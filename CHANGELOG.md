@@ -12,12 +12,14 @@ Format oparty na [Keep a Changelog](https://keepachangelog.com/pl/1.1.0/).
 
 ### Added
 
-- Ustawienia API per użytkownik (Merit Api Id/Key, Allegro Client ID/Secret w DB; Usuń powiązanie Allegro).
+- Wiele kont Allegro per użytkownik (`allegro_account`): nazwa, Client ID/Secret (plaintext), Połącz/Usuń; oferty i sprzedane ze wszystkich połączonych kont z kolumną „Konto”.
+- Ustawienia API per użytkownik (Merit Api Id/Key w `user_api_credentials`).
   Notatka: [docs/plans/user-api-settings.md](docs/plans/user-api-settings.md)
 
 ### Changed
 
 - Liquibase: historia YAML 001–006 zwinięta do `000-baseline.sql`; kolejne migracje tylko jako formatted SQL (`007-….sql` + include w masterze). **Wymaga resetu DB** (drop schematu / tabel + `databasechangelog*`).
+- Allegro: konta w osobnej tabeli (zamiast pojedynczych pól w `user_api_credentials`); token OAuth per konto.
 - Wybór stawki VAT z Merit: preferencja `Code` równego procentowi (np. `23`), pomijanie stawek zakupowych przy fakturze sprzedaży.
 - Formularz „Dodaj fakturę”: wiele pozycji (tabela + dialog szczegółów); kwota netto i VAT faktury sumowane z pozycji.
 - MapStruct: mapowania Allegro→faktura, checkout/oferty→DTO, CreateInvoice→Merit oraz token/sold-invoice→entity w pakiecie `mapper`.

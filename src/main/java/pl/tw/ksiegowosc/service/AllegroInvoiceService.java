@@ -72,7 +72,10 @@ public class AllegroInvoiceService {
     }
 
     @Transactional
-    public IssueAllegroInvoiceResponse issueInvoice(String orderId) {
+    public IssueAllegroInvoiceResponse issueInvoice(Long accountId, String orderId) {
+        if (accountId == null) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Podaj accountId.");
+        }
         if (orderId == null || orderId.isBlank()) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Podaj orderId.");
         }
@@ -82,8 +85,8 @@ public class AllegroInvoiceService {
             throw new ResponseStatusException(HttpStatus.CONFLICT, "Dla tego zamówienia faktura została już wystawiona.");
         }
 
-        authService.getValidAccessToken();
-        AllegroCheckoutForm form = fetchCheckoutForm(trimmedOrderId);
+        String accessToken = authService.getValidAccessToken(accountId);
+        AllegroCheckoutForm form = fetchCheckoutForm(accessToken, trimmedOrderId);
         if (form.lineItems() == null || form.lineItems().isEmpty()) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Zamówienie nie ma pozycji do zafakturowania.");
         }
@@ -114,9 +117,9 @@ public class AllegroInvoiceService {
         return new IssueAllegroInvoiceResponse(invoiceNo, created.invoiceId());
     }
 
-    private AllegroCheckoutForm fetchCheckoutForm(String orderId) {
+    private AllegroCheckoutForm fetchCheckoutForm(String accessToken, String orderId) {
         try {
-            AllegroCheckoutForm form = allegroApiClient.getCheckoutForm(orderId);
+            AllegroCheckoutForm form = allegroApiClient.getCheckoutForm(accessToken, orderId);
             if (form == null || form.id() == null || form.id().isBlank()) {
                 throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Nie znaleziono zamówienia Allegro.");
             }

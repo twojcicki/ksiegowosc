@@ -20,7 +20,11 @@ import pl.tw.ksiegowosc.dto.allegro.AllegroPrice;
 @Mapper(componentModel = MappingConstants.ComponentModel.SPRING)
 public interface AllegroSoldItemMapper {
 
-    default AllegroSoldItemDto toDto(AllegroCheckoutForm form, String invoiceNo) {
+    default AllegroSoldItemDto toDto(
+            AllegroCheckoutForm form,
+            Long accountId,
+            String accountName,
+            String invoiceNo) {
         List<AllegroLineItem> lineItems = form.lineItems() == null ? List.of() : form.lineItems();
         AllegroBuyer buyer = form.buyer();
         AllegroFulfillment fulfillment = form.fulfillment();
@@ -46,6 +50,8 @@ public interface AllegroSoldItemMapper {
         }
 
         return new AllegroSoldItemDto(
+                accountId,
+                accountName,
                 form.id(),
                 summarizeName(lineItems),
                 lineItems.size(),
@@ -60,6 +66,8 @@ public interface AllegroSoldItemMapper {
 
     default AllegroSoldItemDto withInvoiceNo(AllegroSoldItemDto order, String invoiceNo) {
         return new AllegroSoldItemDto(
+                order.accountId(),
+                order.accountName(),
                 order.orderId(),
                 order.name(),
                 order.itemCount(),

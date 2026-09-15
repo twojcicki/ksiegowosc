@@ -10,6 +10,8 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.stream.Collectors;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.web.server.ResponseStatusException;
@@ -18,6 +20,7 @@ import pl.tw.ksiegowosc.client.AllegroApiClient;
 import pl.tw.ksiegowosc.dto.AllegroSoldItemDto;
 import pl.tw.ksiegowosc.dto.allegro.AllegroCheckoutForm;
 import pl.tw.ksiegowosc.dto.allegro.AllegroCheckoutFormsResponse;
+import pl.tw.ksiegowosc.entity.AllegroAccount;
 import pl.tw.ksiegowosc.entity.AllegroSoldInvoice;
 import pl.tw.ksiegowosc.mapper.AllegroSoldItemMapper;
 import pl.tw.ksiegowosc.repository.AllegroSoldInvoiceRepository;
@@ -25,20 +28,24 @@ import pl.tw.ksiegowosc.repository.AllegroSoldInvoiceRepository;
 @Service
 public class AllegroOrdersService {
 
+    private static final Logger log = LoggerFactory.getLogger(AllegroOrdersService.class);
     private static final ZoneId ZONE = ZoneId.of("Europe/Warsaw");
 
     private final AllegroApiClient allegroApiClient;
     private final AllegroAuthService authService;
+    private final AllegroAccountService accountService;
     private final AllegroSoldInvoiceRepository soldInvoiceRepository;
     private final AllegroSoldItemMapper soldItemMapper;
 
     public AllegroOrdersService(
             AllegroApiClient allegroApiClient,
             AllegroAuthService authService,
+            AllegroAccountService accountService,
             AllegroSoldInvoiceRepository soldInvoiceRepository,
             AllegroSoldItemMapper soldItemMapper) {
         this.allegroApiClient = allegroApiClient;
         this.authService = authService;
+        this.accountService = accountService;
         this.soldInvoiceRepository = soldInvoiceRepository;
         this.soldItemMapper = soldItemMapper;
     }
@@ -49,20 +56,29 @@ public class AllegroOrdersService {
             int offset,
             int limit) {
         validateDateRange(from, to);
-        authService.getValidAccessToken();
+        List<AllegroAccount> accounts = accountService.listConnectedAccounts();
+        if (accounts.isEmpty()) {
+            return List.of();
+        }
 
         Instant boughtAtFrom = from.atStartOfDay(ZONE).toInstant();
         Instant boughtAtTo = to.plusDays(1).atStartOfDay(ZONE).toInstant().minusMillis(1);
 
-        AllegroCheckoutFormsResponse response = allegroApiClient.getCheckoutForms(
-                offset, limit, boughtAtFrom, boughtAtTo);
-        if (response == null || response.checkoutForms() == null) {
-            return List.of();
-        }
-
         List<AllegroSoldItemDto> orders = new ArrayList<>();
-        for (AllegroCheckoutForm form : response.checkoutForms()) {
-            orders.add(soldItemMapper.toDto(form, null));
+        for (AllegroAccount account : accounts) {
+            try {
+                String token = authService.getValidAccessTokenForAccount(account);
+                AllegroCheckoutFormsResponse response = allegroApiClient.getCheckoutForms(
+                        token, offset, limit, boughtAtFrom, boughtAtTo);
+                if (response == null || response.checkoutForms() == null) {
+                    continue;
+                }
+                for (AllegroCheckoutForm form : response.checkoutForms()) {
+                    orders.add(soldItemMapper.toDto(form, account.getId(), account.getName(), null));
+                }
+            } catch (RuntimeException ex) {
+                log.warn("Nie udało się pobrać zamówień dla konta Allegro id={}", account.getId(), ex);
+            }
         }
 
         Map<String, String> invoiceNos = loadInvoiceNos(orders.stream()

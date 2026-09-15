@@ -56,6 +56,6 @@ public class AllegroOrdersController {
             description = "Pobiera dane zamówienia i kupującego z Allegro, tworzy/znajduje klienta w Merit "
                     + "i wystawia fakturę ze wszystkimi pozycjami zamówienia.")
     public IssueAllegroInvoiceResponse issueInvoice(@Valid @RequestBody IssueAllegroInvoiceRequest request) {
-        return invoiceService.issueInvoice(request.orderId());
+        return invoiceService.issueInvoice(request.accountId(), request.orderId());
     }
 }

@@ -1,5 +1,7 @@
 package pl.tw.ksiegowosc.ui;
 
+import java.util.List;
+
 import org.springframework.web.server.ResponseStatusException;
 
 import com.vaadin.flow.component.UI;
@@ -7,11 +9,14 @@ import com.vaadin.flow.component.applayout.DrawerToggle;
 import com.vaadin.flow.component.button.Button;
 import com.vaadin.flow.component.button.ButtonVariant;
 import com.vaadin.flow.component.formlayout.FormLayout;
+import com.vaadin.flow.component.grid.Grid;
+import com.vaadin.flow.component.grid.GridVariant;
 import com.vaadin.flow.component.html.H1;
 import com.vaadin.flow.component.html.H3;
 import com.vaadin.flow.component.html.Paragraph;
 import com.vaadin.flow.component.html.Span;
 import com.vaadin.flow.component.notification.NotificationVariant;
+import com.vaadin.flow.component.orderedlayout.FlexComponent;
 import com.vaadin.flow.component.orderedlayout.HorizontalLayout;
 import com.vaadin.flow.component.orderedlayout.VerticalLayout;
 import com.vaadin.flow.component.textfield.PasswordField;
@@ -20,7 +25,9 @@ import com.vaadin.flow.router.PageTitle;
 import com.vaadin.flow.router.Route;
 
 import jakarta.annotation.security.PermitAll;
+import pl.tw.ksiegowosc.dto.AllegroAccountDto;
 import pl.tw.ksiegowosc.dto.UserApiSettingsDto;
+import pl.tw.ksiegowosc.service.AllegroAccountService;
 import pl.tw.ksiegowosc.service.AllegroAuthService;
 import pl.tw.ksiegowosc.service.CurrentUserApiCredentialsService;
 import pl.tw.ksiegowosc.ui.component.View;
@@ -34,24 +41,29 @@ import pl.tw.ksiegowosc.ui.util.Notifications;
 public class ApiSettingsView extends View {
 
     private final CurrentUserApiCredentialsService credentialsService;
+    private final AllegroAccountService allegroAccountService;
     private final AllegroAuthService allegroAuthService;
 
     private final TextField meritApiId = new TextField("Merit Api Id");
     private final PasswordField meritApiKey = new PasswordField("Merit Api Key");
+    private final TextField allegroName = new TextField("Nazwa konta");
     private final TextField allegroClientId = new TextField("Allegro Client ID");
     private final PasswordField allegroClientSecret = new PasswordField("Allegro Client Secret");
-    private final Span allegroStatus = new Span();
-    private final Button disconnectButton = new Button("Usuń powiązanie");
+    private final Grid<AllegroAccountDto> allegroAccountsGrid = new Grid<>(AllegroAccountDto.class, false);
 
     public ApiSettingsView(
             CurrentUserApiCredentialsService credentialsService,
+            AllegroAccountService allegroAccountService,
             AllegroAuthService allegroAuthService) {
         this.credentialsService = credentialsService;
+        this.allegroAccountService = allegroAccountService;
         this.allegroAuthService = allegroAuthService;
 
         addClassNames(Aura.SURFACE_SOLID, "api-settings-view");
+        configureAllegroGrid();
         add(createHeader(), createContent());
         loadSettings();
+        loadAllegroAccounts();
     }
 
     private ViewHeader createHeader() {
@@ -64,9 +76,6 @@ public class ApiSettingsView extends View {
         meritApiId.setWidthFull();
         meritApiKey.setWidthFull();
         meritApiKey.setHelperText("Pozostaw puste, aby nie zmieniać zapisanego klucza.");
-        allegroClientId.setWidthFull();
-        allegroClientSecret.setWidthFull();
-        allegroClientSecret.setHelperText("Pozostaw puste, aby nie zmieniać zapisanego secretu.");
 
         Button saveMerit = new Button("Zapisz Merit", event -> saveMerit());
         saveMerit.addThemeVariants(ButtonVariant.LUMO_PRIMARY);
@@ -82,16 +91,12 @@ public class ApiSettingsView extends View {
         meritSection.setSpacing(true);
         meritSection.setWidthFull();
 
-        Button saveAllegro = new Button("Zapisz Allegro", event -> saveAllegro());
-        saveAllegro.addThemeVariants(ButtonVariant.LUMO_PRIMARY);
+        allegroName.setWidthFull();
+        allegroClientId.setWidthFull();
+        allegroClientSecret.setWidthFull();
 
-        Button connectButton = new Button("Połącz z Allegro", event -> connectAllegro());
-
-        disconnectButton.addThemeVariants(ButtonVariant.LUMO_ERROR, ButtonVariant.LUMO_TERTIARY);
-        disconnectButton.addClickListener(event -> disconnectAllegro());
-
-        HorizontalLayout allegroActions = new HorizontalLayout(saveAllegro, connectButton, disconnectButton);
-        allegroActions.setAlignItems(com.vaadin.flow.component.orderedlayout.FlexComponent.Alignment.CENTER);
+        Button addAllegro = new Button("Dodaj konto", event -> addAllegroAccount());
+        addAllegro.addThemeVariants(ButtonVariant.LUMO_PRIMARY);
 
         Span redirectUriHint = new Span();
         redirectUriHint.getStyle().set("font-size", "var(--lumo-font-size-s)");
@@ -103,15 +108,15 @@ public class ApiSettingsView extends View {
             redirectUriHint.setText("Redirect URI: ustaw ALLEGRO_REDIRECT_URI na Render.");
         }
 
-        FormLayout allegroForm = new FormLayout(allegroClientId, allegroClientSecret);
+        FormLayout allegroForm = new FormLayout(allegroName, allegroClientId, allegroClientSecret);
         allegroForm.setResponsiveSteps(new FormLayout.ResponsiveStep("0", 1));
         VerticalLayout allegroSection = new VerticalLayout(
                 new H3("Allegro"),
-                new Paragraph("Client ID i Client Secret z apps.developer.allegro.pl.allegrosandbox.pl."),
+                new Paragraph("Dodaj aplikacje Allegro (Client ID/Secret). Połącz każde konto osobno."),
                 allegroForm,
+                addAllegro,
                 redirectUriHint,
-                allegroStatus,
-                allegroActions);
+                allegroAccountsGrid);
         allegroSection.setPadding(false);
         allegroSection.setSpacing(true);
         allegroSection.setWidthFull();
@@ -119,8 +124,40 @@ public class ApiSettingsView extends View {
         VerticalLayout content = new VerticalLayout(meritSection, allegroSection);
         content.setPadding(true);
         content.setSpacing(true);
-        content.setMaxWidth("640px");
+        content.setMaxWidth("900px");
         return content;
+    }
+
+    private void configureAllegroGrid() {
+        allegroAccountsGrid.addThemeVariants(GridVariant.LUMO_COMPACT, GridVariant.NO_BORDER);
+        allegroAccountsGrid.setAllRowsVisible(true);
+        allegroAccountsGrid.setWidthFull();
+        allegroAccountsGrid.addColumn(AllegroAccountDto::name).setHeader("Nazwa").setFlexGrow(1);
+        allegroAccountsGrid.addColumn(AllegroAccountDto::clientId).setHeader("Client ID").setFlexGrow(1);
+        allegroAccountsGrid
+                .addColumn(account -> account.clientSecretSet() ? "••••••••" : "—")
+                .setHeader("Secret")
+                .setAutoWidth(true)
+                .setFlexGrow(0);
+        allegroAccountsGrid
+                .addColumn(account -> account.connected() ? "Połączone" : "Niepołączone")
+                .setHeader("Status")
+                .setAutoWidth(true)
+                .setFlexGrow(0);
+        allegroAccountsGrid
+                .addComponentColumn(account -> {
+                    Button connect = new Button("Połącz", e -> connectAllegro(account.id()));
+                    connect.addThemeVariants(ButtonVariant.LUMO_SMALL, ButtonVariant.LUMO_PRIMARY);
+                    Button remove = new Button("Usuń", e -> deleteAllegroAccount(account.id()));
+                    remove.addThemeVariants(
+                            ButtonVariant.LUMO_SMALL, ButtonVariant.LUMO_ERROR, ButtonVariant.LUMO_TERTIARY);
+                    HorizontalLayout actions = new HorizontalLayout(connect, remove);
+                    actions.setAlignItems(FlexComponent.Alignment.CENTER);
+                    return actions;
+                })
+                .setHeader("Akcje")
+                .setAutoWidth(true)
+                .setFlexGrow(0);
     }
 
     private void loadSettings() {
@@ -128,15 +165,11 @@ public class ApiSettingsView extends View {
         meritApiId.setValue(nullToEmpty(settings.meritApiId()));
         meritApiKey.clear();
         meritApiKey.setPlaceholder(settings.meritApiKeySet() ? "•••••••• (zapisany)" : "");
-        allegroClientId.setValue(nullToEmpty(settings.allegroClientId()));
-        allegroClientSecret.clear();
-        allegroClientSecret.setPlaceholder(settings.allegroClientSecretSet() ? "•••••••• (zapisany)" : "");
-        updateAllegroStatus(settings.allegroConnected());
     }
 
-    private void updateAllegroStatus(boolean connected) {
-        allegroStatus.setText(connected ? "Status: połączono z Allegro" : "Status: brak powiązania z Allegro");
-        disconnectButton.setEnabled(connected);
+    private void loadAllegroAccounts() {
+        List<AllegroAccountDto> accounts = allegroAccountService.listAccounts();
+        allegroAccountsGrid.setItems(accounts);
     }
 
     private void saveMerit() {
@@ -151,21 +184,25 @@ public class ApiSettingsView extends View {
         }
     }
 
-    private void saveAllegro() {
+    private void addAllegroAccount() {
         try {
-            credentialsService.saveAllegroCredentials(allegroClientId.getValue(), allegroClientSecret.getValue());
-            Notifications.show("Zapisano ustawienia Allegro.", NotificationVariant.SUCCESS);
-            loadSettings();
+            allegroAccountService.addAccount(
+                    allegroName.getValue(), allegroClientId.getValue(), allegroClientSecret.getValue());
+            Notifications.show("Dodano konto Allegro.", NotificationVariant.SUCCESS);
+            allegroName.clear();
+            allegroClientId.clear();
+            allegroClientSecret.clear();
+            loadAllegroAccounts();
         } catch (ResponseStatusException ex) {
             Notifications.show(reason(ex), NotificationVariant.ERROR);
         } catch (RuntimeException ex) {
-            Notifications.show("Nie udało się zapisać ustawień Allegro.", NotificationVariant.ERROR);
+            Notifications.show("Nie udało się dodać konta Allegro.", NotificationVariant.ERROR);
         }
     }
 
-    private void connectAllegro() {
+    private void connectAllegro(Long accountId) {
         try {
-            UI.getCurrent().getPage().setLocation(allegroAuthService.buildAuthorizationUrl());
+            UI.getCurrent().getPage().setLocation(allegroAuthService.buildAuthorizationUrl(accountId));
         } catch (ResponseStatusException ex) {
             Notifications.show(reason(ex), NotificationVariant.ERROR);
         } catch (RuntimeException ex) {
@@ -173,15 +210,15 @@ public class ApiSettingsView extends View {
         }
     }
 
-    private void disconnectAllegro() {
+    private void deleteAllegroAccount(Long accountId) {
         try {
-            allegroAuthService.disconnect();
-            Notifications.show("Usunięto powiązanie z Allegro.", NotificationVariant.SUCCESS);
-            loadSettings();
+            allegroAccountService.deleteAccount(accountId);
+            Notifications.show("Usunięto konto Allegro.", NotificationVariant.SUCCESS);
+            loadAllegroAccounts();
         } catch (ResponseStatusException ex) {
             Notifications.show(reason(ex), NotificationVariant.ERROR);
         } catch (RuntimeException ex) {
-            Notifications.show("Nie udało się usunąć powiązania Allegro.", NotificationVariant.ERROR);
+            Notifications.show("Nie udało się usunąć konta Allegro.", NotificationVariant.ERROR);
         }
     }
 

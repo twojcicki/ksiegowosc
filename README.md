@@ -14,7 +14,7 @@ Aplikacja pobiera listę faktur sprzedaży z Merit Aktiva (lokalizacja PL) z pod
 ## Konfiguracja
 
 Adresy bazowe API są w `src/main/resources/application.yml`.
-**Klucze Merit i Allegro** ustawiasz w UI: **Ustawienia API** (`/ustawienia-api`) — zapis per użytkownik w bazie (bez zmiennych `MERIT_*` / `ALLEGRO_CLIENT_*`).
+**Klucze Merit** ustawiasz w UI: **Ustawienia API** (`/ustawienia-api`) — zapis per użytkownik w bazie. **Konta Allegro** dodajesz na tej samej stronie (nazwa, Client ID, Client Secret w plaintext w DB); każde konto ma **Połącz** / **Usuń**. Oferty i sprzedane pokazują towary ze wszystkich połączonych kont z kolumną „Konto”.
 
 **Redirect URI Allegro** musi być **identyczny** w aplikacji Allegro Sandbox i w naszej appce. Domyślnie (puste `ALLEGRO_REDIRECT_URI`) callback jest wyliczany z aktualnego hosta, np. `https://ksiegowosc-a0yu.onrender.com/api/allegro/auth/callback`. Opcjonalnie nadpisz:
 
@@ -34,7 +34,7 @@ clients:
     scopes: allegro:api:sale:offers:read allegro:api:orders:read
 ```
 
-Allegro Sandbox: zarejestruj aplikację na [apps.developer.allegro.pl.allegrosandbox.pl](https://apps.developer.allegro.pl.allegrosandbox.pl/), wklej **Redirect URI** widoczny w Ustawieniach API, zapisz Client ID/Secret w UI, potem **Połącz z Allegro**. Przycisk **Usuń powiązanie** kasuje tokeny OAuth użytkownika.
+Allegro Sandbox: zarejestruj aplikację na [apps.developer.allegro.pl.allegrosandbox.pl](https://apps.developer.allegro.pl.allegrosandbox.pl/), wklej **Redirect URI** widoczny w Ustawieniach API, dodaj konto (Client ID/Secret) w UI, potem **Połącz**. **Usuń** kasuje konto i token OAuth.
 
 Klient podpisuje każde żądanie HMAC-SHA256 zgodnie z dokumentacją Merit:
 `signature = Base64(HMAC-SHA256(apiId + timestamp + body, apiKey))` — klucze z Ustawień API bieżącego użytkownika.
@@ -168,7 +168,7 @@ Wystawienie faktury w Merit dla zamówienia Allegro (wszystkie pozycje, klient f
 ```bash
 curl -X POST "http://localhost:8080/api/allegro/sold-items/invoice" ^
   -H "Content-Type: application/json" ^
-  -d "{\"orderId\":\"order-1\"}"
+  -d "{\"accountId\":1,\"orderId\":\"order-1\"}"
 ```
 
 ## Struktura

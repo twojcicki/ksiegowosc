@@ -12,8 +12,8 @@ import jakarta.persistence.Table;
 public class AllegroToken {
 
     @Id
-    @Column(name = "user_id", nullable = false)
-    private Long userId;
+    @Column(name = "account_id", nullable = false)
+    private Long accountId;
 
     @Column(name = "access_token", nullable = false, length = 8192)
     private String accessToken;
@@ -27,12 +27,12 @@ public class AllegroToken {
     @Column(name = "updated_at", nullable = false)
     private Instant updatedAt;
 
-    public Long getUserId() {
-        return userId;
+    public Long getAccountId() {
+        return accountId;
     }
 
-    public void setUserId(Long userId) {
-        this.userId = userId;
+    public void setAccountId(Long accountId) {
+        this.accountId = accountId;
     }
 
     public String getAccessToken() {

@@ -55,7 +55,7 @@ class AllegroApiClientTest {
                         }
                         """, MediaType.parseMediaType(HttpClientsConfig.ALLEGRO_ACCEPT)));
 
-        AllegroOffersResponse response = client.getOffers(0, 100, null);
+        AllegroOffersResponse response = client.getOffers("test-token", 0, 100, null);
 
         assertThat(response.offers()).hasSize(1);
         assertThat(response.offers().getFirst().id()).isEqualTo("1234567890");
@@ -103,6 +103,7 @@ class AllegroApiClientTest {
                         """, MediaType.parseMediaType(HttpClientsConfig.ALLEGRO_ACCEPT)));
 
         AllegroCheckoutFormsResponse response = client.getCheckoutForms(
+                "test-token",
                 0,
                 100,
                 Instant.parse("2026-01-01T00:00:00Z"),
@@ -163,7 +164,7 @@ class AllegroApiClientTest {
                         }
                         """, MediaType.parseMediaType(HttpClientsConfig.ALLEGRO_ACCEPT)));
 
-        var form = client.getCheckoutForm("order-1");
+        var form = client.getCheckoutForm("test-token", "order-1");
 
         assertThat(form.id()).isEqualTo("order-1");
         assertThat(form.buyer().email()).isEqualTo("a@example.com");

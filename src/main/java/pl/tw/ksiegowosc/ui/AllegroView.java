@@ -150,6 +150,7 @@ public class AllegroView extends View {
 
     private void configureOffersGrid() {
         offersGrid.addThemeVariants(GridVariant.NO_BORDER);
+        offersGrid.addColumn(AllegroOfferDto::accountName).setHeader("Konto").setAutoWidth(true).setSortable(true);
         offersGrid.addColumn(AllegroOfferDto::id).setHeader("ID oferty").setAutoWidth(true).setSortable(true);
         offersGrid.addColumn(AllegroOfferDto::name).setHeader("Nazwa").setFlexGrow(1).setSortable(true);
         offersGrid.addColumn(offer -> formatAmount(offer.price(), offer.currency()))
@@ -166,6 +167,7 @@ public class AllegroView extends View {
 
     private void configureSoldGrid() {
         soldGrid.addThemeVariants(GridVariant.NO_BORDER);
+        soldGrid.addColumn(AllegroSoldItemDto::accountName).setHeader("Konto").setAutoWidth(true).setSortable(true);
         soldGrid.addColumn(AllegroSoldItemDto::orderId).setHeader("ID zamówienia").setAutoWidth(true).setSortable(true);
         soldGrid.addColumn(AllegroSoldItemDto::name).setHeader("Pozycje").setFlexGrow(1).setSortable(true);
         soldGrid.addColumn(AllegroSoldItemDto::itemCount).setHeader("Liczba pozycji").setAutoWidth(true).setSortable(true);
@@ -207,7 +209,7 @@ public class AllegroView extends View {
     private void issueInvoice(AllegroSoldItemDto item, Button button) {
         button.setEnabled(false);
         try {
-            IssueAllegroInvoiceResponse response = invoiceService.issueInvoice(item.orderId());
+            IssueAllegroInvoiceResponse response = invoiceService.issueInvoice(item.accountId(), item.orderId());
             showSuccess("Wystawiono fakturę " + response.invoiceNo() + ".");
             loadSoldItems();
         } catch (ResponseStatusException ex) {
@@ -236,23 +238,14 @@ public class AllegroView extends View {
         connectBanner.addClassName("banner");
 
         if (!connected) {
-            Button connectButton = new Button("Połącz z Allegro", event -> connectAllegro());
-            connectButton.addThemeVariants(ButtonVariant.LUMO_PRIMARY);
+            Button settingsButton = new Button("Ustawienia API", event -> UI.getCurrent().navigate("ustawienia-api"));
+            settingsButton.addThemeVariants(ButtonVariant.LUMO_PRIMARY);
             connectBanner.add(
-                    new Paragraph("Konto Allegro nie jest połączone. Kliknij poniżej, aby autoryzować aplikację w Sandbox."),
-                    connectButton);
+                    new Paragraph(
+                            "Brak połączonego konta Allegro. Dodaj i połącz konto w Ustawieniach API."),
+                    settingsButton);
         } else {
             loadOffers();
-        }
-    }
-
-    private void connectAllegro() {
-        try {
-            UI.getCurrent().getPage().setLocation(authService.buildAuthorizationUrl());
-        } catch (ResponseStatusException ex) {
-            showError(reason(ex));
-        } catch (RuntimeException ex) {
-            showError("Nie udało się rozpocząć połączenia z Allegro.");
         }
     }
 

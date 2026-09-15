@@ -20,7 +20,7 @@ public class AllegroApiClient {
         this.allegroRestClient = allegroRestClient;
     }
 
-    public AllegroOffersResponse getOffers(int offset, int limit, String publicationStatus) {
+    public AllegroOffersResponse getOffers(String accessToken, int offset, int limit, String publicationStatus) {
         UriComponentsBuilder builder = UriComponentsBuilder.fromPath("/sale/offers")
                 .queryParam("offset", offset)
                 .queryParam("limit", limit);
@@ -30,11 +30,13 @@ public class AllegroApiClient {
 
         return allegroRestClient.get()
                 .uri(builder.build().toUriString())
+                .headers(headers -> headers.setBearerAuth(accessToken))
                 .retrieve()
                 .body(AllegroOffersResponse.class);
     }
 
     public AllegroCheckoutFormsResponse getCheckoutForms(
+            String accessToken,
             int offset,
             int limit,
             Instant boughtAtFrom,
@@ -51,13 +53,15 @@ public class AllegroApiClient {
 
         return allegroRestClient.get()
                 .uri(builder.build().toUriString())
+                .headers(headers -> headers.setBearerAuth(accessToken))
                 .retrieve()
                 .body(AllegroCheckoutFormsResponse.class);
     }
 
-    public AllegroCheckoutForm getCheckoutForm(String id) {
+    public AllegroCheckoutForm getCheckoutForm(String accessToken, String id) {
         return allegroRestClient.get()
                 .uri("/order/checkout-forms/{id}", id)
+                .headers(headers -> headers.setBearerAuth(accessToken))
                 .retrieve()
                 .body(AllegroCheckoutForm.class);
     }

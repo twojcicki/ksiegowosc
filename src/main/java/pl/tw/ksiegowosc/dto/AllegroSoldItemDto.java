@@ -4,6 +4,8 @@ import java.math.BigDecimal;
 import java.time.Instant;
 
 public record AllegroSoldItemDto(
+        Long accountId,
+        String accountName,
         String orderId,
         String name,
         Integer itemCount,

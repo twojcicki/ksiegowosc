@@ -22,6 +22,7 @@ import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
 import pl.tw.ksiegowosc.config.AllegroApiProperties;
 import pl.tw.ksiegowosc.dto.AllegroClientCredentials;
 import pl.tw.ksiegowosc.dto.AllegroTokenResponse;
+import pl.tw.ksiegowosc.entity.AllegroAccount;
 import pl.tw.ksiegowosc.entity.AllegroToken;
 import pl.tw.ksiegowosc.mapper.AllegroTokenMapper;
 import pl.tw.ksiegowosc.repository.AllegroTokenRepository;
@@ -33,6 +34,7 @@ public class AllegroAuthService {
 
     private final AllegroApiProperties properties;
     private final AllegroTokenRepository tokenRepository;
+    private final AllegroAccountService accountService;
     private final CurrentUserApiCredentialsService credentialsService;
     private final RestClient allegroAuthRestClient;
     private final AllegroTokenMapper tokenMapper;
@@ -41,12 +43,14 @@ public class AllegroAuthService {
     public AllegroAuthService(
             AllegroApiProperties properties,
             AllegroTokenRepository tokenRepository,
+            AllegroAccountService accountService,
             CurrentUserApiCredentialsService credentialsService,
             @Qualifier("allegroAuthRestClient") RestClient allegroAuthRestClient,
             AllegroTokenMapper tokenMapper,
             Clock clock) {
         this.properties = properties;
         this.tokenRepository = tokenRepository;
+        this.accountService = accountService;
         this.credentialsService = credentialsService;
         this.allegroAuthRestClient = allegroAuthRestClient;
         this.tokenMapper = tokenMapper;
@@ -54,18 +58,25 @@ public class AllegroAuthService {
     }
 
     public boolean isConnected() {
-        return tokenRepository.existsById(credentialsService.requireCurrentUserId());
+        return !accountService.listConnectedAccounts().isEmpty();
     }
 
-    public String buildAuthorizationUrl() {
+    public boolean isConnected(Long accountId) {
+        accountService.requireOwnedAccount(accountId);
+        return tokenRepository.existsById(accountId);
+    }
+
+    public String buildAuthorizationUrl(Long accountId) {
+        AllegroAccount account = accountService.requireOwnedAccount(accountId);
         Long userId = credentialsService.requireCurrentUserId();
-        AllegroClientCredentials client = credentialsService.requireAllegroClientCredentials();
+        AllegroClientCredentials client = accountService.toClientCredentials(account);
+        String state = encodeState(userId, account.getId());
         return properties.authUrl()
                 + "/auth/oauth/authorize?response_type=code"
                 + "&client_id=" + encode(client.clientId())
                 + "&redirect_uri=" + encode(resolveRedirectUri())
                 + "&scope=" + encode(properties.scopes())
-                + "&state=" + encode(String.valueOf(userId));
+                + "&state=" + encode(state);
     }
 
     /**
@@ -91,41 +102,41 @@ public class AllegroAuthService {
 
     @Transactional
     public void exchangeAuthorizationCode(String code, String state) {
-        Long userId = parseUserId(state);
-        credentialsService.requireUserById(userId);
-        AllegroClientCredentials client = credentialsService.requireAllegroClientCredentialsForUser(userId);
+        OAuthState parsed = parseState(state);
+        credentialsService.requireUserById(parsed.userId());
+        AllegroAccount account = accountService.requireOwnedAccountForUser(parsed.accountId(), parsed.userId());
+        AllegroClientCredentials client = accountService.toClientCredentials(account);
 
         MultiValueMap<String, String> form = new LinkedMultiValueMap<>();
         form.add("grant_type", "authorization_code");
         form.add("code", code);
         form.add("redirect_uri", resolveRedirectUri());
-        saveToken(userId, requestToken(client, form));
+        saveToken(account.getId(), requestToken(client, form));
     }
 
     @Transactional
-    public void disconnect() {
-        Long userId = credentialsService.requireCurrentUserId();
-        tokenRepository.deleteById(userId);
+    public String getValidAccessToken(Long accountId) {
+        AllegroAccount account = accountService.requireOwnedAccount(accountId);
+        return getValidAccessTokenForAccount(account);
     }
 
     @Transactional
-    public String getValidAccessToken() {
-        Long userId = credentialsService.requireCurrentUserId();
-        AllegroToken token = tokenRepository.findById(userId)
+    public String getValidAccessTokenForAccount(AllegroAccount account) {
+        AllegroToken token = tokenRepository.findById(account.getId())
                 .orElseThrow(() -> new ResponseStatusException(
                         HttpStatus.UNAUTHORIZED,
-                        "Połącz konto Allegro przez /api/allegro/auth/connect."));
+                        "Połącz konto Allegro \"" + account.getName() + "\" w Ustawieniach API."));
 
         Instant now = clock.instant();
         if (token.getExpiresAt().isAfter(now.plus(EXPIRY_MARGIN))) {
             return token.getAccessToken();
         }
-        return refreshAccessToken(userId, token);
+        return refreshAccessToken(account, token);
     }
 
     @Transactional
-    protected String refreshAccessToken(Long userId, AllegroToken token) {
-        AllegroClientCredentials client = credentialsService.requireAllegroClientCredentialsForUser(userId);
+    protected String refreshAccessToken(AllegroAccount account, AllegroToken token) {
+        AllegroClientCredentials client = accountService.toClientCredentials(account);
         MultiValueMap<String, String> form = new LinkedMultiValueMap<>();
         form.add("grant_type", "refresh_token");
         form.add("refresh_token", token.getRefreshToken());
@@ -135,9 +146,9 @@ public class AllegroAuthService {
         return token.getAccessToken();
     }
 
-    private void saveToken(Long userId, AllegroTokenResponse response) {
-        AllegroToken existing = tokenRepository.findById(userId).orElse(null);
-        AllegroToken token = tokenMapper.apply(response, existing, userId, clock);
+    private void saveToken(Long accountId, AllegroTokenResponse response) {
+        AllegroToken existing = tokenRepository.findById(accountId).orElse(null);
+        AllegroToken token = tokenMapper.apply(response, existing, accountId, clock);
         tokenRepository.save(token);
     }
 
@@ -154,12 +165,20 @@ public class AllegroAuthService {
                 .body(AllegroTokenResponse.class);
     }
 
-    private static Long parseUserId(String state) {
+    static String encodeState(Long userId, Long accountId) {
+        return userId + ":" + accountId;
+    }
+
+    private static OAuthState parseState(String state) {
         if (state == null || state.isBlank()) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Brak parametru state w callbacku Allegro.");
         }
+        String[] parts = state.trim().split(":");
+        if (parts.length != 2) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Nieprawidłowy parametr state w callbacku Allegro.");
+        }
         try {
-            return Long.valueOf(state.trim());
+            return new OAuthState(Long.valueOf(parts[0]), Long.valueOf(parts[1]));
         } catch (NumberFormatException ex) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Nieprawidłowy parametr state w callbacku Allegro.");
         }
@@ -168,5 +187,8 @@ public class AllegroAuthService {
     private static String encode(String value) {
         // OAuth query params should use %20, not + (Allegro rejects mismatched encoding).
         return URLEncoder.encode(value, StandardCharsets.UTF_8).replace("+", "%20");
+    }
+
+    private record OAuthState(Long userId, Long accountId) {
     }
 }

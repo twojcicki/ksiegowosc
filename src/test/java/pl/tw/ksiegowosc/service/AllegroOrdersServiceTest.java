@@ -25,6 +25,7 @@ import pl.tw.ksiegowosc.dto.allegro.AllegroFulfillment;
 import pl.tw.ksiegowosc.dto.allegro.AllegroLineItem;
 import pl.tw.ksiegowosc.dto.allegro.AllegroOfferReference;
 import pl.tw.ksiegowosc.dto.allegro.AllegroPrice;
+import pl.tw.ksiegowosc.entity.AllegroAccount;
 import pl.tw.ksiegowosc.entity.AllegroSoldInvoice;
 import pl.tw.ksiegowosc.mapper.MapperFixtures;
 import pl.tw.ksiegowosc.repository.AllegroSoldInvoiceRepository;
@@ -33,6 +34,7 @@ class AllegroOrdersServiceTest {
 
     private AllegroApiClient allegroApiClient;
     private AllegroAuthService authService;
+    private AllegroAccountService accountService;
     private AllegroSoldInvoiceRepository soldInvoiceRepository;
     private AllegroOrdersService ordersService;
 
@@ -40,43 +42,53 @@ class AllegroOrdersServiceTest {
     void setUp() {
         allegroApiClient = mock(AllegroApiClient.class);
         authService = mock(AllegroAuthService.class);
+        accountService = mock(AllegroAccountService.class);
         soldInvoiceRepository = mock(AllegroSoldInvoiceRepository.class);
         ordersService = new AllegroOrdersService(
-                allegroApiClient, authService, soldInvoiceRepository, MapperFixtures.soldItemMapper());
+                allegroApiClient,
+                authService,
+                accountService,
+                soldInvoiceRepository,
+                MapperFixtures.soldItemMapper());
     }
 
     @Test
     void shouldAggregateCheckoutFormAsOneSoldOrder() {
-        when(authService.getValidAccessToken()).thenReturn("token");
+        AllegroAccount account = account(5L, "Sklep");
+        when(accountService.listConnectedAccounts()).thenReturn(List.of(account));
+        when(authService.getValidAccessTokenForAccount(account)).thenReturn("token");
         when(soldInvoiceRepository.findByOrderIdIn(any())).thenReturn(List.of());
-        when(allegroApiClient.getCheckoutForms(eq(0), eq(100), any(), any())).thenReturn(new AllegroCheckoutFormsResponse(
-                List.of(new AllegroCheckoutForm(
-                        "order-1",
-                        new AllegroBuyer("buyer1", null),
-                        "READY_FOR_PROCESSING",
-                        new AllegroFulfillment("SENT"),
-                        null,
-                        List.of(
-                                new AllegroLineItem(
-                                        "line-1",
-                                        new AllegroOfferReference("offer-1", "Książka", null),
-                                        2,
-                                        new AllegroPrice("25.00", "PLN"),
-                                        null,
-                                        Instant.parse("2026-01-10T08:00:00Z")),
-                                new AllegroLineItem(
-                                        "line-2",
-                                        new AllegroOfferReference("offer-2", "Długopis", null),
-                                        1,
-                                        new AllegroPrice("10.00", "PLN"),
-                                        null,
-                                        Instant.parse("2026-01-11T08:00:00Z"))))),
-                1,
-                1));
+        when(allegroApiClient.getCheckoutForms(eq("token"), eq(0), eq(100), any(), any()))
+                .thenReturn(new AllegroCheckoutFormsResponse(
+                        List.of(new AllegroCheckoutForm(
+                                "order-1",
+                                new AllegroBuyer("buyer1", null),
+                                "READY_FOR_PROCESSING",
+                                new AllegroFulfillment("SENT"),
+                                null,
+                                List.of(
+                                        new AllegroLineItem(
+                                                "line-1",
+                                                new AllegroOfferReference("offer-1", "Książka", null),
+                                                2,
+                                                new AllegroPrice("25.00", "PLN"),
+                                                null,
+                                                Instant.parse("2026-01-10T08:00:00Z")),
+                                        new AllegroLineItem(
+                                                "line-2",
+                                                new AllegroOfferReference("offer-2", "Długopis", null),
+                                                1,
+                                                new AllegroPrice("10.00", "PLN"),
+                                                null,
+                                                Instant.parse("2026-01-11T08:00:00Z"))))),
+                        1,
+                        1));
 
         var items = ordersService.getSoldItems(LocalDate.of(2026, 1, 1), LocalDate.of(2026, 1, 31), 0, 100);
 
         assertThat(items).hasSize(1);
+        assertThat(items.getFirst().accountId()).isEqualTo(5L);
+        assertThat(items.getFirst().accountName()).isEqualTo("Sklep");
         assertThat(items.getFirst().orderId()).isEqualTo("order-1");
         assertThat(items.getFirst().name()).isEqualTo("Książka (+1)");
         assertThat(items.getFirst().itemCount()).isEqualTo(2);
@@ -85,32 +97,35 @@ class AllegroOrdersServiceTest {
         assertThat(items.getFirst().buyerLogin()).isEqualTo("buyer1");
         assertThat(items.getFirst().fulfillmentStatus()).isEqualTo("SENT");
         assertThat(items.getFirst().invoiceNo()).isNull();
-        verify(authService).getValidAccessToken();
+        verify(authService).getValidAccessTokenForAccount(account);
     }
 
     @Test
     void shouldAttachInvoiceNoFromDatabase() {
-        when(authService.getValidAccessToken()).thenReturn("token");
+        AllegroAccount account = account(5L, "Sklep");
+        when(accountService.listConnectedAccounts()).thenReturn(List.of(account));
+        when(authService.getValidAccessTokenForAccount(account)).thenReturn("token");
         AllegroSoldInvoice saved = new AllegroSoldInvoice();
         saved.setOrderId("order-1");
         saved.setInvoiceNo("order1/01/2026");
         when(soldInvoiceRepository.findByOrderIdIn(any())).thenReturn(List.of(saved));
-        when(allegroApiClient.getCheckoutForms(eq(0), eq(100), any(), any())).thenReturn(new AllegroCheckoutFormsResponse(
-                List.of(new AllegroCheckoutForm(
-                        "order-1",
-                        new AllegroBuyer("buyer1", null),
-                        "READY_FOR_PROCESSING",
-                        new AllegroFulfillment("SENT"),
-                        null,
-                        List.of(new AllegroLineItem(
-                                "line-1",
-                                new AllegroOfferReference("offer-1", "Książka", null),
-                                1,
-                                new AllegroPrice("25.00", "PLN"),
+        when(allegroApiClient.getCheckoutForms(eq("token"), eq(0), eq(100), any(), any()))
+                .thenReturn(new AllegroCheckoutFormsResponse(
+                        List.of(new AllegroCheckoutForm(
+                                "order-1",
+                                new AllegroBuyer("buyer1", null),
+                                "READY_FOR_PROCESSING",
+                                new AllegroFulfillment("SENT"),
                                 null,
-                                Instant.parse("2026-01-10T08:00:00Z"))))),
-                1,
-                1));
+                                List.of(new AllegroLineItem(
+                                        "line-1",
+                                        new AllegroOfferReference("offer-1", "Książka", null),
+                                        1,
+                                        new AllegroPrice("25.00", "PLN"),
+                                        null,
+                                        Instant.parse("2026-01-10T08:00:00Z"))))),
+                        1,
+                        1));
 
         var items = ordersService.getSoldItems(LocalDate.of(2026, 1, 1), LocalDate.of(2026, 1, 31), 0, 100);
 
@@ -120,11 +135,20 @@ class AllegroOrdersServiceTest {
     @Test
     void shouldRejectInvalidDateRange() {
         assertThatThrownBy(() -> ordersService.getSoldItems(
-                LocalDate.of(2026, 2, 1),
-                LocalDate.of(2026, 1, 1),
-                0,
-                100))
+                        LocalDate.of(2026, 2, 1),
+                        LocalDate.of(2026, 1, 1),
+                        0,
+                        100))
                 .isInstanceOf(ResponseStatusException.class)
                 .hasMessageContaining("późniejsza");
+    }
+
+    private static AllegroAccount account(Long id, String name) {
+        AllegroAccount account = new AllegroAccount();
+        account.setId(id);
+        account.setName(name);
+        account.setClientId("client");
+        account.setClientSecret("secret");
+        return account;
     }
 }
