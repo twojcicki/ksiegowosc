@@ -10,7 +10,10 @@ import pl.tw.ksiegowosc.dto.allegro.AllegroOfferReference;
 public final class AllegroInvoiceMappingSupport {
 
     public static final int ITEM_TYPE_STOCK = 1;
+    public static final int ITEM_TYPE_SERVICE = 2;
     public static final BigDecimal FALLBACK_VAT_PERCENT = new BigDecimal("23");
+    public static final String FALLBACK_DELIVERY_CODE = "DOSTAWA";
+    public static final String FALLBACK_SURCHARGE_CODE = "DOPLATA";
     private static final int ITEM_CODE_MAX = 20;
 
     private static final DateTimeFormatter MONTH = DateTimeFormatter.ofPattern("MM");
@@ -94,5 +97,12 @@ public final class AllegroInvoiceMappingSupport {
             return orderId.trim();
         }
         return null;
+    }
+
+    public static String truncateItemCode(String value) {
+        if (value == null || value.isBlank()) {
+            return null;
+        }
+        return MappingSupport.truncate(value.trim(), ITEM_CODE_MAX);
     }
 }

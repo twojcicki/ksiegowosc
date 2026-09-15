@@ -21,6 +21,9 @@ import pl.tw.ksiegowosc.client.AllegroApiClient;
 import pl.tw.ksiegowosc.dto.allegro.AllegroBuyer;
 import pl.tw.ksiegowosc.dto.allegro.AllegroCheckoutForm;
 import pl.tw.ksiegowosc.dto.allegro.AllegroCheckoutFormsResponse;
+import pl.tw.ksiegowosc.dto.allegro.AllegroCheckoutSummary;
+import pl.tw.ksiegowosc.dto.allegro.AllegroDelivery;
+import pl.tw.ksiegowosc.dto.allegro.AllegroDeliveryMethod;
 import pl.tw.ksiegowosc.dto.allegro.AllegroFulfillment;
 import pl.tw.ksiegowosc.dto.allegro.AllegroLineItem;
 import pl.tw.ksiegowosc.dto.allegro.AllegroOfferReference;
@@ -73,14 +76,21 @@ class AllegroOrdersServiceTest {
                                                 2,
                                                 new AllegroPrice("25.00", "PLN"),
                                                 null,
-                                                Instant.parse("2026-01-10T08:00:00Z")),
+                                                Instant.parse("2026-01-10T08:00:00Z"),
+                                                null),
                                         new AllegroLineItem(
                                                 "line-2",
                                                 new AllegroOfferReference("offer-2", "Długopis", null),
                                                 1,
                                                 new AllegroPrice("10.00", "PLN"),
                                                 null,
-                                                Instant.parse("2026-01-11T08:00:00Z"))))),
+                                                Instant.parse("2026-01-11T08:00:00Z"),
+                                                null)),
+                                new AllegroDelivery(
+                                        new AllegroPrice("12.99", "PLN"),
+                                        new AllegroDeliveryMethod("m1", "Kurier")),
+                                new AllegroCheckoutSummary(new AllegroPrice("72.99", "PLN")),
+                                null)),
                         1,
                         1));
 
@@ -92,7 +102,7 @@ class AllegroOrdersServiceTest {
         assertThat(items.getFirst().orderId()).isEqualTo("order-1");
         assertThat(items.getFirst().name()).isEqualTo("Książka (+1)");
         assertThat(items.getFirst().itemCount()).isEqualTo(2);
-        assertThat(items.getFirst().totalGross()).isEqualByComparingTo(new BigDecimal("60.00"));
+        assertThat(items.getFirst().totalGross()).isEqualByComparingTo(new BigDecimal("72.99"));
         assertThat(items.getFirst().boughtAt()).isEqualTo(Instant.parse("2026-01-10T08:00:00Z"));
         assertThat(items.getFirst().buyerLogin()).isEqualTo("buyer1");
         assertThat(items.getFirst().fulfillmentStatus()).isEqualTo("SENT");
@@ -123,7 +133,11 @@ class AllegroOrdersServiceTest {
                                         1,
                                         new AllegroPrice("25.00", "PLN"),
                                         null,
-                                        Instant.parse("2026-01-10T08:00:00Z"))))),
+                                        Instant.parse("2026-01-10T08:00:00Z"),
+                                        null)),
+                                null,
+                                null,
+                                null)),
                         1,
                         1));
 

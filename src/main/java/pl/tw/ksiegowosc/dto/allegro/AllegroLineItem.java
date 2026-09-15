@@ -1,6 +1,7 @@
 package pl.tw.ksiegowosc.dto.allegro;
 
 import java.time.Instant;
+import java.util.List;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 
@@ -11,5 +12,6 @@ public record AllegroLineItem(
         Integer quantity,
         AllegroPrice price,
         AllegroLineItemTax tax,
-        Instant boughtAt) {
+        Instant boughtAt,
+        List<AllegroAdditionalService> selectedAdditionalServices) {
 }

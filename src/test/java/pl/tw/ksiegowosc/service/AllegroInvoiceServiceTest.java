@@ -28,6 +28,9 @@ import pl.tw.ksiegowosc.dto.MeritCreateCustomerResponse;
 import pl.tw.ksiegowosc.dto.MeritUnitDto;
 import pl.tw.ksiegowosc.dto.allegro.AllegroBuyer;
 import pl.tw.ksiegowosc.dto.allegro.AllegroCheckoutForm;
+import pl.tw.ksiegowosc.dto.allegro.AllegroCheckoutSummary;
+import pl.tw.ksiegowosc.dto.allegro.AllegroDelivery;
+import pl.tw.ksiegowosc.dto.allegro.AllegroDeliveryMethod;
 import pl.tw.ksiegowosc.dto.allegro.AllegroFulfillment;
 import pl.tw.ksiegowosc.dto.allegro.AllegroInvoice;
 import pl.tw.ksiegowosc.dto.allegro.AllegroInvoiceAddress;
@@ -37,6 +40,7 @@ import pl.tw.ksiegowosc.dto.allegro.AllegroLineItem;
 import pl.tw.ksiegowosc.dto.allegro.AllegroLineItemTax;
 import pl.tw.ksiegowosc.dto.allegro.AllegroOfferReference;
 import pl.tw.ksiegowosc.dto.allegro.AllegroPrice;
+import pl.tw.ksiegowosc.dto.allegro.AllegroSurcharge;
 import pl.tw.ksiegowosc.dto.allegro.AllegroTaxId;
 import pl.tw.ksiegowosc.entity.AllegroSoldInvoice;
 import pl.tw.ksiegowosc.mapper.MapperFixtures;
@@ -246,7 +250,65 @@ class AllegroInvoiceServiceTest {
         verify(invoicesService, never()).createInvoice(any());
     }
 
+    @Test
+    void shouldAddDeliveryLineAndMatchTotalToPay() {
+        when(soldInvoiceRepository.existsById("order-1")).thenReturn(false);
+        when(authService.getValidAccessToken(9L)).thenReturn("token");
+        AllegroDelivery delivery = new AllegroDelivery(
+                new AllegroPrice("10.00", "PLN"),
+                new AllegroDeliveryMethod("ship-method-1", "Paczkomat"));
+        AllegroCheckoutSummary summary = new AllegroCheckoutSummary(new AllegroPrice("70.00", "PLN"));
+        when(allegroApiClient.getCheckoutForm("token", "order-1"))
+                .thenReturn(sampleForm(null, null, delivery, summary, null));
+        when(customersService.getCustomersByVatRegNo("5252674798")).thenReturn(List.of(
+                new CustomerDto("cust-1", "Firma", null, "5252674798", null, null, null, "PLN")));
+        when(invoicesService.createInvoice(any())).thenReturn(new CreateInvoiceResponse("merit-inv-1", "cust-1"));
+
+        invoiceService.issueInvoice(9L, "order-1");
+
+        ArgumentCaptor<CreateInvoiceRequest> requestCaptor = ArgumentCaptor.forClass(CreateInvoiceRequest.class);
+        verify(invoicesService).createInvoice(requestCaptor.capture());
+        CreateInvoiceRequest request = requestCaptor.getValue();
+        assertThat(request.lines()).hasSize(3);
+        assertThat(request.lines().get(2).itemCode()).isEqualTo("ship-method-1");
+        assertThat(request.lines().get(2).description()).isEqualTo("Paczkomat");
+        assertThat(request.lines().get(2).itemType()).isEqualTo(2);
+        assertThat(request.lines().get(2).price()).isEqualByComparingTo(new BigDecimal("8.13"));
+        assertThat(request.lines().get(2).taxId()).isEqualTo("tax-23");
+        BigDecimal invoiceGross = request.totalAmount()
+                .add(request.taxAmounts().stream()
+                        .map(t -> t.amount())
+                        .reduce(BigDecimal.ZERO, BigDecimal::add));
+        assertThat(invoiceGross).isEqualByComparingTo(new BigDecimal("70.00"));
+    }
+
+    @Test
+    void shouldRejectWhenInvoiceGrossDoesNotMatchTotalToPay() {
+        when(soldInvoiceRepository.existsById("order-1")).thenReturn(false);
+        when(authService.getValidAccessToken(9L)).thenReturn("token");
+        AllegroCheckoutSummary summary = new AllegroCheckoutSummary(new AllegroPrice("99.00", "PLN"));
+        when(allegroApiClient.getCheckoutForm("token", "order-1"))
+                .thenReturn(sampleForm(null, null, null, summary, null));
+        when(customersService.getCustomersByVatRegNo("5252674798")).thenReturn(List.of(
+                new CustomerDto("cust-1", "Firma", null, "5252674798", null, null, null, "PLN")));
+
+        assertThatThrownBy(() -> invoiceService.issueInvoice(9L, "order-1"))
+                .isInstanceOf(ResponseStatusException.class)
+                .hasMessageContaining("summary.totalToPay");
+
+        verify(invoicesService, never()).createInvoice(any());
+    }
+
     private static AllegroCheckoutForm sampleForm(AllegroLineItemTax tax1, AllegroLineItemTax tax2) {
+        return sampleForm(tax1, tax2, null, null, null);
+    }
+
+    private static AllegroCheckoutForm sampleForm(
+            AllegroLineItemTax tax1,
+            AllegroLineItemTax tax2,
+            AllegroDelivery delivery,
+            AllegroCheckoutSummary summary,
+            List<AllegroSurcharge> surcharges) {
         return new AllegroCheckoutForm(
                 "order-1",
                 new AllegroBuyer("buyer1", "buyer@example.com"),
@@ -274,13 +336,18 @@ class AllegroInvoiceServiceTest {
                                 1,
                                 new AllegroPrice("25.00", "PLN"),
                                 tax1,
-                                Instant.parse("2026-01-10T08:00:00Z")),
+                                Instant.parse("2026-01-10T08:00:00Z"),
+                                null),
                         new AllegroLineItem(
                                 "line-2",
                                 new AllegroOfferReference("offer-2", "Długopis", null),
                                 1,
                                 new AllegroPrice("35.00", "PLN"),
                                 tax2,
-                                Instant.parse("2026-01-11T08:00:00Z"))));
+                                Instant.parse("2026-01-11T08:00:00Z"),
+                                null)),
+                delivery,
+                summary,
+                surcharges);
     }
 }

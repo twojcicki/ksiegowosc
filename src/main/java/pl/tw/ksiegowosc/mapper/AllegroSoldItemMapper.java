@@ -1,7 +1,6 @@
 package pl.tw.ksiegowosc.mapper;
 
 import java.math.BigDecimal;
-import java.math.RoundingMode;
 import java.time.Instant;
 import java.util.List;
 import java.util.Objects;
@@ -35,19 +34,8 @@ public interface AllegroSoldItemMapper {
                 .min(Instant::compareTo)
                 .orElse(null);
 
-        BigDecimal totalGross = BigDecimal.ZERO.setScale(2, RoundingMode.HALF_UP);
-        String currency = null;
-        for (AllegroLineItem lineItem : lineItems) {
-            AllegroPrice price = lineItem.price();
-            BigDecimal unit = parseAmount(price == null ? null : price.amount());
-            int qty = lineItem.quantity() == null ? 0 : lineItem.quantity();
-            if (unit != null) {
-                totalGross = totalGross.add(unit.multiply(BigDecimal.valueOf(qty)));
-            }
-            if (currency == null && price != null && price.currency() != null && !price.currency().isBlank()) {
-                currency = price.currency();
-            }
-        }
+        BigDecimal totalGross = AllegroToMeritInvoiceBuilder.resolveBuyerTotalGross(form);
+        String currency = resolveCurrency(form);
 
         return new AllegroSoldItemDto(
                 accountId,
@@ -80,6 +68,29 @@ public interface AllegroSoldItemMapper {
                 invoiceNo);
     }
 
+    private static String resolveCurrency(AllegroCheckoutForm form) {
+        if (form.summary() != null
+                && form.summary().totalToPay() != null
+                && form.summary().totalToPay().currency() != null
+                && !form.summary().totalToPay().currency().isBlank()) {
+            return form.summary().totalToPay().currency();
+        }
+        if (form.delivery() != null
+                && form.delivery().cost() != null
+                && form.delivery().cost().currency() != null
+                && !form.delivery().cost().currency().isBlank()) {
+            return form.delivery().cost().currency();
+        }
+        List<AllegroLineItem> lineItems = form.lineItems() == null ? List.of() : form.lineItems();
+        for (AllegroLineItem lineItem : lineItems) {
+            AllegroPrice price = lineItem.price();
+            if (price != null && price.currency() != null && !price.currency().isBlank()) {
+                return price.currency();
+            }
+        }
+        return null;
+    }
+
     private static String summarizeName(List<AllegroLineItem> lineItems) {
         if (lineItems.isEmpty()) {
             return "";
@@ -90,12 +101,5 @@ public interface AllegroSoldItemMapper {
             return first;
         }
         return first + " (+" + (lineItems.size() - 1) + ")";
-    }
-
-    private static BigDecimal parseAmount(String amount) {
-        if (amount == null || amount.isBlank()) {
-            return null;
-        }
-        return new BigDecimal(amount);
     }
 }

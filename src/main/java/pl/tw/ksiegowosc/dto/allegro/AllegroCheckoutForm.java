@@ -11,5 +11,8 @@ public record AllegroCheckoutForm(
         String status,
         AllegroFulfillment fulfillment,
         AllegroInvoice invoice,
-        List<AllegroLineItem> lineItems) {
+        List<AllegroLineItem> lineItems,
+        AllegroDelivery delivery,
+        AllegroCheckoutSummary summary,
+        List<AllegroSurcharge> surcharges) {
 }

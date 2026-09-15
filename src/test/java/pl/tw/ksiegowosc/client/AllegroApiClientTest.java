@@ -160,7 +160,14 @@ class AllegroApiClientTest {
                               "tax": { "rate": "23.00", "subject": "GOODS", "exemption": null },
                               "boughtAt": "2026-01-15T10:00:00.000Z"
                             }
-                          ]
+                          ],
+                          "delivery": {
+                            "cost": { "amount": "8.99", "currency": "PLN" },
+                            "method": { "id": "method-1", "name": "Paczkomat" }
+                          },
+                          "summary": {
+                            "totalToPay": { "amount": "58.98", "currency": "PLN" }
+                          }
                         }
                         """, MediaType.parseMediaType(HttpClientsConfig.ALLEGRO_ACCEPT)));
 
@@ -173,6 +180,9 @@ class AllegroApiClientTest {
         assertThat(form.lineItems().getFirst().offer().id()).isEqualTo("123");
         assertThat(form.lineItems().getFirst().offer().external().id()).isEqualTo("SKU-001");
         assertThat(form.lineItems().getFirst().tax().rate()).isEqualTo("23.00");
+        assertThat(form.delivery().cost().amount()).isEqualTo("8.99");
+        assertThat(form.delivery().method().id()).isEqualTo("method-1");
+        assertThat(form.summary().totalToPay().amount()).isEqualTo("58.98");
         server.verify();
     }
 }
