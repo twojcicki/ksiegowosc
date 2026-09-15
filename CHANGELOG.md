@@ -12,6 +12,7 @@ Format oparty na [Keep a Changelog](https://keepachangelog.com/pl/1.1.0/).
 
 ### Added
 
+- Zakładka Allegro „Mapowanie”: deklaratywny katalog `AllegroMeritInvoiceMappings.RULES` + podgląd wartości Merit (w tym `InvoiceRow[].Item.*`) bez `sendinvoice`.
 - Prefiks faktury per konto Allegro; numer Merit: `prefiks/kolejny/MM/rrrr` (np. `FS/5/09/2026`), kolejny numer = liczba faktur w Merit w miesiącu dokumentu + 1.
 - Wiele kont Allegro per użytkownik (`allegro_account`): nazwa, Client ID/Secret (plaintext), Połącz/Usuń; oferty i sprzedane ze wszystkich połączonych kont z kolumną „Konto”.
 - Ustawienia API per użytkownik (Merit Api Id/Key w `user_api_credentials`).

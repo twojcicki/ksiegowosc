@@ -79,6 +79,7 @@ class AllegroInvoiceServiceTest {
                 soldInvoiceRepository,
                 MapperFixtures.billingMapper(),
                 MapperFixtures.invoiceMapper(),
+                MapperFixtures.meritInvoiceMapper(),
                 MapperFixtures.soldInvoiceMapper(),
                 clock);
     }
@@ -175,6 +176,73 @@ class AllegroInvoiceServiceTest {
                 .hasMessageContaining("już wystawiona");
 
         verify(allegroApiClient, never()).getCheckoutForm(any(), any());
+        verify(invoicesService, never()).createInvoice(any());
+    }
+
+    @Test
+    void shouldPreviewInvoiceWithoutSendingOrCreatingCustomer() {
+        when(authService.getValidAccessToken(9L)).thenReturn("token");
+        when(allegroApiClient.getCheckoutForm("token", "order-1")).thenReturn(sampleForm(null, null));
+        when(customersService.getCustomersByVatRegNo("5252674798")).thenReturn(List.of(
+                new CustomerDto("cust-1", "Firma", null, "5252674798", null, null, null, "PLN")));
+
+        var preview = invoiceService.previewInvoice(9L, "order-1");
+
+        assertThat(preview.orderId()).isEqualTo("order-1");
+        assertThat(preview.customerExists()).isTrue();
+        assertThat(preview.customerId()).isEqualTo("cust-1");
+        assertThat(preview.rows())
+                .anySatisfy(row -> {
+                    assertThat(row.meritField()).isEqualTo("InvoiceNo");
+                    assertThat(row.value()).isEqualTo("FS/1/01/2026");
+                })
+                .anySatisfy(row -> {
+                    assertThat(row.meritField()).isEqualTo("InvoiceRow[0].Item.Code");
+                    assertThat(row.value()).isEqualTo("SKU-BOOK");
+                })
+                .anySatisfy(row -> {
+                    assertThat(row.meritField()).isEqualTo("InvoiceRow[0].Item.Description");
+                    assertThat(row.value()).isEqualTo("Książka");
+                })
+                .anySatisfy(row -> {
+                    assertThat(row.meritField()).isEqualTo("InvoiceRow[0].Item.Type");
+                    assertThat(row.value()).isEqualTo("1");
+                })
+                .anySatisfy(row -> {
+                    assertThat(row.meritField()).isEqualTo("InvoiceRow[0].Item.UOMName");
+                    assertThat(row.value()).isEqualTo("szt.");
+                });
+
+        verify(invoicesService, never()).createInvoice(any());
+        verify(customersService, never()).createCustomer(any());
+        verify(soldInvoiceRepository, never()).save(any());
+    }
+
+    @Test
+    void shouldPreviewCustomerCreatePayloadWhenCustomerMissing() {
+        when(authService.getValidAccessToken(9L)).thenReturn("token");
+        when(allegroApiClient.getCheckoutForm("token", "order-1")).thenReturn(sampleForm(null, null));
+        when(customersService.getCustomersByVatRegNo("5252674798")).thenReturn(List.of());
+
+        var preview = invoiceService.previewInvoice(9L, "order-1");
+
+        assertThat(preview.customerExists()).isFalse();
+        assertThat(preview.customerId()).isNull();
+        assertThat(preview.rows())
+                .anySatisfy(row -> {
+                    assertThat(row.meritField()).isEqualTo("Name");
+                    assertThat(row.value()).isEqualTo("Allegro Sp. z o.o.");
+                })
+                .anySatisfy(row -> {
+                    assertThat(row.meritField()).isEqualTo("VatRegNo");
+                    assertThat(row.value()).isEqualTo("5252674798");
+                })
+                .anySatisfy(row -> {
+                    assertThat(row.meritField()).isEqualTo("Customer.Id");
+                    assertThat(row.value()).contains("utworzony");
+                });
+
+        verify(customersService, never()).createCustomer(any());
         verify(invoicesService, never()).createInvoice(any());
     }
 

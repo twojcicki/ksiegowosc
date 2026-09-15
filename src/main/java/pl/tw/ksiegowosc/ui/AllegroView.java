@@ -15,11 +15,13 @@ import com.vaadin.flow.component.UI;
 import com.vaadin.flow.component.applayout.DrawerToggle;
 import com.vaadin.flow.component.button.Button;
 import com.vaadin.flow.component.button.ButtonVariant;
+import com.vaadin.flow.component.combobox.ComboBox;
 import com.vaadin.flow.component.datepicker.DatePicker;
 import com.vaadin.flow.component.grid.Grid;
 import com.vaadin.flow.component.grid.GridVariant;
 import com.vaadin.flow.component.html.Div;
 import com.vaadin.flow.component.html.H1;
+import com.vaadin.flow.component.html.H3;
 import com.vaadin.flow.component.html.Paragraph;
 import com.vaadin.flow.component.notification.Notification;
 import com.vaadin.flow.component.notification.NotificationVariant;
@@ -33,9 +35,13 @@ import com.vaadin.flow.router.Route;
 import jakarta.annotation.security.PermitAll;
 import pl.tw.ksiegowosc.client.AllegroErrorMessages;
 import pl.tw.ksiegowosc.client.MeritErrorMessages;
+import pl.tw.ksiegowosc.dto.AllegroInvoicePreviewDto;
+import pl.tw.ksiegowosc.dto.AllegroInvoicePreviewRow;
 import pl.tw.ksiegowosc.dto.AllegroOfferDto;
 import pl.tw.ksiegowosc.dto.AllegroSoldItemDto;
 import pl.tw.ksiegowosc.dto.IssueAllegroInvoiceResponse;
+import pl.tw.ksiegowosc.mapper.AllegroMeritInvoiceMappings;
+import pl.tw.ksiegowosc.mapper.MeritFieldRule;
 import pl.tw.ksiegowosc.service.AllegroAuthService;
 import pl.tw.ksiegowosc.service.AllegroInvoiceService;
 import pl.tw.ksiegowosc.service.AllegroOffersService;
@@ -63,8 +69,21 @@ public class AllegroView extends View {
     private final VerticalLayout contentLayout = new VerticalLayout();
     private final Grid<AllegroOfferDto> offersGrid = new Grid<>(AllegroOfferDto.class, false);
     private final Grid<AllegroSoldItemDto> soldGrid = new Grid<>(AllegroSoldItemDto.class, false);
+    private final Grid<MeritFieldRule> rulesGrid = new Grid<>(MeritFieldRule.class, false);
+    private final Grid<AllegroInvoicePreviewRow> previewGrid = new Grid<>(AllegroInvoicePreviewRow.class, false);
     private final DatePicker soldFromPicker = new DatePicker("Od");
     private final DatePicker soldToPicker = new DatePicker("Do");
+    private final ComboBox<AllegroSoldItemDto> previewOrderCombo = new ComboBox<>("Sprzedaż do podglądu");
+
+    private final Tab offersTab = new Tab("Oferty");
+    private final Tab soldTab = new Tab("Sprzedane");
+    private final Tab mappingTab = new Tab("Mapowanie");
+    private final Tabs tabs = new Tabs(offersTab, soldTab, mappingTab);
+
+    private VerticalLayout offersPanel;
+    private VerticalLayout soldPanel;
+    private VerticalLayout mappingPanel;
+    private List<AllegroSoldItemDto> lastSoldItems = List.of();
 
     public AllegroView(
             AllegroAuthService authService,
@@ -82,6 +101,8 @@ public class AllegroView extends View {
         addClassNames(Aura.SURFACE_SOLID, "allegro-view");
         configureOffersGrid();
         configureSoldGrid();
+        configureRulesGrid();
+        configurePreviewGrid();
         add(createHeader(), connectBanner, createContent());
         refreshConnectionState();
     }
@@ -93,9 +114,6 @@ public class AllegroView extends View {
     }
 
     private VerticalLayout createContent() {
-        Tab offersTab = new Tab("Oferty");
-        Tab soldTab = new Tab("Sprzedane");
-        Tabs tabs = new Tabs(offersTab, soldTab);
         tabs.setWidthFull();
 
         Button refresh = new Button("Odśwież", e -> loadOffers());
@@ -104,7 +122,7 @@ public class AllegroView extends View {
         offersToolbar.addClassName("filters");
         offersToolbar.setWidthFull();
 
-        VerticalLayout offersPanel = new VerticalLayout(offersToolbar, offersGrid);
+        offersPanel = new VerticalLayout(offersToolbar, offersGrid);
         offersPanel.setPadding(false);
         offersPanel.setSpacing(false);
         offersPanel.setSizeFull();
@@ -121,31 +139,76 @@ public class AllegroView extends View {
         soldFilters.addClassName("filters");
         soldFilters.setWidthFull();
 
-        VerticalLayout soldPanel = new VerticalLayout(soldFilters, soldGrid);
+        soldPanel = new VerticalLayout(soldFilters, soldGrid);
         soldPanel.setPadding(false);
         soldPanel.setSpacing(false);
         soldPanel.setSizeFull();
         soldPanel.setFlexGrow(1, soldGrid);
         soldPanel.setVisible(false);
 
-        tabs.addSelectedChangeListener(event -> {
-            boolean offersSelected = event.getSelectedTab() == offersTab;
-            offersPanel.setVisible(offersSelected);
-            soldPanel.setVisible(!offersSelected);
-            if (offersSelected) {
-                loadOffers();
-            } else {
-                loadSoldItems();
-            }
-        });
+        mappingPanel = createMappingPanel();
+        mappingPanel.setVisible(false);
+
+        tabs.addSelectedChangeListener(event -> showSelectedTab(event.getSelectedTab()));
 
         contentLayout.setPadding(false);
         contentLayout.setSpacing(false);
         contentLayout.setSizeFull();
-        contentLayout.add(tabs, offersPanel, soldPanel);
+        contentLayout.add(tabs, offersPanel, soldPanel, mappingPanel);
         contentLayout.setFlexGrow(1, offersPanel);
         contentLayout.setFlexGrow(1, soldPanel);
+        contentLayout.setFlexGrow(1, mappingPanel);
         return contentLayout;
+    }
+
+    private VerticalLayout createMappingPanel() {
+        H3 rulesHeading = new H3("Reguły mapowania (Allegro → Merit)");
+        rulesGrid.setItems(AllegroMeritInvoiceMappings.RULES);
+        rulesGrid.setHeight("280px");
+
+        previewOrderCombo.setItemLabelGenerator(item -> {
+            if (item == null) {
+                return "";
+            }
+            String account = item.accountName() == null ? "" : item.accountName() + " · ";
+            String name = item.name() == null ? "" : " — " + item.name();
+            return account + item.orderId() + name;
+        });
+        previewOrderCombo.setWidthFull();
+        previewOrderCombo.setClearButtonVisible(true);
+
+        Button previewButton = new Button("Podgląd", e -> loadPreview());
+        previewButton.addThemeVariants(ButtonVariant.PRIMARY);
+        HorizontalLayout previewToolbar = new HorizontalLayout(previewOrderCombo, previewButton);
+        previewToolbar.setWidthFull();
+        previewToolbar.setFlexGrow(1, previewOrderCombo);
+        previewToolbar.addClassName("filters");
+
+        H3 previewHeading = new H3("Podgląd wartości dla sprzedaży");
+        Paragraph hint = new Paragraph(
+                "Podgląd buduje ten sam payload co wystawienie faktury, bez sendinvoice i bez tworzenia klienta.");
+        hint.getStyle().set("margin-top", "0");
+
+        VerticalLayout panel = new VerticalLayout(
+                rulesHeading, rulesGrid, previewHeading, hint, previewToolbar, previewGrid);
+        panel.setPadding(false);
+        panel.setSpacing(true);
+        panel.setSizeFull();
+        panel.setFlexGrow(1, previewGrid);
+        return panel;
+    }
+
+    private void showSelectedTab(Tab selected) {
+        offersPanel.setVisible(selected == offersTab);
+        soldPanel.setVisible(selected == soldTab);
+        mappingPanel.setVisible(selected == mappingTab);
+        if (selected == offersTab) {
+            loadOffers();
+        } else if (selected == soldTab) {
+            loadSoldItems();
+        } else if (selected == mappingTab) {
+            refreshPreviewOrderChoices();
+        }
     }
 
     private void configureOffersGrid() {
@@ -187,23 +250,54 @@ public class AllegroView extends View {
             String invoiceNo = item.invoiceNo();
             return invoiceNo == null || invoiceNo.isBlank() ? "—" : invoiceNo;
         }).setHeader("Faktura").setAutoWidth(true).setSortable(true);
-        soldGrid.addComponentColumn(this::createIssueInvoiceButton)
+        soldGrid.addComponentColumn(this::createSoldActions)
                 .setHeader("Akcja")
                 .setAutoWidth(true)
                 .setFlexGrow(0);
         soldGrid.setSizeFull();
     }
 
-    private Button createIssueInvoiceButton(AllegroSoldItemDto item) {
+    private void configureRulesGrid() {
+        rulesGrid.addThemeVariants(GridVariant.NO_BORDER);
+        rulesGrid.addColumn(rule -> rule.section().name()).setHeader("Sekcja").setAutoWidth(true).setSortable(true);
+        rulesGrid.addColumn(MeritFieldRule::meritField).setHeader("Pole Merit").setAutoWidth(true).setSortable(true);
+        rulesGrid.addColumn(MeritFieldRule::sourceRule).setHeader("Źródło / reguła").setFlexGrow(1);
+        rulesGrid.setWidthFull();
+    }
+
+    private void configurePreviewGrid() {
+        previewGrid.addThemeVariants(GridVariant.NO_BORDER);
+        previewGrid.addColumn(row -> row.section().name()).setHeader("Sekcja").setAutoWidth(true).setSortable(true);
+        previewGrid.addColumn(AllegroInvoicePreviewRow::meritField).setHeader("Pole Merit").setAutoWidth(true);
+        previewGrid.addColumn(AllegroInvoicePreviewRow::sourceRule).setHeader("Reguła").setFlexGrow(1);
+        previewGrid.addColumn(AllegroInvoicePreviewRow::value).setHeader("Wartość").setFlexGrow(1);
+        previewGrid.setSizeFull();
+    }
+
+    private HorizontalLayout createSoldActions(AllegroSoldItemDto item) {
         boolean alreadyIssued = item.invoiceNo() != null && !item.invoiceNo().isBlank();
-        Button button = new Button("Wystaw fakturę");
-        button.addThemeVariants(ButtonVariant.LUMO_SMALL, ButtonVariant.LUMO_PRIMARY);
-        button.setEnabled(!alreadyIssued);
+        Button issue = new Button("Wystaw fakturę");
+        issue.addThemeVariants(ButtonVariant.LUMO_SMALL, ButtonVariant.LUMO_PRIMARY);
+        issue.setEnabled(!alreadyIssued);
         if (alreadyIssued) {
-            button.getElement().setAttribute("title", "Faktura już wystawiona");
+            issue.getElement().setAttribute("title", "Faktura już wystawiona");
         }
-        button.addClickListener(event -> issueInvoice(item, button));
-        return button;
+        issue.addClickListener(event -> issueInvoice(item, issue));
+
+        Button preview = new Button("Podgląd mapowania");
+        preview.addThemeVariants(ButtonVariant.LUMO_SMALL, ButtonVariant.LUMO_TERTIARY);
+        preview.addClickListener(event -> openMappingPreview(item));
+
+        HorizontalLayout actions = new HorizontalLayout(issue, preview);
+        actions.setSpacing(true);
+        actions.setPadding(false);
+        return actions;
+    }
+
+    private void openMappingPreview(AllegroSoldItemDto item) {
+        tabs.setSelectedTab(mappingTab);
+        previewOrderCombo.setValue(item);
+        loadPreview();
     }
 
     private void issueInvoice(AllegroSoldItemDto item, Button button) {
@@ -227,6 +321,32 @@ public class AllegroView extends View {
         } catch (RuntimeException ex) {
             showError("Nie udało się wystawić faktury.");
             button.setEnabled(true);
+        }
+    }
+
+    private void loadPreview() {
+        AllegroSoldItemDto selected = previewOrderCombo.getValue();
+        if (selected == null) {
+            showError("Wybierz sprzedaż do podglądu.");
+            return;
+        }
+        try {
+            AllegroInvoicePreviewDto preview = invoiceService.previewInvoice(selected.accountId(), selected.orderId());
+            previewGrid.setItems(preview.rows());
+            String customerNote = preview.customerExists()
+                    ? "Klient istnieje w Merit: " + preview.customerId()
+                    : "Klient zostanie utworzony przy wystawieniu.";
+            showSuccess("Podgląd mapowania dla " + preview.orderId() + ". " + customerNote);
+        } catch (ResponseStatusException ex) {
+            showError(reason(ex));
+        } catch (RestClientResponseException ex) {
+            String message = MeritErrorMessages.from(ex);
+            if (message == null || message.isBlank()) {
+                message = AllegroErrorMessages.from(ex);
+            }
+            showError(message);
+        } catch (RuntimeException ex) {
+            showError("Nie udało się zbudować podglądu mapowania.");
         }
     }
 
@@ -275,13 +395,39 @@ public class AllegroView extends View {
             return;
         }
         try {
-            soldGrid.setItems(ordersService.getSoldItems(from, to, 0, 100));
+            lastSoldItems = ordersService.getSoldItems(from, to, 0, 100);
+            soldGrid.setItems(lastSoldItems);
+            refreshPreviewOrderChoices();
         } catch (ResponseStatusException ex) {
             showError(reason(ex));
         } catch (RestClientResponseException ex) {
             showError(AllegroErrorMessages.from(ex));
         } catch (RuntimeException ex) {
             showError("Nie udało się pobrać sprzedanych zamówień.");
+        }
+    }
+
+    private void refreshPreviewOrderChoices() {
+        AllegroSoldItemDto current = previewOrderCombo.getValue();
+        previewOrderCombo.setItems(lastSoldItems);
+        if (current != null) {
+            lastSoldItems.stream()
+                    .filter(item -> item.orderId().equals(current.orderId())
+                            && java.util.Objects.equals(item.accountId(), current.accountId()))
+                    .findFirst()
+                    .ifPresentOrElse(previewOrderCombo::setValue, () -> previewOrderCombo.clear());
+        }
+        if (lastSoldItems.isEmpty() && authService.isConnected()) {
+            LocalDate from = soldFromPicker.getValue();
+            LocalDate to = soldToPicker.getValue();
+            if (from != null && to != null) {
+                try {
+                    lastSoldItems = ordersService.getSoldItems(from, to, 0, 100);
+                    previewOrderCombo.setItems(lastSoldItems);
+                } catch (RuntimeException ignored) {
+                    // lista pozostaje pusta; użytkownik zobaczy błąd przy Podgląd
+                }
+            }
         }
     }
 

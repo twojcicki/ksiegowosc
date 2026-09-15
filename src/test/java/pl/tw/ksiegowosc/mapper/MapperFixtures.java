@@ -21,13 +21,15 @@ public final class MapperFixtures {
 
     public static AllegroInvoiceMapper invoiceMapper() {
         AllegroInvoiceMapperImpl mapper = new AllegroInvoiceMapperImpl();
-        setField(mapper, AllegroInvoiceMapper.class, "billingMapper", billingMapper());
-        setField(mapper, AllegroInvoiceMapper.class, "taxesService", new TaxesService(null) {
-            @Override
-            public List<MeritTaxDto> listTaxes() {
-                return sampleTaxes();
-            }
-        });
+        AllegroToMeritInvoiceBuilder builder = new AllegroToMeritInvoiceBuilder(
+                billingMapper(),
+                new TaxesService(null) {
+                    @Override
+                    public List<MeritTaxDto> listTaxes() {
+                        return sampleTaxes();
+                    }
+                });
+        setField(mapper, AllegroInvoiceMapper.class, "invoiceBuilder", builder);
         return mapper;
     }
 
