@@ -21,7 +21,6 @@ import com.vaadin.flow.component.grid.Grid;
 import com.vaadin.flow.component.grid.GridVariant;
 import com.vaadin.flow.component.html.Div;
 import com.vaadin.flow.component.html.H1;
-import com.vaadin.flow.component.html.H3;
 import com.vaadin.flow.component.html.Paragraph;
 import com.vaadin.flow.component.notification.Notification;
 import com.vaadin.flow.component.notification.NotificationVariant;
@@ -79,10 +78,15 @@ public class AllegroView extends View {
     private final Tab soldTab = new Tab("Sprzedane");
     private final Tab mappingTab = new Tab("Mapowanie");
     private final Tabs tabs = new Tabs(offersTab, soldTab, mappingTab);
+    private final Tab mappingRulesTab = new Tab("Reguły");
+    private final Tab mappingPreviewTab = new Tab("Podgląd");
+    private final Tabs mappingTabs = new Tabs(mappingRulesTab, mappingPreviewTab);
 
     private VerticalLayout offersPanel;
     private VerticalLayout soldPanel;
     private VerticalLayout mappingPanel;
+    private VerticalLayout mappingRulesPanel;
+    private VerticalLayout mappingPreviewPanel;
     private List<AllegroSoldItemDto> lastSoldItems = List.of();
 
     public AllegroView(
@@ -162,9 +166,14 @@ public class AllegroView extends View {
     }
 
     private VerticalLayout createMappingPanel() {
-        H3 rulesHeading = new H3("Reguły mapowania (Allegro → Merit)");
         rulesGrid.setItems(AllegroMeritInvoiceMappings.RULES);
-        rulesGrid.setHeight("280px");
+        rulesGrid.setSizeFull();
+
+        mappingRulesPanel = new VerticalLayout(rulesGrid);
+        mappingRulesPanel.setPadding(false);
+        mappingRulesPanel.setSpacing(false);
+        mappingRulesPanel.setSizeFull();
+        mappingRulesPanel.setFlexGrow(1, rulesGrid);
 
         previewOrderCombo.setItemLabelGenerator(item -> {
             if (item == null) {
@@ -184,18 +193,36 @@ public class AllegroView extends View {
         previewToolbar.setFlexGrow(1, previewOrderCombo);
         previewToolbar.addClassName("filters");
 
-        H3 previewHeading = new H3("Podgląd wartości dla sprzedaży");
         Paragraph hint = new Paragraph(
                 "Podgląd buduje ten sam payload co wystawienie faktury, bez sendinvoice i bez tworzenia klienta.");
         hint.getStyle().set("margin-top", "0");
 
-        VerticalLayout panel = new VerticalLayout(
-                rulesHeading, rulesGrid, previewHeading, hint, previewToolbar, previewGrid);
+        mappingPreviewPanel = new VerticalLayout(hint, previewToolbar, previewGrid);
+        mappingPreviewPanel.setPadding(false);
+        mappingPreviewPanel.setSpacing(true);
+        mappingPreviewPanel.setSizeFull();
+        mappingPreviewPanel.setFlexGrow(1, previewGrid);
+        mappingPreviewPanel.setVisible(false);
+
+        mappingTabs.setWidthFull();
+        mappingTabs.addSelectedChangeListener(event -> showMappingSubTab(event.getSelectedTab()));
+
+        VerticalLayout panel = new VerticalLayout(mappingTabs, mappingRulesPanel, mappingPreviewPanel);
         panel.setPadding(false);
-        panel.setSpacing(true);
+        panel.setSpacing(false);
         panel.setSizeFull();
-        panel.setFlexGrow(1, previewGrid);
+        panel.setFlexGrow(1, mappingRulesPanel);
+        panel.setFlexGrow(1, mappingPreviewPanel);
         return panel;
+    }
+
+    private void showMappingSubTab(Tab selected) {
+        boolean rulesSelected = selected == mappingRulesTab;
+        mappingRulesPanel.setVisible(rulesSelected);
+        mappingPreviewPanel.setVisible(!rulesSelected);
+        if (!rulesSelected) {
+            refreshPreviewOrderChoices();
+        }
     }
 
     private void showSelectedTab(Tab selected) {
@@ -207,7 +234,7 @@ public class AllegroView extends View {
         } else if (selected == soldTab) {
             loadSoldItems();
         } else if (selected == mappingTab) {
-            refreshPreviewOrderChoices();
+            showMappingSubTab(mappingTabs.getSelectedTab());
         }
     }
 
@@ -262,7 +289,7 @@ public class AllegroView extends View {
         rulesGrid.addColumn(rule -> rule.section().name()).setHeader("Sekcja").setAutoWidth(true).setSortable(true);
         rulesGrid.addColumn(MeritFieldRule::meritField).setHeader("Pole Merit").setAutoWidth(true).setSortable(true);
         rulesGrid.addColumn(MeritFieldRule::sourceRule).setHeader("Źródło / reguła").setFlexGrow(1);
-        rulesGrid.setWidthFull();
+        rulesGrid.setSizeFull();
     }
 
     private void configurePreviewGrid() {
@@ -295,6 +322,7 @@ public class AllegroView extends View {
     }
 
     private void openMappingPreview(AllegroSoldItemDto item) {
+        mappingTabs.setSelectedTab(mappingPreviewTab);
         tabs.setSelectedTab(mappingTab);
         previewOrderCombo.setValue(item);
         loadPreview();
