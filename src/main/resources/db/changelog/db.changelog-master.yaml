@@ -7,3 +7,5 @@ databaseChangeLog:
       file: db/changelog/changes/008-allegro-invoice-prefix.sql
   - include:
       file: db/changelog/changes/009-drop-allegro-invoice-sequence.sql
+  - include:
+      file: db/changelog/changes/010-encrypt-secrets-widen.sql

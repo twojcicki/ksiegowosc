@@ -3,9 +3,12 @@ package pl.tw.ksiegowosc.entity;
 import java.time.Instant;
 
 import jakarta.persistence.Column;
+import jakarta.persistence.Convert;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
+
+import pl.tw.ksiegowosc.security.EncryptedStringConverter;
 
 @Entity
 @Table(name = "allegro_token")
@@ -15,10 +18,12 @@ public class AllegroToken {
     @Column(name = "account_id", nullable = false)
     private Long accountId;
 
-    @Column(name = "access_token", nullable = false, length = 8192)
+    @Convert(converter = EncryptedStringConverter.class)
+    @Column(name = "access_token", nullable = false, length = 16384)
     private String accessToken;
 
-    @Column(name = "refresh_token", nullable = false, length = 8192)
+    @Convert(converter = EncryptedStringConverter.class)
+    @Column(name = "refresh_token", nullable = false, length = 16384)
     private String refreshToken;
 
     @Column(name = "expires_at", nullable = false)

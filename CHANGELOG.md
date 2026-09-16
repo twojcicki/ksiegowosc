@@ -4,6 +4,10 @@ Format oparty na [Keep a Changelog](https://keepachangelog.com/pl/1.1.0/).
 
 ## [Unreleased]
 
+### Added
+
+- Szyfrowanie at-rest sekretów API (AES-256-GCM): `merit_api_key`, Allegro `client_secret`, OAuth `access_token` / `refresh_token`; klucz `APP_ENCRYPTION_KEY` (Base64, 32 bajty).
+
 ### Fixed
 
 - Login bez bocznego menu: `@Route(autoLayout = false)` — widok logowania poza `MainLayout`.
@@ -15,7 +19,7 @@ Format oparty na [Keep a Changelog](https://keepachangelog.com/pl/1.1.0/).
 - Faktura Allegro obejmuje koszty kupującego: `delivery.cost`, `surcharges`, usługi dodatkowe; brutto = `summary.totalToPay` (±0,01); dostawa: `Item.Code=method.id`, VAT 23%, `Type=2`.
 - Zakładka Allegro „Mapowanie” z podzakładkami Reguły (`AllegroMeritInvoiceMappings.RULES`) i Podgląd wartości Merit (w tym `InvoiceRow[].Item.*`) bez `sendinvoice`.
 - Prefiks faktury per konto Allegro; numer Merit: `prefiks/kolejny/MM/rrrr` (np. `FS/5/09/2026`), kolejny numer = liczba faktur w Merit w miesiącu dokumentu + 1.
-- Wiele kont Allegro per użytkownik (`allegro_account`): nazwa, Client ID/Secret (plaintext), Połącz/Usuń; oferty i sprzedane ze wszystkich połączonych kont z kolumną „Konto”.
+- Wiele kont Allegro per użytkownik (`allegro_account`): nazwa, Client ID/Secret (szyfrowany at-rest), Połącz/Usuń; oferty i sprzedane ze wszystkich połączonych kont z kolumną „Konto”.
 - Ustawienia API per użytkownik (Merit Api Id/Key w `user_api_credentials`).
   Notatka: [docs/plans/user-api-settings.md](docs/plans/user-api-settings.md)
 

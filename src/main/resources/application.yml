@@ -20,6 +20,11 @@ vaadin:
   launch-browser: false
   exclude-urls: /api/**,/swagger-ui/**,/v3/api-docs/**
 
+app:
+  encryption:
+    # Base64-encoded 32-byte AES key. Generate: openssl rand -base64 32
+    key: ${APP_ENCRYPTION_KEY:}
+
 clients:
   merit:
     base-url: https://program.360ksiegowosc.pl/api/v1

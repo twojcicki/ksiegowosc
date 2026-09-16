@@ -10,11 +10,23 @@ Aplikacja pobiera listę faktur sprzedaży z Merit Aktiva (lokalizacja PL) z pod
 - Maven 3.9+
 - PostgreSQL 16 (lokalnie przez Docker Compose; produkcja: Render Managed Postgres)
 - credentials API Merit: `Api Id` i `Api Key` (Ustawienia >> Ustawienia API)
+- `APP_ENCRYPTION_KEY` — klucz AES-256 (Base64, 32 bajty) do szyfrowania sekretów w bazie
 
 ## Konfiguracja
 
 Adresy bazowe API są w `src/main/resources/application.yml`.
-**Klucze Merit** ustawiasz w UI: **Ustawienia API** (`/ustawienia-api`) — zapis per użytkownik w bazie. **Konta Allegro** dodajesz na tej samej stronie (nazwa, Client ID, Client Secret w plaintext w DB, prefiks faktury); każde konto ma **Połącz** / **Usuń**. Faktury z Allegro dostają numer `prefiks/kolejny/MM/rrrr` (np. `FS/5/09/2026`); kolejny numer = liczba faktur w Merit w danym miesiącu + 1. Faktura obejmuje towary oraz koszty kupującego (dostawa, dopłaty); brutto = `summary.totalToPay`. Oferty i sprzedane pokazują towary ze wszystkich połączonych kont z kolumną „Konto”. Zakładka **Mapowanie** na `/allegro` ma podzakładki **Reguły** (`RULES`) i **Podgląd** wartości dla wybranej sprzedaży (bez wysyłki).
+
+**Szyfrowanie sekretów w DB:** Merit Api Key, Allegro Client Secret oraz tokeny OAuth są zapisywane jako AES-256-GCM (`enc:v1:…`). Ustaw obowiązkową zmienną:
+
+```bash
+# wygeneruj raz i trzymaj w tajemnicy (utrata klucza = trzeba ponownie wpisać sekrety w UI)
+openssl rand -base64 32
+set APP_ENCRYPTION_KEY=...wynik...
+```
+
+Na Renderze dodaj `APP_ENCRYPTION_KEY` w Environment. Bez poprawnego klucza aplikacja nie startuje.
+
+**Klucze Merit** ustawiasz w UI: **Ustawienia API** (`/ustawienia-api`) — zapis per użytkownik w bazie (klucz zaszyfrowany). **Konta Allegro** dodajesz na tej samej stronie (nazwa, Client ID, Client Secret, prefiks faktury); każde konto ma **Połącz** / **Usuń**. Faktury z Allegro dostają numer `prefiks/kolejny/MM/rrrr` (np. `FS/5/09/2026`); kolejny numer = liczba faktur w Merit w danym miesiącu + 1. Faktura obejmuje towary oraz koszty kupującego (dostawa, dopłaty); brutto = `summary.totalToPay`. Oferty i sprzedane pokazują towary ze wszystkich połączonych kont z kolumną „Konto”. Zakładka **Mapowanie** na `/allegro` ma podzakładki **Reguły** (`RULES`) i **Podgląd** wartości dla wybranej sprzedaży (bez wysyłki).
 
 **Redirect URI Allegro** musi być **identyczny** w aplikacji Allegro Sandbox i w naszej appce. Domyślnie (puste `ALLEGRO_REDIRECT_URI`) callback jest wyliczany z aktualnego hosta, np. `https://ksiegowosc-a0yu.onrender.com/api/allegro/auth/callback`. Opcjonalnie nadpisz:
 
@@ -39,7 +51,7 @@ Allegro Sandbox: zarejestruj aplikację na [apps.developer.allegro.pl.allegrosan
 Klient podpisuje każde żądanie HMAC-SHA256 zgodnie z dokumentacją Merit:
 `signature = Base64(HMAC-SHA256(apiId + timestamp + body, apiKey))` — klucze z Ustawień API bieżącego użytkownika.
 
-Baza PostgreSQL — lokalnie domyślnie `jdbc:postgresql://localhost:5432/ksiegowosc` (użytkownik/hasło: `ksiegowosc`). Na Renderze ustaw `SPRING_DATASOURCE_URL`, `SPRING_DATASOURCE_USERNAME`, `SPRING_DATASOURCE_PASSWORD` z Managed Postgres.
+Baza PostgreSQL — lokalnie domyślnie `jdbc:postgresql://localhost:5432/ksiegowosc` (użytkownik/hasło: `ksiegowosc`). Na Renderze ustaw `SPRING_DATASOURCE_URL`, `SPRING_DATASOURCE_USERNAME`, `SPRING_DATASOURCE_PASSWORD` z Managed Postgres oraz `APP_ENCRYPTION_KEY`.
 
 Migracje Liquibase: master w `db/changelog/db.changelog-master.yaml`, schemat startowy w `changes/000-baseline.sql` (formatted SQL). Kolejne changeSety dodawaj jako `changes/007-opis.sql` (`--liquibase formatted sql` + `--changeset ksiegowosc:007-opis`) i dopisz `include` w masterze. Po przejściu na SQL baseline istniejąca baza wymaga resetu (drop tabel aplikacji oraz `databasechangelog` / `databasechangeloglock`, albo drop całego schematu/DB) przed startem.
 
@@ -57,7 +69,7 @@ Aplikacja:
 mvn spring-boot:run
 ```
 
-Aplikacja wystartuje domyślnie na `http://localhost:8080`. UI używa motywu **Aura** i layoutu jak w [vaadin-demo](https://github.com/vaadin/vaadin-demo) (`AppLayout` + `SideNav`): **Faktury** (`/`), **Allegro** (`/allegro`) i **Ustawienia API** (`/ustawienia-api`).
+Przed startem ustaw `APP_ENCRYPTION_KEY` (patrz Konfiguracja). Aplikacja wystartuje domyślnie na `http://localhost:8080`. UI używa motywu **Aura** i layoutu jak w [vaadin-demo](https://github.com/vaadin/vaadin-demo) (`AppLayout` + `SideNav`): **Faktury** (`/`), **Allegro** (`/allegro`) i **Ustawienia API** (`/ustawienia-api`).
 
 **Logowanie:** widoki wymagają sesji. Startowy użytkownik (seed przy pierwszym uruchomieniu, jeśli brak w DB): login `admin`, hasło `admin` — zmień hasło w produkcji. Wylogowanie: menu avatara w stopce nawigacji.
 
@@ -73,7 +85,7 @@ Zbuduj i uruchom obraz lokalnie:
 
 ```bash
 docker build -t ksiegowosc .
-docker run --rm -p 8080:8080 ksiegowosc
+docker run --rm -p 8080:8080 -e APP_ENCRYPTION_KEY=... ksiegowosc
 ```
 
 Aplikacja czyta port ze zmiennej `PORT` (domyślnie `8080`). Render wstrzykuje własne `PORT`.
@@ -84,6 +96,7 @@ Aplikacja czyta port ze zmiennej `PORT` (domyślnie `8080`). Render wstrzykuje w
 2. Jako runtime wybierz **Docker** (Render wykryje `Dockerfile` w katalogu głównym).
 3. Dodaj sekrety środowiskowe:
    - `SPRING_DATASOURCE_URL`, `SPRING_DATASOURCE_USERNAME`, `SPRING_DATASOURCE_PASSWORD` (z Render Managed Postgres)
+   - `APP_ENCRYPTION_KEY` (Base64, 32 bajty — `openssl rand -base64 32`)
    - opcjonalnie `ALLEGRO_REDIRECT_URI` (np. `https://<twoja-usługa>.onrender.com/api/allegro/auth/callback`); bez niej callback jest auto-wykrywany z hosta
 4. W Allegro Sandbox Developer Apps ustaw **ten sam** Redirect URI co pokazuje Ustawienia API.
 

@@ -9,7 +9,11 @@ import org.springframework.http.MediaType;
 import org.springframework.web.client.RestClient;
 
 @Configuration
-@EnableConfigurationProperties({MeritApiProperties.class, AllegroApiProperties.class})
+@EnableConfigurationProperties({
+    MeritApiProperties.class,
+    AllegroApiProperties.class,
+    EncryptionProperties.class
+})
 public class HttpClientsConfig {
 
     public static final String ALLEGRO_ACCEPT = "application/vnd.allegro.public.v1+json";

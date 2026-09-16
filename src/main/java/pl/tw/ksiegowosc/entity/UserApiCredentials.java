@@ -3,9 +3,12 @@ package pl.tw.ksiegowosc.entity;
 import java.time.Instant;
 
 import jakarta.persistence.Column;
+import jakarta.persistence.Convert;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
+
+import pl.tw.ksiegowosc.security.EncryptedStringConverter;
 
 @Entity
 @Table(name = "user_api_credentials")
@@ -18,7 +21,8 @@ public class UserApiCredentials {
     @Column(name = "merit_api_id", length = 100)
     private String meritApiId;
 
-    @Column(name = "merit_api_key", length = 500)
+    @Convert(converter = EncryptedStringConverter.class)
+    @Column(name = "merit_api_key", length = 2000)
     private String meritApiKey;
 
     @Column(name = "updated_at", nullable = false)

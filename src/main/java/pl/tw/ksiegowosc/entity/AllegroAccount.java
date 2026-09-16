@@ -3,11 +3,14 @@ package pl.tw.ksiegowosc.entity;
 import java.time.Instant;
 
 import jakarta.persistence.Column;
+import jakarta.persistence.Convert;
 import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
+
+import pl.tw.ksiegowosc.security.EncryptedStringConverter;
 
 @Entity
 @Table(name = "allegro_account")
@@ -26,7 +29,8 @@ public class AllegroAccount {
     @Column(name = "client_id", nullable = false, length = 200)
     private String clientId;
 
-    @Column(name = "client_secret", nullable = false, length = 500)
+    @Convert(converter = EncryptedStringConverter.class)
+    @Column(name = "client_secret", nullable = false, length = 2000)
     private String clientSecret;
 
     @Column(name = "invoice_prefix", nullable = false, length = 20)
