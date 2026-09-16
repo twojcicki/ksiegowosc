@@ -7,6 +7,7 @@ Format oparty na [Keep a Changelog](https://keepachangelog.com/pl/1.1.0/).
 ### Added
 
 - Szyfrowanie at-rest sekretów API (AES-256-GCM): `merit_api_key`, Allegro `client_secret`, OAuth `access_token` / `refresh_token`; klucz `APP_ENCRYPTION_KEY` (Base64, 32 bajty).
+- Zmiana hasła z menu użytkownika (obecne + nowe + potwierdzenie, min. 8 znaków).
 
 ### Fixed
 

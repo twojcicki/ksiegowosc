@@ -25,6 +25,7 @@ import com.vaadin.flow.router.Layout;
 import com.vaadin.flow.spring.security.AuthenticationContext;
 
 import jakarta.annotation.security.PermitAll;
+import pl.tw.ksiegowosc.service.AppUserService;
 import pl.tw.ksiegowosc.ui.component.ViewFooter;
 import pl.tw.ksiegowosc.ui.component.ViewHeader;
 import pl.tw.ksiegowosc.ui.component.ViewHeading;
@@ -36,9 +37,11 @@ import pl.tw.ksiegowosc.ui.util.Theme;
 public class MainLayout extends AppLayout {
 
     private final transient AuthenticationContext authenticationContext;
+    private final transient AppUserService appUserService;
 
-    public MainLayout(AuthenticationContext authenticationContext) {
+    public MainLayout(AuthenticationContext authenticationContext, AppUserService appUserService) {
         this.authenticationContext = authenticationContext;
+        this.appUserService = appUserService;
         addClassName("main-layout");
         setPrimarySection(Section.DRAWER);
         initDrawer();
@@ -94,6 +97,8 @@ public class MainLayout extends AppLayout {
 
         createThemeItems(createMenuItem(userMenu, "Motyw", Lucide.PALETTE).getSubMenu());
         userMenu.addSeparator();
+        MenuItem changePassword = createMenuItem(userMenu, "Zmień hasło", Lucide.KEY_ROUND);
+        changePassword.addClickListener(e -> new ChangePasswordDialog(appUserService).open());
         MenuItem logout = createMenuItem(userMenu, "Wyloguj", Lucide.LOG_OUT);
         logout.addClickListener(e -> authenticationContext.logout());
 

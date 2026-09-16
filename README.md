@@ -71,7 +71,7 @@ mvn spring-boot:run
 
 Przed startem ustaw `APP_ENCRYPTION_KEY` (patrz Konfiguracja). Aplikacja wystartuje domyślnie na `http://localhost:8080`. UI używa motywu **Aura** i layoutu jak w [vaadin-demo](https://github.com/vaadin/vaadin-demo) (`AppLayout` + `SideNav`): **Faktury** (`/`), **Allegro** (`/allegro`) i **Ustawienia API** (`/ustawienia-api`).
 
-**Logowanie:** widoki wymagają sesji. Startowy użytkownik (seed przy pierwszym uruchomieniu, jeśli brak w DB): login `admin`, hasło `admin` — zmień hasło w produkcji. Wylogowanie: menu avatara w stopce nawigacji.
+**Logowanie:** widoki wymagają sesji. Startowy użytkownik (seed przy pierwszym uruchomieniu, jeśli brak w DB): login `admin`, hasło `admin` — zmień hasło w produkcji (menu avatara → **Zmień hasło**). Wylogowanie: ta sama menu stopki nawigacji.
 
 W tabeli Sprzedane każdy wiersz to jedno zamówienie; przycisk „Wystaw fakturę” tworzy fakturę w Merit ze wszystkimi pozycjami i zapisuje numer przy zamówieniu. Przycisk „Dodaj fakturę” na liście faktur otwiera formularz z tabelą pozycji (dodaj / edytuj / usuń); kwota netto faktury jest sumą pozycji. Z wiersza można otworzyć szczegóły (dialog) lub wysłać fakturę e-mailem. Kolumny „Wysłano” i „Data wysyłki” pokazują status z lokalnej bazy. REST i Swagger wymagają zalogowanej sesji.
 ## Dokumentacja zmian
