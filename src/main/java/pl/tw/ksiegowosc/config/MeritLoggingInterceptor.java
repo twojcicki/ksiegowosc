@@ -6,6 +6,7 @@ import java.io.InputStream;
 import java.net.URI;
 import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
+import java.util.concurrent.TimeUnit;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -20,27 +21,45 @@ import org.springframework.util.StreamUtils;
 public class MeritLoggingInterceptor implements ClientHttpRequestInterceptor {
 
     private static final Logger log = LoggerFactory.getLogger(MeritLoggingInterceptor.class);
-    private static final int MAX_BODY_CHARS = 32_000;
+    static final int BODY_LOG_CHARS = 2_000;
 
     @Override
     public ClientHttpResponse intercept(
             HttpRequest request,
             byte[] body,
             ClientHttpRequestExecution execution) throws IOException {
-        String requestBody = body == null || body.length == 0
-                ? "<empty>"
-                : truncate(new String(body, StandardCharsets.UTF_8));
-        log.info("Merit API request {} {} body={}", request.getMethod(), safeUri(request.getURI()), requestBody);
+        int requestBytes = body == null ? 0 : body.length;
+        String method = String.valueOf(request.getMethod());
+        String uri = safeUri(request.getURI());
+        long started = System.nanoTime();
 
         ClientHttpResponse response = execution.execute(request, body);
         BufferingClientHttpResponse buffered = new BufferingClientHttpResponse(response);
-        String responseBody = truncate(buffered.bodyAsString());
-        log.info(
-                "Merit API response {} {} -> {} body={}",
-                request.getMethod(),
-                safeUri(request.getURI()),
-                buffered.getStatusCode().value(),
-                responseBody);
+        long elapsedMs = TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - started);
+        int status = buffered.getStatusCode().value();
+        int responseBytes = buffered.bodyLength();
+
+        String summary = "Merit API %s %s -> %d (req=%db, res=%db) in %dms"
+                .formatted(method, uri, status, requestBytes, responseBytes, elapsedMs);
+
+        if (status >= 400) {
+            log.warn("{} errorBody={}", summary, truncate(buffered.bodyAsString()));
+        } else {
+            log.info(summary);
+        }
+
+        if (log.isDebugEnabled()) {
+            String requestBody = requestBytes == 0
+                    ? "<empty>"
+                    : truncate(new String(body, StandardCharsets.UTF_8));
+            log.debug(
+                    "Merit API {} {} debug bodies req={} res={}",
+                    method,
+                    uri,
+                    requestBody,
+                    truncate(buffered.bodyAsString()));
+        }
+
         return buffered;
     }
 
@@ -54,11 +73,14 @@ public class MeritLoggingInterceptor implements ClientHttpRequestInterceptor {
         return path + "?" + redacted;
     }
 
-    private static String truncate(String value) {
-        if (value.length() <= MAX_BODY_CHARS) {
+    static String truncate(String value) {
+        if (value == null) {
+            return "<empty>";
+        }
+        if (value.length() <= BODY_LOG_CHARS) {
             return value;
         }
-        return value.substring(0, MAX_BODY_CHARS) + "... [truncated " + (value.length() - MAX_BODY_CHARS) + " chars]";
+        return value.substring(0, BODY_LOG_CHARS) + "... [truncated " + (value.length() - BODY_LOG_CHARS) + " chars]";
     }
 
     private static final class BufferingClientHttpResponse implements ClientHttpResponse {
@@ -69,6 +91,10 @@ public class MeritLoggingInterceptor implements ClientHttpRequestInterceptor {
         private BufferingClientHttpResponse(ClientHttpResponse delegate) throws IOException {
             this.delegate = delegate;
             this.body = StreamUtils.copyToByteArray(delegate.getBody());
+        }
+
+        private int bodyLength() {
+            return body.length;
         }
 
         private String bodyAsString() {
