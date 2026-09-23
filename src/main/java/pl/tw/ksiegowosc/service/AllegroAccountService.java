@@ -111,9 +111,22 @@ public class AllegroAccountService {
     }
 
     @Transactional
-    public AllegroAccountDto updateInvoicePrefix(Long accountId, String invoicePrefix) {
+    public AllegroAccountDto updateAccount(
+            Long accountId,
+            String name,
+            String invoicePrefix,
+            String apiBaseUrl,
+            String authUrl,
+            String userAgent) {
         AllegroAccount account = requireOwnedAccount(accountId);
+        if (!hasText(name)) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Podaj nazwę konta Allegro.");
+        }
+        account.setName(name.trim());
         account.setInvoicePrefix(normalizePrefix(invoicePrefix));
+        account.setApiBaseUrl(requireHttpsUrl(apiBaseUrl, "Allegro API Base URL"));
+        account.setAuthUrl(requireHttpsUrl(authUrl, "Allegro Auth URL"));
+        account.setUserAgent(requireUserAgent(userAgent));
         account.setUpdatedAt(Instant.now(clock));
         return toDto(account, tokenRepository.existsById(account.getId()));
     }

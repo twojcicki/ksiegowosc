@@ -116,6 +116,61 @@ class AllegroAccountServiceTest {
     }
 
     @Test
+    void shouldUpdateAccountFields() {
+        AllegroAccount account = ownedAccount();
+        when(accountRepository.findByIdAndUserId(11L, 3L)).thenReturn(Optional.of(account));
+        when(tokenRepository.existsById(11L)).thenReturn(true);
+
+        var dto = service.updateAccount(
+                11L,
+                "Sklep 2",
+                "FV",
+                "https://api.allegro.pl.allegrosandbox.pl",
+                "https://allegro.pl.allegrosandbox.pl",
+                "App/1.0 (+https://example.test)");
+
+        assertThat(dto.name()).isEqualTo("Sklep 2");
+        assertThat(dto.invoicePrefix()).isEqualTo("FV");
+        assertThat(dto.apiBaseUrl()).isEqualTo("https://api.allegro.pl.allegrosandbox.pl");
+        assertThat(dto.authUrl()).isEqualTo("https://allegro.pl.allegrosandbox.pl");
+        assertThat(dto.userAgent()).isEqualTo("App/1.0 (+https://example.test)");
+        assertThat(dto.clientId()).isEqualTo("cid");
+        assertThat(dto.connected()).isTrue();
+        assertThat(account.getName()).isEqualTo("Sklep 2");
+        assertThat(account.getUpdatedAt()).isEqualTo(Instant.parse("2026-09-15T10:00:00Z"));
+    }
+
+    @Test
+    void shouldRejectBlankNameOnUpdate() {
+        when(accountRepository.findByIdAndUserId(11L, 3L)).thenReturn(Optional.of(ownedAccount()));
+
+        assertThatThrownBy(() -> service.updateAccount(
+                        11L,
+                        "  ",
+                        "FS",
+                        AllegroAccountService.DEFAULT_API_BASE_URL,
+                        AllegroAccountService.DEFAULT_AUTH_URL,
+                        AllegroAccountService.DEFAULT_USER_AGENT))
+                .isInstanceOf(ResponseStatusException.class)
+                .hasMessageContaining("nazwę");
+    }
+
+    @Test
+    void shouldRejectNonHttpsUrlOnUpdate() {
+        when(accountRepository.findByIdAndUserId(11L, 3L)).thenReturn(Optional.of(ownedAccount()));
+
+        assertThatThrownBy(() -> service.updateAccount(
+                        11L,
+                        "Sklep",
+                        "FS",
+                        "http://api.allegro.pl",
+                        AllegroAccountService.DEFAULT_AUTH_URL,
+                        AllegroAccountService.DEFAULT_USER_AGENT))
+                .isInstanceOf(ResponseStatusException.class)
+                .hasMessageContaining("https://");
+    }
+
+    @Test
     void shouldDeleteOwnedAccount() {
         AllegroAccount account = ownedAccount();
         when(accountRepository.findByIdAndUserId(11L, 3L)).thenReturn(Optional.of(account));

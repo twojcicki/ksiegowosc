@@ -8,6 +8,7 @@ import com.vaadin.flow.component.UI;
 import com.vaadin.flow.component.applayout.DrawerToggle;
 import com.vaadin.flow.component.button.Button;
 import com.vaadin.flow.component.button.ButtonVariant;
+import com.vaadin.flow.component.dialog.Dialog;
 import com.vaadin.flow.component.formlayout.FormLayout;
 import com.vaadin.flow.component.grid.Grid;
 import com.vaadin.flow.component.grid.GridVariant;
@@ -160,22 +161,13 @@ public class ApiSettingsView extends View {
         allegroAccountsGrid.setWidthFull();
         allegroAccountsGrid.addColumn(AllegroAccountDto::name).setHeader("Nazwa").setFlexGrow(1);
         allegroAccountsGrid.addColumn(AllegroAccountDto::clientId).setHeader("Client ID").setFlexGrow(1);
-        allegroAccountsGrid
-                .addComponentColumn(account -> {
-                    TextField prefixField = new TextField();
-                    prefixField.setValue(nullToEmpty(account.invoicePrefix()));
-                    prefixField.setMaxLength(20);
-                    prefixField.setWidth("7rem");
-                    Button savePrefix = new Button("Zapisz", e -> updateInvoicePrefix(account.id(), prefixField.getValue()));
-                    savePrefix.addThemeVariants(ButtonVariant.LUMO_SMALL, ButtonVariant.LUMO_TERTIARY);
-                    HorizontalLayout prefixEditor = new HorizontalLayout(prefixField, savePrefix);
-                    prefixEditor.setAlignItems(FlexComponent.Alignment.CENTER);
-                    prefixEditor.setSpacing(true);
-                    return prefixEditor;
-                })
+        allegroAccountsGrid.addColumn(AllegroAccountDto::invoicePrefix)
                 .setHeader("Prefiks")
                 .setAutoWidth(true)
                 .setFlexGrow(0);
+        allegroAccountsGrid.addColumn(AllegroAccountDto::apiBaseUrl).setHeader("API Base URL").setFlexGrow(1);
+        allegroAccountsGrid.addColumn(AllegroAccountDto::authUrl).setHeader("Auth URL").setFlexGrow(1);
+        allegroAccountsGrid.addColumn(AllegroAccountDto::userAgent).setHeader("User-Agent").setFlexGrow(1);
         allegroAccountsGrid
                 .addColumn(account -> account.clientSecretSet() ? "••••••••" : "—")
                 .setHeader("Secret")
@@ -188,12 +180,14 @@ public class ApiSettingsView extends View {
                 .setFlexGrow(0);
         allegroAccountsGrid
                 .addComponentColumn(account -> {
+                    Button edit = new Button("Edytuj", e -> openEditAccountDialog(account));
+                    edit.addThemeVariants(ButtonVariant.LUMO_SMALL, ButtonVariant.LUMO_TERTIARY);
                     Button connect = new Button("Połącz", e -> connectAllegro(account.id()));
                     connect.addThemeVariants(ButtonVariant.LUMO_SMALL, ButtonVariant.LUMO_PRIMARY);
                     Button remove = new Button("Usuń", e -> deleteAllegroAccount(account.id()));
                     remove.addThemeVariants(
                             ButtonVariant.LUMO_SMALL, ButtonVariant.LUMO_ERROR, ButtonVariant.LUMO_TERTIARY);
-                    HorizontalLayout actions = new HorizontalLayout(connect, remove);
+                    HorizontalLayout actions = new HorizontalLayout(edit, connect, remove);
                     actions.setAlignItems(FlexComponent.Alignment.CENTER);
                     return actions;
                 })
@@ -252,16 +246,71 @@ public class ApiSettingsView extends View {
         }
     }
 
-    private void updateInvoicePrefix(Long accountId, String invoicePrefix) {
-        try {
-            allegroAccountService.updateInvoicePrefix(accountId, invoicePrefix);
-            Notifications.show("Zapisano prefiks faktury.", NotificationVariant.SUCCESS);
-            loadAllegroAccounts();
-        } catch (ResponseStatusException ex) {
-            Notifications.show(reason(ex), NotificationVariant.ERROR);
-        } catch (RuntimeException ex) {
-            Notifications.show("Nie udało się zapisać prefiksu faktury.", NotificationVariant.ERROR);
-        }
+    private void openEditAccountDialog(AllegroAccountDto account) {
+        TextField nameField = new TextField("Nazwa konta");
+        nameField.setWidthFull();
+        nameField.setValue(nullToEmpty(account.name()));
+
+        TextField clientIdField = new TextField("Allegro Client ID");
+        clientIdField.setWidthFull();
+        clientIdField.setValue(nullToEmpty(account.clientId()));
+        clientIdField.setReadOnly(true);
+
+        TextField prefixField = new TextField("Prefiks faktury");
+        prefixField.setWidthFull();
+        prefixField.setMaxLength(20);
+        prefixField.setValue(nullToEmpty(account.invoicePrefix()));
+        prefixField.setHelperText("Numer faktury: prefiks/kolejny/MM/rrrr, np. FS/5/09/2026");
+
+        TextField apiBaseUrlField = new TextField("API Base URL");
+        apiBaseUrlField.setWidthFull();
+        apiBaseUrlField.setValue(nullToEmpty(account.apiBaseUrl()));
+        apiBaseUrlField.setHelperText(
+                "Produkcja: https://api.allegro.pl · Sandbox: https://api.allegro.pl.allegrosandbox.pl");
+
+        TextField authUrlField = new TextField("Auth URL");
+        authUrlField.setWidthFull();
+        authUrlField.setValue(nullToEmpty(account.authUrl()));
+        authUrlField.setHelperText(
+                "Produkcja: https://allegro.pl · Sandbox: https://allegro.pl.allegrosandbox.pl");
+
+        TextField userAgentField = new TextField("User-Agent");
+        userAgentField.setWidthFull();
+        userAgentField.setValue(nullToEmpty(account.userAgent()));
+        userAgentField.setHelperText("Format: NazwaAplikacji/Wersja (+https://url) — nazwa = aplikacja w Allegro.");
+
+        FormLayout form = new FormLayout(
+                nameField, clientIdField, prefixField, apiBaseUrlField, authUrlField, userAgentField);
+        form.setResponsiveSteps(new FormLayout.ResponsiveStep("0", 1));
+        form.setWidthFull();
+
+        Dialog dialog = new Dialog();
+        dialog.setHeaderTitle("Edytuj konto Allegro");
+        dialog.setWidth("480px");
+        dialog.add(form);
+
+        Button cancel = new Button("Anuluj", e -> dialog.close());
+        Button save = new Button("Zapisz", e -> {
+            try {
+                allegroAccountService.updateAccount(
+                        account.id(),
+                        nameField.getValue(),
+                        prefixField.getValue(),
+                        apiBaseUrlField.getValue(),
+                        authUrlField.getValue(),
+                        userAgentField.getValue());
+                Notifications.show("Zapisano konto Allegro.", NotificationVariant.SUCCESS);
+                dialog.close();
+                loadAllegroAccounts();
+            } catch (ResponseStatusException ex) {
+                Notifications.show(reason(ex), NotificationVariant.ERROR);
+            } catch (RuntimeException ex) {
+                Notifications.show("Nie udało się zapisać konta Allegro.", NotificationVariant.ERROR);
+            }
+        });
+        save.addThemeVariants(ButtonVariant.LUMO_PRIMARY);
+        dialog.getFooter().add(cancel, save);
+        dialog.open();
     }
 
     private void connectAllegro(Long accountId) {
