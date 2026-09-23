@@ -71,7 +71,7 @@ public class AllegroAuthService {
         Long userId = credentialsService.requireCurrentUserId();
         AllegroClientCredentials client = accountService.toClientCredentials(account);
         String state = encodeState(userId, account.getId());
-        return properties.authUrl()
+        return client.authUrl()
                 + "/auth/oauth/authorize?response_type=code"
                 + "&client_id=" + encode(client.clientId())
                 + "&redirect_uri=" + encode(resolveRedirectUri())
@@ -157,8 +157,9 @@ public class AllegroAuthService {
         String basicAuth = Base64.getEncoder().encodeToString(credentials.getBytes(StandardCharsets.UTF_8));
 
         return allegroAuthRestClient.post()
-                .uri("/auth/oauth/token")
+                .uri(client.authUrl() + "/auth/oauth/token")
                 .header(HttpHeaders.AUTHORIZATION, "Basic " + basicAuth)
+                .header(HttpHeaders.USER_AGENT, client.userAgent())
                 .contentType(MediaType.APPLICATION_FORM_URLENCODED)
                 .body(form)
                 .retrieve()

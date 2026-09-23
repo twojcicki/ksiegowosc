@@ -42,6 +42,7 @@ import pl.tw.ksiegowosc.dto.allegro.AllegroOfferReference;
 import pl.tw.ksiegowosc.dto.allegro.AllegroPrice;
 import pl.tw.ksiegowosc.dto.allegro.AllegroSurcharge;
 import pl.tw.ksiegowosc.dto.allegro.AllegroTaxId;
+import pl.tw.ksiegowosc.entity.AllegroAccount;
 import pl.tw.ksiegowosc.entity.AllegroSoldInvoice;
 import pl.tw.ksiegowosc.mapper.MapperFixtures;
 import pl.tw.ksiegowosc.repository.AllegroSoldInvoiceRepository;
@@ -72,6 +73,9 @@ class AllegroInvoiceServiceTest {
         when(taxesService.listTaxes()).thenReturn(MapperFixtures.sampleTaxes());
         when(unitsService.requireDefaultUnit()).thenReturn(new MeritUnitDto("SZT", "szt."));
         when(accountService.allocateInvoiceNo(any(), any())).thenReturn("FS/1/01/2026");
+        AllegroAccount account = sampleAccount(9L);
+        when(accountService.requireOwnedAccount(9L)).thenReturn(account);
+        when(authService.getValidAccessTokenForAccount(account)).thenReturn("token");
         invoiceService = new AllegroInvoiceService(
                 allegroApiClient,
                 authService,
@@ -91,8 +95,7 @@ class AllegroInvoiceServiceTest {
     @Test
     void shouldIssueInvoiceForAllLineItemsUsingExistingCustomer() {
         when(soldInvoiceRepository.existsById("order-1")).thenReturn(false);
-        when(authService.getValidAccessToken(9L)).thenReturn("token");
-        when(allegroApiClient.getCheckoutForm("token", "order-1")).thenReturn(sampleForm(null, null));
+        when(allegroApiClient.getCheckoutForm("https://api.allegro.pl", "token", "ua", "order-1")).thenReturn(sampleForm(null, null));
         when(customersService.getCustomersByVatRegNo("5252674798")).thenReturn(List.of(
                 new CustomerDto("cust-1", "Firma", null, "5252674798", null, null, null, "PLN")));
         when(invoicesService.createInvoice(any())).thenReturn(new CreateInvoiceResponse("merit-inv-1", "cust-1"));
@@ -131,8 +134,7 @@ class AllegroInvoiceServiceTest {
     @Test
     void shouldUseAllegroTaxRateAndGroupTaxAmounts() {
         when(soldInvoiceRepository.existsById("order-1")).thenReturn(false);
-        when(authService.getValidAccessToken(9L)).thenReturn("token");
-        when(allegroApiClient.getCheckoutForm("token", "order-1")).thenReturn(sampleForm(
+        when(allegroApiClient.getCheckoutForm("https://api.allegro.pl", "token", "ua", "order-1")).thenReturn(sampleForm(
                 new AllegroLineItemTax("23.00", "GOODS", null),
                 new AllegroLineItemTax("8.00", "GOODS", null)));
         when(customersService.getCustomersByVatRegNo("5252674798")).thenReturn(List.of(
@@ -155,8 +157,7 @@ class AllegroInvoiceServiceTest {
     @Test
     void shouldCreateCustomerWhenNotFoundByVat() {
         when(soldInvoiceRepository.existsById("order-1")).thenReturn(false);
-        when(authService.getValidAccessToken(9L)).thenReturn("token");
-        when(allegroApiClient.getCheckoutForm("token", "order-1")).thenReturn(sampleForm(null, null));
+        when(allegroApiClient.getCheckoutForm("https://api.allegro.pl", "token", "ua", "order-1")).thenReturn(sampleForm(null, null));
         when(customersService.getCustomersByVatRegNo("5252674798")).thenReturn(List.of());
         when(customersService.createCustomer(any())).thenReturn(new MeritCreateCustomerResponse("new-cust", "Allegro"));
         when(invoicesService.createInvoice(any())).thenReturn(new CreateInvoiceResponse("merit-inv-1", "new-cust"));
@@ -179,14 +180,13 @@ class AllegroInvoiceServiceTest {
                 .isInstanceOf(ResponseStatusException.class)
                 .hasMessageContaining("już wystawiona");
 
-        verify(allegroApiClient, never()).getCheckoutForm(any(), any());
+        verify(allegroApiClient, never()).getCheckoutForm(any(), any(), any(), any());
         verify(invoicesService, never()).createInvoice(any());
     }
 
     @Test
     void shouldPreviewInvoiceWithoutSendingOrCreatingCustomer() {
-        when(authService.getValidAccessToken(9L)).thenReturn("token");
-        when(allegroApiClient.getCheckoutForm("token", "order-1")).thenReturn(sampleForm(null, null));
+        when(allegroApiClient.getCheckoutForm("https://api.allegro.pl", "token", "ua", "order-1")).thenReturn(sampleForm(null, null));
         when(customersService.getCustomersByVatRegNo("5252674798")).thenReturn(List.of(
                 new CustomerDto("cust-1", "Firma", null, "5252674798", null, null, null, "PLN")));
 
@@ -224,8 +224,7 @@ class AllegroInvoiceServiceTest {
 
     @Test
     void shouldPreviewCustomerCreatePayloadWhenCustomerMissing() {
-        when(authService.getValidAccessToken(9L)).thenReturn("token");
-        when(allegroApiClient.getCheckoutForm("token", "order-1")).thenReturn(sampleForm(null, null));
+        when(allegroApiClient.getCheckoutForm("https://api.allegro.pl", "token", "ua", "order-1")).thenReturn(sampleForm(null, null));
         when(customersService.getCustomersByVatRegNo("5252674798")).thenReturn(List.of());
 
         var preview = invoiceService.previewInvoice(9L, "order-1");
@@ -253,12 +252,11 @@ class AllegroInvoiceServiceTest {
     @Test
     void shouldAddDeliveryLineAndMatchTotalToPay() {
         when(soldInvoiceRepository.existsById("order-1")).thenReturn(false);
-        when(authService.getValidAccessToken(9L)).thenReturn("token");
         AllegroDelivery delivery = new AllegroDelivery(
                 new AllegroPrice("10.00", "PLN"),
                 new AllegroDeliveryMethod("ship-method-1", "Paczkomat"));
         AllegroCheckoutSummary summary = new AllegroCheckoutSummary(new AllegroPrice("70.00", "PLN"));
-        when(allegroApiClient.getCheckoutForm("token", "order-1"))
+        when(allegroApiClient.getCheckoutForm("https://api.allegro.pl", "token", "ua", "order-1"))
                 .thenReturn(sampleForm(null, null, delivery, summary, null));
         when(customersService.getCustomersByVatRegNo("5252674798")).thenReturn(List.of(
                 new CustomerDto("cust-1", "Firma", null, "5252674798", null, null, null, "PLN")));
@@ -285,9 +283,8 @@ class AllegroInvoiceServiceTest {
     @Test
     void shouldRejectWhenInvoiceGrossDoesNotMatchTotalToPay() {
         when(soldInvoiceRepository.existsById("order-1")).thenReturn(false);
-        when(authService.getValidAccessToken(9L)).thenReturn("token");
         AllegroCheckoutSummary summary = new AllegroCheckoutSummary(new AllegroPrice("99.00", "PLN"));
-        when(allegroApiClient.getCheckoutForm("token", "order-1"))
+        when(allegroApiClient.getCheckoutForm("https://api.allegro.pl", "token", "ua", "order-1"))
                 .thenReturn(sampleForm(null, null, null, summary, null));
         when(customersService.getCustomersByVatRegNo("5252674798")).thenReturn(List.of(
                 new CustomerDto("cust-1", "Firma", null, "5252674798", null, null, null, "PLN")));
@@ -297,6 +294,19 @@ class AllegroInvoiceServiceTest {
                 .hasMessageContaining("summary.totalToPay");
 
         verify(invoicesService, never()).createInvoice(any());
+    }
+
+    private static AllegroAccount sampleAccount(Long id) {
+        AllegroAccount account = new AllegroAccount();
+        account.setId(id);
+        account.setName("Sklep");
+        account.setClientId("cid");
+        account.setClientSecret("secret");
+        account.setInvoicePrefix("FS");
+        account.setApiBaseUrl("https://api.allegro.pl");
+        account.setAuthUrl("https://allegro.pl");
+        account.setUserAgent("ua");
+        return account;
     }
 
     private static AllegroCheckoutForm sampleForm(AllegroLineItemTax tax1, AllegroLineItemTax tax2) {

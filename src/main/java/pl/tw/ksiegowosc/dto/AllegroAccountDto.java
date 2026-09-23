@@ -5,6 +5,9 @@ public record AllegroAccountDto(
         String name,
         String clientId,
         String invoicePrefix,
+        String apiBaseUrl,
+        String authUrl,
+        String userAgent,
         boolean clientSecretSet,
         boolean connected
 ) {

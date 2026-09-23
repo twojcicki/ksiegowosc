@@ -9,6 +9,7 @@ import static org.springframework.test.web.client.response.MockRestResponseCreat
 
 import java.time.Instant;
 
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
@@ -22,21 +23,26 @@ import pl.tw.ksiegowosc.dto.allegro.AllegroOffersResponse;
 
 class AllegroApiClientTest {
 
+    private static final String API_BASE = "https://api.allegro.pl.allegrosandbox.pl";
+    private static final String USER_AGENT = "Ksiegowosc-Test/0.0.1 (+https://example.test)";
+
+    private MockRestServiceServer server;
+    private AllegroApiClient client;
+
+    @BeforeEach
+    void setUp() {
+        RestClient.Builder builder = RestClient.builder()
+                .defaultHeader("Accept", HttpClientsConfig.ALLEGRO_ACCEPT);
+        server = MockRestServiceServer.bindTo(builder).build();
+        client = new AllegroApiClient(builder.build());
+    }
+
     @Test
     void shouldFetchOffers() {
-        RestClient.Builder builder = RestClient.builder()
-                .baseUrl("https://api.allegro.pl.allegrosandbox.pl")
-                .defaultHeader("Accept", HttpClientsConfig.ALLEGRO_ACCEPT)
-                .requestInterceptor((request, body, execution) -> {
-                    request.getHeaders().setBearerAuth("test-token");
-                    return execution.execute(request, body);
-                });
-        MockRestServiceServer server = MockRestServiceServer.bindTo(builder).build();
-        AllegroApiClient client = new AllegroApiClient(builder.build());
-
-        server.expect(requestTo(startsWith("https://api.allegro.pl.allegrosandbox.pl/sale/offers")))
+        server.expect(requestTo(startsWith(API_BASE + "/sale/offers")))
                 .andExpect(method(HttpMethod.GET))
                 .andExpect(header(HttpHeaders.AUTHORIZATION, "Bearer test-token"))
+                .andExpect(header(HttpHeaders.USER_AGENT, USER_AGENT))
                 .andRespond(withSuccess("""
                         {
                           "offers": [
@@ -55,7 +61,7 @@ class AllegroApiClientTest {
                         }
                         """, MediaType.parseMediaType(HttpClientsConfig.ALLEGRO_ACCEPT)));
 
-        AllegroOffersResponse response = client.getOffers("test-token", 0, 100, null);
+        AllegroOffersResponse response = client.getOffers(API_BASE, "test-token", USER_AGENT, 0, 100, null);
 
         assertThat(response.offers()).hasSize(1);
         assertThat(response.offers().getFirst().id()).isEqualTo("1234567890");
@@ -65,17 +71,7 @@ class AllegroApiClientTest {
 
     @Test
     void shouldFetchCheckoutForms() {
-        RestClient.Builder builder = RestClient.builder()
-                .baseUrl("https://api.allegro.pl.allegrosandbox.pl")
-                .defaultHeader("Accept", HttpClientsConfig.ALLEGRO_ACCEPT)
-                .requestInterceptor((request, body, execution) -> {
-                    request.getHeaders().setBearerAuth("test-token");
-                    return execution.execute(request, body);
-                });
-        MockRestServiceServer server = MockRestServiceServer.bindTo(builder).build();
-        AllegroApiClient client = new AllegroApiClient(builder.build());
-
-        server.expect(requestTo(startsWith("https://api.allegro.pl.allegrosandbox.pl/order/checkout-forms")))
+        server.expect(requestTo(startsWith(API_BASE + "/order/checkout-forms")))
                 .andExpect(method(HttpMethod.GET))
                 .andRespond(withSuccess("""
                         {
@@ -103,7 +99,9 @@ class AllegroApiClientTest {
                         """, MediaType.parseMediaType(HttpClientsConfig.ALLEGRO_ACCEPT)));
 
         AllegroCheckoutFormsResponse response = client.getCheckoutForms(
+                API_BASE,
                 "test-token",
+                USER_AGENT,
                 0,
                 100,
                 Instant.parse("2026-01-01T00:00:00Z"),
@@ -117,17 +115,7 @@ class AllegroApiClientTest {
 
     @Test
     void shouldFetchCheckoutFormById() {
-        RestClient.Builder builder = RestClient.builder()
-                .baseUrl("https://api.allegro.pl.allegrosandbox.pl")
-                .defaultHeader("Accept", HttpClientsConfig.ALLEGRO_ACCEPT)
-                .requestInterceptor((request, body, execution) -> {
-                    request.getHeaders().setBearerAuth("test-token");
-                    return execution.execute(request, body);
-                });
-        MockRestServiceServer server = MockRestServiceServer.bindTo(builder).build();
-        AllegroApiClient client = new AllegroApiClient(builder.build());
-
-        server.expect(requestTo("https://api.allegro.pl.allegrosandbox.pl/order/checkout-forms/order-1"))
+        server.expect(requestTo(API_BASE + "/order/checkout-forms/order-1"))
                 .andExpect(method(HttpMethod.GET))
                 .andRespond(withSuccess("""
                         {
@@ -171,7 +159,7 @@ class AllegroApiClientTest {
                         }
                         """, MediaType.parseMediaType(HttpClientsConfig.ALLEGRO_ACCEPT)));
 
-        var form = client.getCheckoutForm("test-token", "order-1");
+        var form = client.getCheckoutForm(API_BASE, "test-token", USER_AGENT, "order-1");
 
         assertThat(form.id()).isEqualTo("order-1");
         assertThat(form.buyer().email()).isEqualTo("a@example.com");

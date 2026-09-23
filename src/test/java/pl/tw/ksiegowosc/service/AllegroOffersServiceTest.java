@@ -44,7 +44,8 @@ class AllegroOffersServiceTest {
         AllegroAccount account = account(9L, "Sklep A");
         when(accountService.listConnectedAccounts()).thenReturn(List.of(account));
         when(authService.getValidAccessTokenForAccount(account)).thenReturn("token");
-        when(allegroApiClient.getOffers("token", 0, 100, "ACTIVE")).thenReturn(new AllegroOffersResponse(
+        when(allegroApiClient.getOffers("https://api.allegro.pl", "token", "ua", 0, 100, "ACTIVE"))
+                .thenReturn(new AllegroOffersResponse(
                 List.of(new AllegroOfferItem(
                         "111",
                         "Buty",
@@ -76,7 +77,8 @@ class AllegroOffersServiceTest {
         when(accountService.listConnectedAccounts()).thenReturn(List.of(bad, ok));
         when(authService.getValidAccessTokenForAccount(bad)).thenThrow(new RuntimeException("boom"));
         when(authService.getValidAccessTokenForAccount(ok)).thenReturn("token");
-        when(allegroApiClient.getOffers(eq("token"), eq(0), eq(100), any())).thenReturn(new AllegroOffersResponse(
+        when(allegroApiClient.getOffers(eq("https://api.allegro.pl"), eq("token"), eq("ua"), eq(0), eq(100), any()))
+                .thenReturn(new AllegroOffersResponse(
                 List.of(new AllegroOfferItem(
                         "111",
                         "Buty",
@@ -98,6 +100,9 @@ class AllegroOffersServiceTest {
         account.setName(name);
         account.setClientId("client-" + id);
         account.setClientSecret("secret");
+        account.setApiBaseUrl("https://api.allegro.pl");
+        account.setAuthUrl("https://allegro.pl");
+        account.setUserAgent("ua");
         return account;
     }
 }

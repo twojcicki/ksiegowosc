@@ -26,9 +26,9 @@ set APP_ENCRYPTION_KEY=...wynik...
 
 Na Renderze dodaj `APP_ENCRYPTION_KEY` w Environment. Bez poprawnego klucza aplikacja nie startuje.
 
-**Klucze Merit** ustawiasz w UI: **Ustawienia API** (`/ustawienia-api`) — zapis per użytkownik w bazie (klucz zaszyfrowany). **Konta Allegro** dodajesz na tej samej stronie (nazwa, Client ID, Client Secret, prefiks faktury); każde konto ma **Połącz** / **Usuń**. Faktury z Allegro dostają numer `prefiks/kolejny/MM/rrrr` (np. `FS/5/09/2026`); kolejny numer = liczba faktur w Merit w danym miesiącu + 1. Faktura obejmuje towary oraz koszty kupującego (dostawa, dopłaty); brutto = `summary.totalToPay`. Oferty i sprzedane pokazują towary ze wszystkich połączonych kont z kolumną „Konto”. Zakładka **Mapowanie** na `/allegro` ma podzakładki **Reguły** (`RULES`) i **Podgląd** wartości dla wybranej sprzedaży (bez wysyłki).
+**Klucze Merit** ustawiasz w UI: **Ustawienia API** (`/ustawienia-api`) — zapis per użytkownik w bazie (klucz zaszyfrowany). **Konta Allegro** dodajesz na tej samej stronie (nazwa, Client ID/Secret, **API Base URL**, **Auth URL**, **User-Agent**, prefiks faktury); każde konto ma **Połącz** / **Usuń**. Dzięki URL-om per konto możesz mieć jednocześnie produkcję i sandbox. Faktury z Allegro dostają numer `prefiks/kolejny/MM/rrrr` (np. `FS/5/09/2026`); kolejny numer = liczba faktur w Merit w danym miesiącu + 1. Faktura obejmuje towary oraz koszty kupującego (dostawa, dopłaty); brutto = `summary.totalToPay`. Oferty i sprzedane pokazują towary ze wszystkich połączonych kont z kolumną „Konto”. Zakładka **Mapowanie** na `/allegro` ma podzakładki **Reguły** (`RULES`) i **Podgląd** wartości dla wybranej sprzedaży (bez wysyłki).
 
-**Redirect URI Allegro** musi być **identyczny** w aplikacji Allegro Sandbox i w naszej appce. Domyślnie (puste `ALLEGRO_REDIRECT_URI`) callback jest wyliczany z aktualnego hosta, np. `https://ksiegowosc-a0yu.onrender.com/api/allegro/auth/callback`. Opcjonalnie nadpisz:
+**Redirect URI Allegro** musi być **identyczny** w aplikacji Allegro Developer Apps i w naszej appce. Domyślnie (puste `ALLEGRO_REDIRECT_URI`) callback jest wyliczany z aktualnego hosta, np. `https://ksiegowosc-a0yu.onrender.com/api/allegro/auth/callback`. Opcjonalnie nadpisz:
 
 ```bash
 set ALLEGRO_REDIRECT_URI=https://ksiegowosc-a0yu.onrender.com/api/allegro/auth/callback
@@ -40,13 +40,11 @@ clients:
     base-url: https://program.360ksiegowosc.pl/api/v1
     v2-base-url: https://program.360ksiegowosc.pl/api/v2
   allegro:
-    api-base-url: https://api.allegro.pl.allegrosandbox.pl
-    auth-url: https://allegro.pl.allegrosandbox.pl
     redirect-uri: ${ALLEGRO_REDIRECT_URI:}
     scopes: allegro:api:sale:offers:read allegro:api:orders:read
 ```
 
-Allegro Sandbox: zarejestruj aplikację na [apps.developer.allegro.pl.allegrosandbox.pl](https://apps.developer.allegro.pl.allegrosandbox.pl/), wklej **Redirect URI** widoczny w Ustawieniach API, dodaj konto (Client ID/Secret) w UI, potem **Połącz**. **Usuń** kasuje konto i token OAuth.
+Allegro: zarejestruj aplikację na [apps.developer.allegro.pl](https://apps.developer.allegro.pl/) (lub sandbox), wklej **Redirect URI** z Ustawień API, dodaj konto w UI z właściwymi URL-ami i User-Agentem, potem **Połącz**. **Usuń** kasuje konto i token OAuth.
 
 Klient podpisuje każde żądanie HMAC-SHA256 zgodnie z dokumentacją Merit:
 `signature = Base64(HMAC-SHA256(apiId + timestamp + body, apiKey))` — klucze z Ustawień API bieżącego użytkownika.

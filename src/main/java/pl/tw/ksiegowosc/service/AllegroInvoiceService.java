@@ -25,6 +25,7 @@ import pl.tw.ksiegowosc.dto.MeritCreateCustomerRequest;
 import pl.tw.ksiegowosc.dto.MeritCreateCustomerResponse;
 import pl.tw.ksiegowosc.dto.MeritCreateInvoiceRequest;
 import pl.tw.ksiegowosc.dto.allegro.AllegroCheckoutForm;
+import pl.tw.ksiegowosc.entity.AllegroAccount;
 import pl.tw.ksiegowosc.entity.AllegroSoldInvoice;
 import pl.tw.ksiegowosc.mapper.AllegroBillingMapper;
 import pl.tw.ksiegowosc.mapper.AllegroInvoiceMapper;
@@ -122,8 +123,10 @@ public class AllegroInvoiceService {
             throw new ResponseStatusException(HttpStatus.CONFLICT, "Dla tego zamówienia faktura została już wystawiona.");
         }
 
-        String accessToken = authService.getValidAccessToken(accountId);
-        AllegroCheckoutForm form = fetchCheckoutForm(accessToken, trimmedOrderId);
+        AllegroAccount account = accountService.requireOwnedAccount(accountId);
+        String accessToken = authService.getValidAccessTokenForAccount(account);
+        AllegroCheckoutForm form = fetchCheckoutForm(
+                account.getApiBaseUrl(), accessToken, account.getUserAgent(), trimmedOrderId);
         if (form.lineItems() == null || form.lineItems().isEmpty()) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Zamówienie nie ma pozycji do zafakturowania.");
         }
@@ -157,9 +160,10 @@ public class AllegroInvoiceService {
                 customer.toCreate());
     }
 
-    private AllegroCheckoutForm fetchCheckoutForm(String accessToken, String orderId) {
+    private AllegroCheckoutForm fetchCheckoutForm(
+            String apiBaseUrl, String accessToken, String userAgent, String orderId) {
         try {
-            AllegroCheckoutForm form = allegroApiClient.getCheckoutForm(accessToken, orderId);
+            AllegroCheckoutForm form = allegroApiClient.getCheckoutForm(apiBaseUrl, accessToken, userAgent, orderId);
             if (form == null || form.id() == null || form.id().isBlank()) {
                 throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Nie znaleziono zamówienia Allegro.");
             }

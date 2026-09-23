@@ -46,8 +46,13 @@ public class AllegroOffersService {
         for (AllegroAccount account : accounts) {
             try {
                 String token = authService.getValidAccessTokenForAccount(account);
-                AllegroOffersResponse response =
-                        allegroApiClient.getOffers(token, offset, limit, publicationStatus);
+                AllegroOffersResponse response = allegroApiClient.getOffers(
+                        account.getApiBaseUrl(),
+                        token,
+                        account.getUserAgent(),
+                        offset,
+                        limit,
+                        publicationStatus);
                 if (response == null || response.offers() == null) {
                     continue;
                 }

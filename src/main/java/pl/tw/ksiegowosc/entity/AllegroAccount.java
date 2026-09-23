@@ -36,6 +36,15 @@ public class AllegroAccount {
     @Column(name = "invoice_prefix", nullable = false, length = 20)
     private String invoicePrefix;
 
+    @Column(name = "api_base_url", nullable = false, length = 300)
+    private String apiBaseUrl;
+
+    @Column(name = "auth_url", nullable = false, length = 300)
+    private String authUrl;
+
+    @Column(name = "user_agent", nullable = false, length = 500)
+    private String userAgent;
+
     @Column(name = "created_at", nullable = false)
     private Instant createdAt;
 
@@ -88,6 +97,30 @@ public class AllegroAccount {
 
     public void setInvoicePrefix(String invoicePrefix) {
         this.invoicePrefix = invoicePrefix;
+    }
+
+    public String getApiBaseUrl() {
+        return apiBaseUrl;
+    }
+
+    public void setApiBaseUrl(String apiBaseUrl) {
+        this.apiBaseUrl = apiBaseUrl;
+    }
+
+    public String getAuthUrl() {
+        return authUrl;
+    }
+
+    public void setAuthUrl(String authUrl) {
+        this.authUrl = authUrl;
+    }
+
+    public String getUserAgent() {
+        return userAgent;
+    }
+
+    public void setUserAgent(String userAgent) {
+        this.userAgent = userAgent;
     }
 
     public Instant getCreatedAt() {

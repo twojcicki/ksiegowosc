@@ -21,6 +21,11 @@ import pl.tw.ksiegowosc.repository.AllegroTokenRepository;
 @Service
 public class AllegroAccountService {
 
+    public static final String DEFAULT_API_BASE_URL = "https://api.allegro.pl";
+    public static final String DEFAULT_AUTH_URL = "https://allegro.pl";
+    public static final String DEFAULT_USER_AGENT =
+            "Ksiegowosc/0.0.1 (+https://ksiegowosc-a0yu.onrender.com)";
+
     private static final int PREFIX_MAX = 20;
 
     private final AllegroAccountRepository accountRepository;
@@ -65,7 +70,14 @@ public class AllegroAccountService {
     }
 
     @Transactional
-    public AllegroAccountDto addAccount(String name, String clientId, String clientSecret, String invoicePrefix) {
+    public AllegroAccountDto addAccount(
+            String name,
+            String clientId,
+            String clientSecret,
+            String invoicePrefix,
+            String apiBaseUrl,
+            String authUrl,
+            String userAgent) {
         Long userId = credentialsService.requireCurrentUserId();
         if (!hasText(name)) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Podaj nazwę konta Allegro.");
@@ -89,6 +101,9 @@ public class AllegroAccountService {
         account.setClientId(trimmedClientId);
         account.setClientSecret(clientSecret.trim());
         account.setInvoicePrefix(normalizedPrefix);
+        account.setApiBaseUrl(requireHttpsUrl(apiBaseUrl, "Allegro API Base URL"));
+        account.setAuthUrl(requireHttpsUrl(authUrl, "Allegro Auth URL"));
+        account.setUserAgent(requireUserAgent(userAgent));
         account.setCreatedAt(now);
         account.setUpdatedAt(now);
         AllegroAccount saved = accountRepository.save(account);
@@ -134,7 +149,12 @@ public class AllegroAccountService {
     }
 
     public AllegroClientCredentials toClientCredentials(AllegroAccount account) {
-        return new AllegroClientCredentials(account.getClientId(), account.getClientSecret());
+        return new AllegroClientCredentials(
+                account.getClientId(),
+                account.getClientSecret(),
+                stripTrailingSlash(account.getApiBaseUrl()),
+                stripTrailingSlash(account.getAuthUrl()),
+                account.getUserAgent().trim());
     }
 
     private static String normalizePrefix(String invoicePrefix) {
@@ -153,12 +173,40 @@ public class AllegroAccountService {
         return trimmed;
     }
 
+    private static String requireHttpsUrl(String value, String label) {
+        if (!hasText(value)) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Podaj " + label + ".");
+        }
+        String trimmed = stripTrailingSlash(value.trim());
+        if (!trimmed.startsWith("https://")) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, label + " musi zaczynać się od https://");
+        }
+        return trimmed;
+    }
+
+    private static String requireUserAgent(String userAgent) {
+        if (!hasText(userAgent)) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Podaj Allegro User-Agent.");
+        }
+        return userAgent.trim();
+    }
+
+    private static String stripTrailingSlash(String value) {
+        if (value.endsWith("/")) {
+            return value.substring(0, value.length() - 1);
+        }
+        return value;
+    }
+
     private static AllegroAccountDto toDto(AllegroAccount account, boolean connected) {
         return new AllegroAccountDto(
                 account.getId(),
                 account.getName(),
                 account.getClientId(),
                 account.getInvoicePrefix(),
+                account.getApiBaseUrl(),
+                account.getAuthUrl(),
+                account.getUserAgent(),
                 hasText(account.getClientSecret()),
                 connected);
     }

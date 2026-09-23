@@ -3,6 +3,7 @@ package pl.tw.ksiegowosc.client;
 import java.time.Instant;
 
 import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.http.HttpHeaders;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestClient;
 import org.springframework.web.util.UriComponentsBuilder;
@@ -20,8 +21,15 @@ public class AllegroApiClient {
         this.allegroRestClient = allegroRestClient;
     }
 
-    public AllegroOffersResponse getOffers(String accessToken, int offset, int limit, String publicationStatus) {
-        UriComponentsBuilder builder = UriComponentsBuilder.fromPath("/sale/offers")
+    public AllegroOffersResponse getOffers(
+            String apiBaseUrl,
+            String accessToken,
+            String userAgent,
+            int offset,
+            int limit,
+            String publicationStatus) {
+        UriComponentsBuilder builder = UriComponentsBuilder
+                .fromUriString(normalizeBase(apiBaseUrl) + "/sale/offers")
                 .queryParam("offset", offset)
                 .queryParam("limit", limit);
         if (publicationStatus != null && !publicationStatus.isBlank()) {
@@ -29,19 +37,25 @@ public class AllegroApiClient {
         }
 
         return allegroRestClient.get()
-                .uri(builder.build().toUriString())
-                .headers(headers -> headers.setBearerAuth(accessToken))
+                .uri(builder.build().toUri())
+                .headers(headers -> {
+                    headers.setBearerAuth(accessToken);
+                    headers.set(HttpHeaders.USER_AGENT, userAgent);
+                })
                 .retrieve()
                 .body(AllegroOffersResponse.class);
     }
 
     public AllegroCheckoutFormsResponse getCheckoutForms(
+            String apiBaseUrl,
             String accessToken,
+            String userAgent,
             int offset,
             int limit,
             Instant boughtAtFrom,
             Instant boughtAtTo) {
-        UriComponentsBuilder builder = UriComponentsBuilder.fromPath("/order/checkout-forms")
+        UriComponentsBuilder builder = UriComponentsBuilder
+                .fromUriString(normalizeBase(apiBaseUrl) + "/order/checkout-forms")
                 .queryParam("offset", offset)
                 .queryParam("limit", limit);
         if (boughtAtFrom != null) {
@@ -52,17 +66,32 @@ public class AllegroApiClient {
         }
 
         return allegroRestClient.get()
-                .uri(builder.build().toUriString())
-                .headers(headers -> headers.setBearerAuth(accessToken))
+                .uri(builder.build().toUri())
+                .headers(headers -> {
+                    headers.setBearerAuth(accessToken);
+                    headers.set(HttpHeaders.USER_AGENT, userAgent);
+                })
                 .retrieve()
                 .body(AllegroCheckoutFormsResponse.class);
     }
 
-    public AllegroCheckoutForm getCheckoutForm(String accessToken, String id) {
+    public AllegroCheckoutForm getCheckoutForm(
+            String apiBaseUrl, String accessToken, String userAgent, String id) {
         return allegroRestClient.get()
-                .uri("/order/checkout-forms/{id}", id)
-                .headers(headers -> headers.setBearerAuth(accessToken))
+                .uri(normalizeBase(apiBaseUrl) + "/order/checkout-forms/{id}", id)
+                .headers(headers -> {
+                    headers.setBearerAuth(accessToken);
+                    headers.set(HttpHeaders.USER_AGENT, userAgent);
+                })
                 .retrieve()
                 .body(AllegroCheckoutForm.class);
+    }
+
+    private static String normalizeBase(String apiBaseUrl) {
+        if (apiBaseUrl == null || apiBaseUrl.isBlank()) {
+            throw new IllegalArgumentException("apiBaseUrl is required");
+        }
+        String trimmed = apiBaseUrl.trim();
+        return trimmed.endsWith("/") ? trimmed.substring(0, trimmed.length() - 1) : trimmed;
     }
 }

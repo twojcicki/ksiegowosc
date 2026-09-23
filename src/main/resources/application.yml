@@ -30,8 +30,6 @@ clients:
     base-url: https://program.360ksiegowosc.pl/api/v1
     v2-base-url: https://program.360ksiegowosc.pl/api/v2
   allegro:
-    api-base-url: https://api.allegro.pl.allegrosandbox.pl
-    auth-url: https://allegro.pl.allegrosandbox.pl
     # Empty = auto from request host (e.g. https://…onrender.com/api/allegro/auth/callback)
     redirect-uri: ${ALLEGRO_REDIRECT_URI:}
     scopes: allegro:api:sale:offers:read allegro:api:orders:read

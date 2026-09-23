@@ -23,7 +23,5 @@ clients:
     base-url: https://example.test/api/v1
     v2-base-url: https://example.test/api/v2
   allegro:
-    api-base-url: https://api.allegro.test
-    auth-url: https://allegro.test
     redirect-uri: http://localhost:8080/api/allegro/auth/callback
     scopes: allegro:api:sale:offers:read allegro:api:orders:read

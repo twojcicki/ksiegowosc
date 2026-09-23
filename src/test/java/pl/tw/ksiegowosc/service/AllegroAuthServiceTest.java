@@ -44,12 +44,16 @@ class AllegroAuthServiceTest {
     private static final Long USER_ID = 42L;
     private static final Long ACCOUNT_ID = 7L;
     private static final AllegroApiProperties PROPERTIES = new AllegroApiProperties(
-            "https://api.allegro.pl.allegrosandbox.pl",
-            "https://allegro.pl.allegrosandbox.pl",
             "http://localhost:8080/api/allegro/auth/callback",
             "allegro:api:sale:offers:read allegro:api:orders:read");
-    private static final AllegroClientCredentials CLIENT =
-            new AllegroClientCredentials("client-id", "client-secret");
+    private static final String AUTH_URL = "https://allegro.pl.allegrosandbox.pl";
+    private static final String USER_AGENT = "Ksiegowosc-Test/0.0.1 (+https://example.test)";
+    private static final AllegroClientCredentials CLIENT = new AllegroClientCredentials(
+            "client-id",
+            "client-secret",
+            "https://api.allegro.pl.allegrosandbox.pl",
+            AUTH_URL,
+            USER_AGENT);
 
     @Mock
     private AllegroTokenRepository tokenRepository;
@@ -74,6 +78,9 @@ class AllegroAuthServiceTest {
         account.setName("Sklep");
         account.setClientId(CLIENT.clientId());
         account.setClientSecret(CLIENT.clientSecret());
+        account.setApiBaseUrl(CLIENT.apiBaseUrl());
+        account.setAuthUrl(CLIENT.authUrl());
+        account.setUserAgent(CLIENT.userAgent());
 
         lenient().when(credentialsService.requireCurrentUserId()).thenReturn(USER_ID);
         lenient().when(credentialsService.requireUserById(USER_ID)).thenReturn(new AppUser());
@@ -93,7 +100,7 @@ class AllegroAuthServiceTest {
                 .thenAnswer(invocation -> Optional.ofNullable(storedToken.get()));
 
         clock = Clock.fixed(Instant.parse("2026-01-15T12:00:00Z"), ZoneOffset.UTC);
-        RestClient.Builder builder = RestClient.builder().baseUrl(PROPERTIES.authUrl());
+        RestClient.Builder builder = RestClient.builder();
         server = MockRestServiceServer.bindTo(builder).build();
         authService = new AllegroAuthService(
                 PROPERTIES,
@@ -109,9 +116,10 @@ class AllegroAuthServiceTest {
     void shouldExchangeAuthorizationCodeAndSaveToken() {
         String basicAuth = Base64.getEncoder().encodeToString("client-id:client-secret".getBytes());
 
-        server.expect(requestTo(startsWith("https://allegro.pl.allegrosandbox.pl/auth/oauth/token")))
+        server.expect(requestTo(startsWith(AUTH_URL + "/auth/oauth/token")))
                 .andExpect(method(HttpMethod.POST))
                 .andExpect(header(HttpHeaders.AUTHORIZATION, "Basic " + basicAuth))
+                .andExpect(header(HttpHeaders.USER_AGENT, USER_AGENT))
                 .andExpect(content().contentType(MediaType.APPLICATION_FORM_URLENCODED))
                 .andRespond(withSuccess("""
                         {
@@ -142,8 +150,9 @@ class AllegroAuthServiceTest {
         token.setUpdatedAt(Instant.parse("2026-01-15T10:00:00Z"));
         storedToken.set(token);
 
-        server.expect(requestTo(startsWith("https://allegro.pl.allegrosandbox.pl/auth/oauth/token")))
+        server.expect(requestTo(startsWith(AUTH_URL + "/auth/oauth/token")))
                 .andExpect(method(HttpMethod.POST))
+                .andExpect(header(HttpHeaders.USER_AGENT, USER_AGENT))
                 .andRespond(withSuccess("""
                         {
                           "access_token": "new-access",
@@ -164,7 +173,7 @@ class AllegroAuthServiceTest {
     void shouldBuildAuthorizationUrlWithState() {
         String url = authService.buildAuthorizationUrl(ACCOUNT_ID);
 
-        assertThat(url).startsWith("https://allegro.pl.allegrosandbox.pl/auth/oauth/authorize?");
+        assertThat(url).startsWith(AUTH_URL + "/auth/oauth/authorize?");
         assertThat(url).contains("client_id=client-id");
         assertThat(url).contains("redirect_uri=http%3A%2F%2Flocalhost%3A8080%2Fapi%2Fallegro%2Fauth%2Fcallback");
         assertThat(url).contains("scope=allegro%3Aapi%3Asale%3Aoffers%3Aread%20allegro%3Aapi%3Aorders%3Aread");

@@ -50,6 +50,9 @@ public class ApiSettingsView extends View {
     private final TextField allegroClientId = new TextField("Allegro Client ID");
     private final PasswordField allegroClientSecret = new PasswordField("Allegro Client Secret");
     private final TextField allegroInvoicePrefix = new TextField("Prefiks faktury");
+    private final TextField allegroApiBaseUrl = new TextField("API Base URL");
+    private final TextField allegroAuthUrl = new TextField("Auth URL");
+    private final TextField allegroUserAgent = new TextField("User-Agent");
     private final Grid<AllegroAccountDto> allegroAccountsGrid = new Grid<>(AllegroAccountDto.class, false);
 
     public ApiSettingsView(
@@ -98,6 +101,17 @@ public class ApiSettingsView extends View {
         allegroInvoicePrefix.setWidthFull();
         allegroInvoicePrefix.setMaxLength(20);
         allegroInvoicePrefix.setHelperText("Numer faktury: prefiks/kolejny/MM/rrrr, np. FS/5/09/2026");
+        allegroApiBaseUrl.setWidthFull();
+        allegroApiBaseUrl.setValue(AllegroAccountService.DEFAULT_API_BASE_URL);
+        allegroApiBaseUrl.setHelperText(
+                "Produkcja: https://api.allegro.pl · Sandbox: https://api.allegro.pl.allegrosandbox.pl");
+        allegroAuthUrl.setWidthFull();
+        allegroAuthUrl.setValue(AllegroAccountService.DEFAULT_AUTH_URL);
+        allegroAuthUrl.setHelperText(
+                "Produkcja: https://allegro.pl · Sandbox: https://allegro.pl.allegrosandbox.pl");
+        allegroUserAgent.setWidthFull();
+        allegroUserAgent.setValue(AllegroAccountService.DEFAULT_USER_AGENT);
+        allegroUserAgent.setHelperText("Format: NazwaAplikacji/Wersja (+https://url) — nazwa = aplikacja w Allegro.");
 
         Button addAllegro = new Button("Dodaj konto", event -> addAllegroAccount());
         addAllegro.addThemeVariants(ButtonVariant.LUMO_PRIMARY);
@@ -106,18 +120,25 @@ public class ApiSettingsView extends View {
         redirectUriHint.getStyle().set("font-size", "var(--lumo-font-size-s)");
         redirectUriHint.getStyle().set("word-break", "break-all");
         try {
-            redirectUriHint.setText("Redirect URI (wpisz dokładnie to samo w Allegro Sandbox Developer Apps): "
+            redirectUriHint.setText("Redirect URI (wpisz dokładnie to samo w Allegro Developer Apps): "
                     + allegroAuthService.resolveRedirectUri());
         } catch (RuntimeException ex) {
             redirectUriHint.setText("Redirect URI: ustaw ALLEGRO_REDIRECT_URI na Render.");
         }
 
         FormLayout allegroForm = new FormLayout(
-                allegroName, allegroClientId, allegroClientSecret, allegroInvoicePrefix);
+                allegroName,
+                allegroClientId,
+                allegroClientSecret,
+                allegroInvoicePrefix,
+                allegroApiBaseUrl,
+                allegroAuthUrl,
+                allegroUserAgent);
         allegroForm.setResponsiveSteps(new FormLayout.ResponsiveStep("0", 1));
         VerticalLayout allegroSection = new VerticalLayout(
                 new H3("Allegro"),
-                new Paragraph("Dodaj aplikacje Allegro (Client ID/Secret i prefiks faktury). Połącz każde konto osobno."),
+                new Paragraph(
+                        "Dodaj aplikacje Allegro (Client ID/Secret, URL-e, User-Agent i prefiks). Połącz każde konto osobno."),
                 allegroForm,
                 addAllegro,
                 redirectUriHint,
@@ -211,12 +232,18 @@ public class ApiSettingsView extends View {
                     allegroName.getValue(),
                     allegroClientId.getValue(),
                     allegroClientSecret.getValue(),
-                    allegroInvoicePrefix.getValue());
+                    allegroInvoicePrefix.getValue(),
+                    allegroApiBaseUrl.getValue(),
+                    allegroAuthUrl.getValue(),
+                    allegroUserAgent.getValue());
             Notifications.show("Dodano konto Allegro.", NotificationVariant.SUCCESS);
             allegroName.clear();
             allegroClientId.clear();
             allegroClientSecret.clear();
             allegroInvoicePrefix.clear();
+            allegroApiBaseUrl.setValue(AllegroAccountService.DEFAULT_API_BASE_URL);
+            allegroAuthUrl.setValue(AllegroAccountService.DEFAULT_AUTH_URL);
+            allegroUserAgent.setValue(AllegroAccountService.DEFAULT_USER_AGENT);
             loadAllegroAccounts();
         } catch (ResponseStatusException ex) {
             Notifications.show(reason(ex), NotificationVariant.ERROR);

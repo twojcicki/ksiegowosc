@@ -54,12 +54,22 @@ class AllegroAccountServiceTest {
             return account;
         });
 
-        var dto = service.addAccount("Sklep", "cid", "secret", "FS");
+        var dto = service.addAccount(
+                "Sklep",
+                "cid",
+                "secret",
+                "FS",
+                AllegroAccountService.DEFAULT_API_BASE_URL,
+                AllegroAccountService.DEFAULT_AUTH_URL,
+                AllegroAccountService.DEFAULT_USER_AGENT);
 
         assertThat(dto.id()).isEqualTo(11L);
         assertThat(dto.name()).isEqualTo("Sklep");
         assertThat(dto.clientId()).isEqualTo("cid");
         assertThat(dto.invoicePrefix()).isEqualTo("FS");
+        assertThat(dto.apiBaseUrl()).isEqualTo(AllegroAccountService.DEFAULT_API_BASE_URL);
+        assertThat(dto.authUrl()).isEqualTo(AllegroAccountService.DEFAULT_AUTH_URL);
+        assertThat(dto.userAgent()).isEqualTo(AllegroAccountService.DEFAULT_USER_AGENT);
         assertThat(dto.connected()).isFalse();
         verify(accountRepository).save(any(AllegroAccount.class));
     }
@@ -68,14 +78,28 @@ class AllegroAccountServiceTest {
     void shouldRejectDuplicateClientId() {
         when(accountRepository.existsByUserIdAndClientId(3L, "cid")).thenReturn(true);
 
-        assertThatThrownBy(() -> service.addAccount("Sklep", "cid", "secret", "FS"))
+        assertThatThrownBy(() -> service.addAccount(
+                        "Sklep",
+                        "cid",
+                        "secret",
+                        "FS",
+                        AllegroAccountService.DEFAULT_API_BASE_URL,
+                        AllegroAccountService.DEFAULT_AUTH_URL,
+                        AllegroAccountService.DEFAULT_USER_AGENT))
                 .isInstanceOf(ResponseStatusException.class)
                 .hasMessageContaining("już istnieje");
     }
 
     @Test
     void shouldRejectBlankInvoicePrefix() {
-        assertThatThrownBy(() -> service.addAccount("Sklep", "cid", "secret", "  "))
+        assertThatThrownBy(() -> service.addAccount(
+                        "Sklep",
+                        "cid",
+                        "secret",
+                        "  ",
+                        AllegroAccountService.DEFAULT_API_BASE_URL,
+                        AllegroAccountService.DEFAULT_AUTH_URL,
+                        AllegroAccountService.DEFAULT_USER_AGENT))
                 .isInstanceOf(ResponseStatusException.class)
                 .hasMessageContaining("prefiks");
     }
@@ -121,6 +145,9 @@ class AllegroAccountServiceTest {
         account.setClientId("cid");
         account.setClientSecret("secret");
         account.setInvoicePrefix("FS");
+        account.setApiBaseUrl(AllegroAccountService.DEFAULT_API_BASE_URL);
+        account.setAuthUrl(AllegroAccountService.DEFAULT_AUTH_URL);
+        account.setUserAgent(AllegroAccountService.DEFAULT_USER_AGENT);
         return account;
     }
 }

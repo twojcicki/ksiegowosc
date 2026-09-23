@@ -6,11 +6,13 @@ Format oparty na [Keep a Changelog](https://keepachangelog.com/pl/1.1.0/).
 
 ### Added
 
+- Per konto Allegro: API Base URL, Auth URL i User-Agent (OAuth/API z hostów konta; produkcja i sandbox obok siebie).
 - Szyfrowanie at-rest sekretów API (AES-256-GCM): `merit_api_key`, Allegro `client_secret`, OAuth `access_token` / `refresh_token`; klucz `APP_ENCRYPTION_KEY` (Base64, 32 bajty).
 - Zmiana hasła z menu użytkownika (obecne + nowe + potwierdzenie, min. 8 znaków).
 
 ### Changed
 
+- Allegro API Base URL / Auth URL przeniesione z globalnego `application.yml` do pól konta (`allegro_account`).
 - Logi Merit API: na INFO tylko metadane (method, URI, status, rozmiary, czas); skrócony body (2 KB) wyłącznie przy 4xx/5xx na WARN.
 
 ### Fixed

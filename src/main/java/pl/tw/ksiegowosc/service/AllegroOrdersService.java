@@ -69,7 +69,13 @@ public class AllegroOrdersService {
             try {
                 String token = authService.getValidAccessTokenForAccount(account);
                 AllegroCheckoutFormsResponse response = allegroApiClient.getCheckoutForms(
-                        token, offset, limit, boughtAtFrom, boughtAtTo);
+                        account.getApiBaseUrl(),
+                        token,
+                        account.getUserAgent(),
+                        offset,
+                        limit,
+                        boughtAtFrom,
+                        boughtAtTo);
                 if (response == null || response.checkoutForms() == null) {
                     continue;
                 }

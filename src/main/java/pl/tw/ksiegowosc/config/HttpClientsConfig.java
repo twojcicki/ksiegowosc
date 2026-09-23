@@ -68,16 +68,13 @@ public class HttpClientsConfig {
     }
 
     @Bean
-    RestClient allegroAuthRestClient(AllegroApiProperties properties) {
-        return RestClient.builder()
-                .baseUrl(properties.authUrl())
-                .build();
+    RestClient allegroAuthRestClient() {
+        return RestClient.builder().build();
     }
 
     @Bean
-    RestClient allegroRestClient(AllegroApiProperties properties) {
+    RestClient allegroRestClient() {
         return RestClient.builder()
-                .baseUrl(properties.apiBaseUrl())
                 .defaultHeader("Accept", ALLEGRO_ACCEPT)
                 .build();
     }

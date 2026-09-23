@@ -61,7 +61,14 @@ class AllegroOrdersServiceTest {
         when(accountService.listConnectedAccounts()).thenReturn(List.of(account));
         when(authService.getValidAccessTokenForAccount(account)).thenReturn("token");
         when(soldInvoiceRepository.findByOrderIdIn(any())).thenReturn(List.of());
-        when(allegroApiClient.getCheckoutForms(eq("token"), eq(0), eq(100), any(), any()))
+        when(allegroApiClient.getCheckoutForms(
+                        eq("https://api.allegro.pl"),
+                        eq("token"),
+                        eq("ua"),
+                        eq(0),
+                        eq(100),
+                        any(),
+                        any()))
                 .thenReturn(new AllegroCheckoutFormsResponse(
                         List.of(new AllegroCheckoutForm(
                                 "order-1",
@@ -119,7 +126,14 @@ class AllegroOrdersServiceTest {
         saved.setOrderId("order-1");
         saved.setInvoiceNo("order1/01/2026");
         when(soldInvoiceRepository.findByOrderIdIn(any())).thenReturn(List.of(saved));
-        when(allegroApiClient.getCheckoutForms(eq("token"), eq(0), eq(100), any(), any()))
+        when(allegroApiClient.getCheckoutForms(
+                        eq("https://api.allegro.pl"),
+                        eq("token"),
+                        eq("ua"),
+                        eq(0),
+                        eq(100),
+                        any(),
+                        any()))
                 .thenReturn(new AllegroCheckoutFormsResponse(
                         List.of(new AllegroCheckoutForm(
                                 "order-1",
@@ -163,6 +177,9 @@ class AllegroOrdersServiceTest {
         account.setName(name);
         account.setClientId("client");
         account.setClientSecret("secret");
+        account.setApiBaseUrl("https://api.allegro.pl");
+        account.setAuthUrl("https://allegro.pl");
+        account.setUserAgent("ua");
         return account;
     }
 }
