@@ -13,6 +13,7 @@ Format oparty na [Keep a Changelog](https://keepachangelog.com/pl/1.1.0/).
 ### Changed
 
 - Allegro API Base URL / Auth URL przeniesione z globalnego `application.yml` do pól konta (`allegro_account`).
+- Zależności: Spring Boot `4.1.0` → `4.1.1` (wersje security z BOM parenta).
 - Logi Merit API: na INFO tylko metadane (method, URI, status, rozmiary, czas); skrócony body (2 KB) wyłącznie przy 4xx/5xx na WARN.
 
 ### Fixed
