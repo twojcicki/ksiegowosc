@@ -6,6 +6,7 @@ Format oparty na [Keep a Changelog](https://keepachangelog.com/pl/1.1.0/).
 
 ### Added
 
+- Logi OAuth Allegro (authorize + callback error/token): `clientId`, Auth/API URL, redirect URI; błąd Allegro wraca do Ustawień API z komunikatem zamiast 403.
 - Per konto Allegro: API Base URL, Auth URL i User-Agent (OAuth/API z hostów konta; produkcja i sandbox obok siebie).
 - Szyfrowanie at-rest sekretów API (AES-256-GCM): `merit_api_key`, Allegro `client_secret`, OAuth `access_token` / `refresh_token`; klucz `APP_ENCRYPTION_KEY` (Base64, 32 bajty).
 - Zmiana hasła z menu użytkownika (obecne + nowe + potwierdzenie, min. 8 znaków).

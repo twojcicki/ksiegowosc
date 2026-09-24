@@ -7,6 +7,8 @@ import java.time.Duration;
 import java.time.Instant;
 import java.util.Base64;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
@@ -15,7 +17,9 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.LinkedMultiValueMap;
 import org.springframework.util.MultiValueMap;
+import org.springframework.util.StringUtils;
 import org.springframework.web.client.RestClient;
+import org.springframework.web.client.RestClientResponseException;
 import org.springframework.web.server.ResponseStatusException;
 import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
 
@@ -30,6 +34,7 @@ import pl.tw.ksiegowosc.repository.AllegroTokenRepository;
 @Service
 public class AllegroAuthService {
 
+    private static final Logger log = LoggerFactory.getLogger(AllegroAuthService.class);
     private static final Duration EXPIRY_MARGIN = Duration.ofSeconds(60);
 
     private final AllegroApiProperties properties;
@@ -71,12 +76,70 @@ public class AllegroAuthService {
         Long userId = credentialsService.requireCurrentUserId();
         AllegroClientCredentials client = accountService.toClientCredentials(account);
         String state = encodeState(userId, account.getId());
-        return client.authUrl()
+        String redirectUri = resolveRedirectUri();
+        String url = client.authUrl()
                 + "/auth/oauth/authorize?response_type=code"
                 + "&client_id=" + encode(client.clientId())
-                + "&redirect_uri=" + encode(resolveRedirectUri())
+                + "&redirect_uri=" + encode(redirectUri)
                 + "&scope=" + encode(properties.scopes())
                 + "&state=" + encode(state);
+        log.info(
+                "Allegro OAuth authorize: accountId={} name='{}' userId={} clientId={} authUrl={} apiBaseUrl={} redirectUri={} scopes={} state={}",
+                account.getId(),
+                account.getName(),
+                userId,
+                client.clientId(),
+                client.authUrl(),
+                client.apiBaseUrl(),
+                redirectUri,
+                properties.scopes(),
+                state);
+        return url;
+    }
+
+    /**
+     * Allegro redirected back with {@code error=…} instead of {@code code=…}.
+     * Returns a short Polish message for the UI; details go to the application log.
+     */
+    public String describeAuthorizationError(String error, String errorDescription, String state) {
+        OAuthState parsed = null;
+        try {
+            if (StringUtils.hasText(state)) {
+                parsed = parseState(state);
+            }
+        } catch (ResponseStatusException ignored) {
+            // still log raw state below
+        }
+
+        String accountHint = parsed == null
+                ? "state=" + state
+                : "userId=" + parsed.userId() + " accountId=" + parsed.accountId();
+        if (parsed != null) {
+            try {
+                AllegroAccount account = accountService.requireOwnedAccountForUser(parsed.accountId(), parsed.userId());
+                AllegroClientCredentials client = accountService.toClientCredentials(account);
+                accountHint = accountHint
+                        + " name='" + account.getName() + "'"
+                        + " clientId=" + client.clientId()
+                        + " authUrl=" + client.authUrl()
+                        + " apiBaseUrl=" + client.apiBaseUrl()
+                        + " redirectUri=" + resolveRedirectUri();
+            } catch (RuntimeException ex) {
+                log.warn("Allegro OAuth error callback: could not load account for {}", accountHint, ex);
+            }
+        }
+
+        log.warn(
+                "Allegro OAuth rejected authorize: error={} description={} {} (check Client ID vs Auth URL: sandbox vs production)",
+                error,
+                errorDescription,
+                accountHint);
+
+        String detail = StringUtils.hasText(errorDescription) ? errorDescription : error;
+        if (!StringUtils.hasText(detail)) {
+            detail = "nieznany błąd OAuth";
+        }
+        return "Allegro odrzuciło autoryzację (" + detail + "). Sprawdź Client ID i Auth URL (produkcja vs sandbox).";
     }
 
     /**
@@ -106,12 +169,34 @@ public class AllegroAuthService {
         credentialsService.requireUserById(parsed.userId());
         AllegroAccount account = accountService.requireOwnedAccountForUser(parsed.accountId(), parsed.userId());
         AllegroClientCredentials client = accountService.toClientCredentials(account);
+        String redirectUri = resolveRedirectUri();
+
+        log.info(
+                "Allegro OAuth token exchange: accountId={} name='{}' userId={} clientId={} authUrl={} redirectUri={}",
+                account.getId(),
+                account.getName(),
+                parsed.userId(),
+                client.clientId(),
+                client.authUrl(),
+                redirectUri);
 
         MultiValueMap<String, String> form = new LinkedMultiValueMap<>();
         form.add("grant_type", "authorization_code");
         form.add("code", code);
-        form.add("redirect_uri", resolveRedirectUri());
-        saveToken(account.getId(), requestToken(client, form));
+        form.add("redirect_uri", redirectUri);
+        try {
+            saveToken(account.getId(), requestToken(client, form));
+            log.info("Allegro OAuth token exchange succeeded: accountId={}", account.getId());
+        } catch (RestClientResponseException ex) {
+            log.warn(
+                    "Allegro OAuth token exchange failed: accountId={} clientId={} authUrl={} status={} body={}",
+                    account.getId(),
+                    client.clientId(),
+                    client.authUrl(),
+                    ex.getStatusCode().value(),
+                    truncateForLog(ex.getResponseBodyAsString()));
+            throw ex;
+        }
     }
 
     @Transactional
@@ -188,6 +273,17 @@ public class AllegroAuthService {
     private static String encode(String value) {
         // OAuth query params should use %20, not + (Allegro rejects mismatched encoding).
         return URLEncoder.encode(value, StandardCharsets.UTF_8).replace("+", "%20");
+    }
+
+    static String truncateForLog(String body) {
+        if (body == null) {
+            return "";
+        }
+        String trimmed = body.strip();
+        if (trimmed.length() <= 500) {
+            return trimmed;
+        }
+        return trimmed.substring(0, 500) + "…";
     }
 
     private record OAuthState(Long userId, Long accountId) {

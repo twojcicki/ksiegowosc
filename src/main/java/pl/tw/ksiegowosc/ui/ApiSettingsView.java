@@ -1,6 +1,7 @@
 package pl.tw.ksiegowosc.ui;
 
 import java.util.List;
+import java.util.Optional;
 
 import org.springframework.web.server.ResponseStatusException;
 
@@ -16,13 +17,17 @@ import com.vaadin.flow.component.html.H1;
 import com.vaadin.flow.component.html.H3;
 import com.vaadin.flow.component.html.Paragraph;
 import com.vaadin.flow.component.html.Span;
+import com.vaadin.flow.component.notification.Notification;
 import com.vaadin.flow.component.notification.NotificationVariant;
 import com.vaadin.flow.component.orderedlayout.FlexComponent;
 import com.vaadin.flow.component.orderedlayout.HorizontalLayout;
 import com.vaadin.flow.component.orderedlayout.VerticalLayout;
 import com.vaadin.flow.component.textfield.PasswordField;
 import com.vaadin.flow.component.textfield.TextField;
+import com.vaadin.flow.router.BeforeEnterEvent;
+import com.vaadin.flow.router.BeforeEnterObserver;
 import com.vaadin.flow.router.PageTitle;
+import com.vaadin.flow.router.QueryParameters;
 import com.vaadin.flow.router.Route;
 
 import jakarta.annotation.security.PermitAll;
@@ -39,7 +44,7 @@ import pl.tw.ksiegowosc.ui.util.Notifications;
 @Route("ustawienia-api")
 @PageTitle("Ustawienia API")
 @PermitAll
-public class ApiSettingsView extends View {
+public class ApiSettingsView extends View implements BeforeEnterObserver {
 
     private final CurrentUserApiCredentialsService credentialsService;
     private final AllegroAccountService allegroAccountService;
@@ -69,6 +74,18 @@ public class ApiSettingsView extends View {
         add(createHeader(), createContent());
         loadSettings();
         loadAllegroAccounts();
+    }
+
+    @Override
+    public void beforeEnter(BeforeEnterEvent event) {
+        QueryParameters query = event.getLocation().getQueryParameters();
+        Optional<String> oauthError = query.getSingleParameter("allegro_oauth_error");
+        if (oauthError.isPresent() && !oauthError.get().isBlank()) {
+            Notification notification = Notification.show(
+                    oauthError.get(), 12_000, Notification.Position.MIDDLE);
+            notification.addThemeVariants(NotificationVariant.ERROR);
+            event.forwardTo(ApiSettingsView.class);
+        }
     }
 
     private ViewHeader createHeader() {

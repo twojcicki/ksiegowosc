@@ -181,4 +181,23 @@ class AllegroAuthServiceTest {
         assertThat(authService.resolveRedirectUri())
                 .isEqualTo("http://localhost:8080/api/allegro/auth/callback");
     }
+
+    @Test
+    void shouldDescribeAuthorizationErrorWithAccountContext() {
+        String message = authService.describeAuthorizationError(
+                "unauthorized_client",
+                "OAuth 2.0 Parameter: client_id",
+                AllegroAuthService.encodeState(USER_ID, ACCOUNT_ID));
+
+        assertThat(message).contains("Allegro odrzuciło autoryzację");
+        assertThat(message).contains("client_id");
+        assertThat(message).contains("produkcja vs sandbox");
+    }
+
+    @Test
+    void shouldTruncateLongBodiesForLog() {
+        assertThat(AllegroAuthService.truncateForLog(null)).isEmpty();
+        assertThat(AllegroAuthService.truncateForLog("short")).isEqualTo("short");
+        assertThat(AllegroAuthService.truncateForLog("x".repeat(600))).endsWith("…").hasSize(501);
+    }
 }
