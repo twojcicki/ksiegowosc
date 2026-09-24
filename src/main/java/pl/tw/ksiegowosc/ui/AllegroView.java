@@ -423,9 +423,13 @@ public class AllegroView extends View {
             return;
         }
         try {
-            lastSoldItems = ordersService.getSoldItems(from, to, 0, 100);
+            var result = ordersService.getSoldItems(from, to, 0, 100);
+            lastSoldItems = result.items();
             soldGrid.setItems(lastSoldItems);
             refreshPreviewOrderChoices();
+            for (String warning : result.warnings()) {
+                showInfo(warning);
+            }
         } catch (ResponseStatusException ex) {
             showError(reason(ex));
         } catch (RestClientResponseException ex) {
@@ -450,8 +454,12 @@ public class AllegroView extends View {
             LocalDate to = soldToPicker.getValue();
             if (from != null && to != null) {
                 try {
-                    lastSoldItems = ordersService.getSoldItems(from, to, 0, 100);
+                    var result = ordersService.getSoldItems(from, to, 0, 100);
+                    lastSoldItems = result.items();
                     previewOrderCombo.setItems(lastSoldItems);
+                    for (String warning : result.warnings()) {
+                        showInfo(warning);
+                    }
                 } catch (RuntimeException ignored) {
                     // lista pozostaje pusta; użytkownik zobaczy błąd przy Podgląd
                 }
@@ -484,6 +492,11 @@ public class AllegroView extends View {
     private static void showError(String message) {
         Notification notification = Notification.show(message, 5000, Notification.Position.TOP_END);
         notification.addThemeVariants(NotificationVariant.LUMO_ERROR);
+    }
+
+    private static void showInfo(String message) {
+        Notification notification = Notification.show(message, 8000, Notification.Position.TOP_END);
+        notification.addThemeVariants(NotificationVariant.LUMO_PRIMARY);
     }
 
     private static void showSuccess(String message) {

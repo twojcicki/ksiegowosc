@@ -46,7 +46,7 @@ public class AllegroOrdersController {
             @RequestParam LocalDate to,
             @Parameter(description = "Indeks pierwszej pozycji") @RequestParam(defaultValue = "0") int offset,
             @Parameter(description = "Maksymalna liczba zamówień (1–100)") @RequestParam(defaultValue = "100") int limit) {
-        return ordersService.getSoldItems(from, to, offset, limit);
+        return ordersService.getSoldItems(from, to, offset, limit).items();
     }
 
     @PostMapping("/invoice")

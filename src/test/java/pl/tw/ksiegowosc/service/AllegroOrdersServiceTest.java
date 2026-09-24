@@ -15,6 +15,9 @@ import java.util.List;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpStatus;
+import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.server.ResponseStatusException;
 
 import pl.tw.ksiegowosc.client.AllegroApiClient;
@@ -101,19 +104,20 @@ class AllegroOrdersServiceTest {
                         1,
                         1));
 
-        var items = ordersService.getSoldItems(LocalDate.of(2026, 1, 1), LocalDate.of(2026, 1, 31), 0, 100);
+        var result = ordersService.getSoldItems(LocalDate.of(2026, 1, 1), LocalDate.of(2026, 1, 31), 0, 100);
 
-        assertThat(items).hasSize(1);
-        assertThat(items.getFirst().accountId()).isEqualTo(5L);
-        assertThat(items.getFirst().accountName()).isEqualTo("Sklep");
-        assertThat(items.getFirst().orderId()).isEqualTo("order-1");
-        assertThat(items.getFirst().name()).isEqualTo("Książka (+1)");
-        assertThat(items.getFirst().itemCount()).isEqualTo(2);
-        assertThat(items.getFirst().totalGross()).isEqualByComparingTo(new BigDecimal("72.99"));
-        assertThat(items.getFirst().boughtAt()).isEqualTo(Instant.parse("2026-01-10T08:00:00Z"));
-        assertThat(items.getFirst().buyerLogin()).isEqualTo("buyer1");
-        assertThat(items.getFirst().fulfillmentStatus()).isEqualTo("SENT");
-        assertThat(items.getFirst().invoiceNo()).isNull();
+        assertThat(result.warnings()).isEmpty();
+        assertThat(result.items()).hasSize(1);
+        assertThat(result.items().getFirst().accountId()).isEqualTo(5L);
+        assertThat(result.items().getFirst().accountName()).isEqualTo("Sklep");
+        assertThat(result.items().getFirst().orderId()).isEqualTo("order-1");
+        assertThat(result.items().getFirst().name()).isEqualTo("Książka (+1)");
+        assertThat(result.items().getFirst().itemCount()).isEqualTo(2);
+        assertThat(result.items().getFirst().totalGross()).isEqualByComparingTo(new BigDecimal("72.99"));
+        assertThat(result.items().getFirst().boughtAt()).isEqualTo(Instant.parse("2026-01-10T08:00:00Z"));
+        assertThat(result.items().getFirst().buyerLogin()).isEqualTo("buyer1");
+        assertThat(result.items().getFirst().fulfillmentStatus()).isEqualTo("SENT");
+        assertThat(result.items().getFirst().invoiceNo()).isNull();
         verify(authService).getValidAccessTokenForAccount(account);
     }
 
@@ -155,9 +159,67 @@ class AllegroOrdersServiceTest {
                         1,
                         1));
 
-        var items = ordersService.getSoldItems(LocalDate.of(2026, 1, 1), LocalDate.of(2026, 1, 31), 0, 100);
+        var result = ordersService.getSoldItems(LocalDate.of(2026, 1, 1), LocalDate.of(2026, 1, 31), 0, 100);
 
-        assertThat(items.getFirst().invoiceNo()).isEqualTo("order1/01/2026");
+        assertThat(result.items().getFirst().invoiceNo()).isEqualTo("order1/01/2026");
+    }
+
+    @Test
+    void shouldReturnAccessDeniedWarningWithoutFailingOtherAccounts() {
+        AllegroAccount denied = account(5L, "Sklep A");
+        AllegroAccount ok = account(6L, "Sklep B");
+        when(accountService.listConnectedAccounts()).thenReturn(List.of(denied, ok));
+        when(authService.getValidAccessTokenForAccount(denied)).thenReturn("token-a");
+        when(authService.getValidAccessTokenForAccount(ok)).thenReturn("token-b");
+        when(soldInvoiceRepository.findByOrderIdIn(any())).thenReturn(List.of());
+        when(allegroApiClient.getCheckoutForms(
+                        eq("https://api.allegro.pl"),
+                        eq("token-a"),
+                        eq("ua"),
+                        eq(0),
+                        eq(100),
+                        any(),
+                        any()))
+                .thenThrow(HttpClientErrorException.create(
+                        HttpStatus.FORBIDDEN,
+                        "Forbidden",
+                        HttpHeaders.EMPTY,
+                        "{\"errors\":[{\"code\":\"AccessDenied\"}]}".getBytes(),
+                        null));
+        when(allegroApiClient.getCheckoutForms(
+                        eq("https://api.allegro.pl"),
+                        eq("token-b"),
+                        eq("ua"),
+                        eq(0),
+                        eq(100),
+                        any(),
+                        any()))
+                .thenReturn(new AllegroCheckoutFormsResponse(
+                        List.of(new AllegroCheckoutForm(
+                                "order-2",
+                                new AllegroBuyer("buyer2", null),
+                                "READY_FOR_PROCESSING",
+                                new AllegroFulfillment("SENT"),
+                                null,
+                                List.of(new AllegroLineItem(
+                                        "line-1",
+                                        new AllegroOfferReference("offer-1", "Buty", null),
+                                        1,
+                                        new AllegroPrice("100.00", "PLN"),
+                                        null,
+                                        Instant.parse("2026-01-10T08:00:00Z"),
+                                        null)),
+                                null,
+                                null,
+                                null)),
+                        1,
+                        1));
+
+        var result = ordersService.getSoldItems(LocalDate.of(2026, 1, 1), LocalDate.of(2026, 1, 31), 0, 100);
+
+        assertThat(result.items()).hasSize(1);
+        assertThat(result.items().getFirst().orderId()).isEqualTo("order-2");
+        assertThat(result.warnings()).containsExactly(AllegroOrdersService.accessDeniedMessage("Sklep A"));
     }
 
     @Test
