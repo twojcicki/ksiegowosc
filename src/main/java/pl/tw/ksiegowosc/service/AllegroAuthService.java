@@ -77,11 +77,12 @@ public class AllegroAuthService {
         AllegroClientCredentials client = accountService.toClientCredentials(account);
         String state = encodeState(userId, account.getId());
         String redirectUri = resolveRedirectUri();
+        String scopes = properties.scopes() == null ? "" : properties.scopes().trim();
         String url = client.authUrl()
                 + "/auth/oauth/authorize?response_type=code"
                 + "&client_id=" + encode(client.clientId())
                 + "&redirect_uri=" + encode(redirectUri)
-                + "&scope=" + encode(properties.scopes())
+                + (scopes.isEmpty() ? "" : "&scope=" + encode(scopes))
                 + "&state=" + encode(state);
         log.info(
                 "Allegro OAuth authorize: accountId={} name='{}' userId={} clientId={} authUrl={} apiBaseUrl={} redirectUri={} scopes={} state={}",
@@ -92,7 +93,7 @@ public class AllegroAuthService {
                 client.authUrl(),
                 client.apiBaseUrl(),
                 redirectUri,
-                properties.scopes(),
+                scopes.isEmpty() ? "(omitted)" : scopes,
                 state);
         return url;
     }

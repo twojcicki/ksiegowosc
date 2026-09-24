@@ -1,6 +1,5 @@
 package pl.tw.ksiegowosc.config;
 
-import jakarta.validation.constraints.NotBlank;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.validation.annotation.Validated;
 
@@ -9,6 +8,10 @@ import org.springframework.validation.annotation.Validated;
 public record AllegroApiProperties(
         /** Empty = derive from current request (needed on Render without env). */
         String redirectUri,
-        @NotBlank String scopes
+        /**
+         * Space-separated OAuth scopes for the authorize URL.
+         * Empty = do not send {@code scope} (Allegro uses scopes declared for the app).
+         */
+        String scopes
 ) {
 }

@@ -32,4 +32,5 @@ clients:
   allegro:
     # Empty = auto from request host (e.g. https://…onrender.com/api/allegro/auth/callback)
     redirect-uri: ${ALLEGRO_REDIRECT_URI:}
-    scopes: allegro:api:sale:offers:read allegro:api:orders:read
+    # Empty ALLEGRO_SCOPES = omit scope from authorize (Allegro uses app-declared scopes)
+    scopes: ${ALLEGRO_SCOPES:allegro:api:sale:offers:read allegro:api:orders:read}

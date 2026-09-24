@@ -183,6 +183,24 @@ class AllegroAuthServiceTest {
     }
 
     @Test
+    void shouldOmitScopeFromAuthorizationUrlWhenScopesBlank() {
+        AllegroAuthService withoutScopes = new AllegroAuthService(
+                new AllegroApiProperties("http://localhost:8080/api/allegro/auth/callback", "  "),
+                tokenRepository,
+                accountService,
+                credentialsService,
+                RestClient.builder().build(),
+                MapperFixtures.tokenMapper(),
+                clock);
+
+        String url = withoutScopes.buildAuthorizationUrl(ACCOUNT_ID);
+
+        assertThat(url).doesNotContain("scope=");
+        assertThat(url).contains("client_id=client-id");
+        assertThat(url).contains("state=42%3A7");
+    }
+
+    @Test
     void shouldDescribeAuthorizationErrorWithAccountContext() {
         String message = authService.describeAuthorizationError(
                 "unauthorized_client",

@@ -32,6 +32,8 @@ Na Renderze dodaj `APP_ENCRYPTION_KEY` w Environment. Bez poprawnego klucza apli
 
 ```bash
 set ALLEGRO_REDIRECT_URI=https://ksiegowosc-a0yu.onrender.com/api/allegro/auth/callback
+rem Puste ALLEGRO_SCOPES = nie wysyłaj scope w authorize (Allegro bierze scope'y z aplikacji)
+set ALLEGRO_SCOPES=
 ```
 
 ```yaml
@@ -41,7 +43,7 @@ clients:
     v2-base-url: https://program.360ksiegowosc.pl/api/v2
   allegro:
     redirect-uri: ${ALLEGRO_REDIRECT_URI:}
-    scopes: allegro:api:sale:offers:read allegro:api:orders:read
+    scopes: ${ALLEGRO_SCOPES:allegro:api:sale:offers:read allegro:api:orders:read}
 ```
 
 Allegro: zarejestruj aplikację na [apps.developer.allegro.pl](https://apps.developer.allegro.pl/) (lub sandbox), wklej **Redirect URI** z Ustawień API, dodaj konto w UI z właściwymi URL-ami i User-Agentem, potem **Połącz**. **Usuń** kasuje konto i token OAuth.
@@ -96,6 +98,7 @@ Aplikacja czyta port ze zmiennej `PORT` (domyślnie `8080`). Render wstrzykuje w
    - `SPRING_DATASOURCE_URL`, `SPRING_DATASOURCE_USERNAME`, `SPRING_DATASOURCE_PASSWORD` (z Render Managed Postgres)
    - `APP_ENCRYPTION_KEY` (Base64, 32 bajty — `openssl rand -base64 32`)
    - opcjonalnie `ALLEGRO_REDIRECT_URI` (np. `https://<twoja-usługa>.onrender.com/api/allegro/auth/callback`); bez niej callback jest auto-wykrywany z hosta
+   - opcjonalnie puste `ALLEGRO_SCOPES`, żeby nie wysyłać `scope` w OAuth authorize
 4. W Allegro Sandbox Developer Apps ustaw **ten sam** Redirect URI co pokazuje Ustawienia API.
 
 Obraz budowany jest z profilem Maven `production` (zoptymalizowany frontend Vaadin). Po deployu UI listy faktur będzie pod `/`, Allegro pod `/allegro`, Swagger pod `/swagger-ui.html`, lista REST pod `/api/invoices?from=2026-01-01&to=2026-01-31`, tworzenie faktury pod `POST /api/invoices`, szczegóły pod `/api/invoices/{id}`, wysyłka e-mail pod `POST /api/invoices/{id}/email`, klienci pod `/api/customers`, stawki VAT pod `/api/taxes`, oferty Allegro pod `/api/allegro/offers`, sprzedane zamówienia pod `/api/allegro/sold-items?from=...&to=...`, wystawienie faktury z Allegro pod `POST /api/allegro/sold-items/invoice`.
