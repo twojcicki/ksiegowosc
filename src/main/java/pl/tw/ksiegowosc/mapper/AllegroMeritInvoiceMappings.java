@@ -47,7 +47,7 @@ public final class AllegroMeritInvoiceMappings {
             rule(MeritFieldSection.HEADER, "TotalAmount",
                     "suma netto pozycji (towary + dostawa + dopłaty); brutto faktury = summary.totalToPay (±0,01)"),
             rule(MeritFieldSection.HEADER, "HComment",
-                    "orderId / buyer.login (z fallbackiem gdy brak jednej strony)"),
+                    "AllegroAccount.name, login z GET /me, „ID transakcji: ” + orderId / buyer.login"),
             rule(MeritFieldSection.HEADER, "FComment",
                     "nie ustawiane"),
 

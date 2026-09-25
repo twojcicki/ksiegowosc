@@ -10,5 +10,7 @@ public record AllegroInvoiceMappingContext(
         String invoiceNo,
         LocalDate docDate,
         List<MeritTaxDto> taxes,
-        String uomName) {
+        String uomName,
+        String accountName,
+        String sellerLogin) {
 }

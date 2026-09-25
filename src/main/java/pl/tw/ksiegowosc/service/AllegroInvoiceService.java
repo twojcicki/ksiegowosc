@@ -25,6 +25,7 @@ import pl.tw.ksiegowosc.dto.MeritCreateCustomerRequest;
 import pl.tw.ksiegowosc.dto.MeritCreateCustomerResponse;
 import pl.tw.ksiegowosc.dto.MeritCreateInvoiceRequest;
 import pl.tw.ksiegowosc.dto.allegro.AllegroCheckoutForm;
+import pl.tw.ksiegowosc.dto.allegro.AllegroMe;
 import pl.tw.ksiegowosc.entity.AllegroAccount;
 import pl.tw.ksiegowosc.entity.AllegroSoldInvoice;
 import pl.tw.ksiegowosc.mapper.AllegroBillingMapper;
@@ -125,6 +126,7 @@ public class AllegroInvoiceService {
 
         AllegroAccount account = accountService.requireOwnedAccount(accountId);
         String accessToken = authService.getValidAccessTokenForAccount(account);
+        String sellerLogin = fetchSellerLogin(account.getApiBaseUrl(), accessToken, account.getUserAgent());
         AllegroCheckoutForm form = fetchCheckoutForm(
                 account.getApiBaseUrl(), accessToken, account.getUserAgent(), trimmedOrderId);
         if (form.lineItems() == null || form.lineItems().isEmpty()) {
@@ -152,12 +154,33 @@ public class AllegroInvoiceService {
         CreateInvoiceRequest request = invoiceMapper.toCreateInvoiceRequest(
                 form,
                 new AllegroInvoiceMappingContext(
-                        customer.customerId(), invoiceNo, docDate, taxesService.listTaxes(), uomName.trim()));
+                        customer.customerId(),
+                        invoiceNo,
+                        docDate,
+                        taxesService.listTaxes(),
+                        uomName.trim(),
+                        account.getName(),
+                        sellerLogin));
         return new PreparedAllegroInvoice(
                 trimmedOrderId,
                 request,
                 customer.exists(),
                 customer.toCreate());
+    }
+
+    private String fetchSellerLogin(String apiBaseUrl, String accessToken, String userAgent) {
+        try {
+            AllegroMe me = allegroApiClient.getMe(apiBaseUrl, accessToken, userAgent);
+            if (me == null || me.login() == null || me.login().isBlank()) {
+                return null;
+            }
+            return me.login().trim();
+        } catch (RestClientResponseException ex) {
+            org.springframework.http.HttpStatusCode status = ex.getStatusCode().is4xxClientError()
+                    ? ex.getStatusCode()
+                    : HttpStatus.BAD_GATEWAY;
+            throw new ResponseStatusException(status, AllegroErrorMessages.from(ex), ex);
+        }
     }
 
     private AllegroCheckoutForm fetchCheckoutForm(

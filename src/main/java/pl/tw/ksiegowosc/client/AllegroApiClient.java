@@ -10,6 +10,7 @@ import org.springframework.web.util.UriComponentsBuilder;
 
 import pl.tw.ksiegowosc.dto.allegro.AllegroCheckoutForm;
 import pl.tw.ksiegowosc.dto.allegro.AllegroCheckoutFormsResponse;
+import pl.tw.ksiegowosc.dto.allegro.AllegroMe;
 import pl.tw.ksiegowosc.dto.allegro.AllegroOffersResponse;
 
 @Component
@@ -85,6 +86,17 @@ public class AllegroApiClient {
                 })
                 .retrieve()
                 .body(AllegroCheckoutForm.class);
+    }
+
+    public AllegroMe getMe(String apiBaseUrl, String accessToken, String userAgent) {
+        return allegroRestClient.get()
+                .uri(normalizeBase(apiBaseUrl) + "/me")
+                .headers(headers -> {
+                    headers.setBearerAuth(accessToken);
+                    headers.set(HttpHeaders.USER_AGENT, userAgent);
+                })
+                .retrieve()
+                .body(AllegroMe.class);
     }
 
     private static String normalizeBase(String apiBaseUrl) {

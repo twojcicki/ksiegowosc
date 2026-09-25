@@ -173,4 +173,25 @@ class AllegroApiClientTest {
         assertThat(form.summary().totalToPay().amount()).isEqualTo("58.98");
         server.verify();
     }
+
+    @Test
+    void shouldFetchMe() {
+        server.expect(requestTo(API_BASE + "/me"))
+                .andExpect(method(HttpMethod.GET))
+                .andExpect(header(HttpHeaders.AUTHORIZATION, "Bearer test-token"))
+                .andExpect(header(HttpHeaders.USER_AGENT, USER_AGENT))
+                .andRespond(withSuccess("""
+                        {
+                          "id": "46968690",
+                          "login": "elfabric_pl",
+                          "email": "seller@example.com"
+                        }
+                        """, MediaType.parseMediaType(HttpClientsConfig.ALLEGRO_ACCEPT)));
+
+        var me = client.getMe(API_BASE, "test-token", USER_AGENT);
+
+        assertThat(me.id()).isEqualTo("46968690");
+        assertThat(me.login()).isEqualTo("elfabric_pl");
+        server.verify();
+    }
 }

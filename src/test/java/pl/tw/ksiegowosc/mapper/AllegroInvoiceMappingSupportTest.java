@@ -75,11 +75,19 @@ class AllegroInvoiceMappingSupportTest {
 
     @Test
     void shouldBuildHeaderCommentFromAllegroFields() {
-        assertThat(AllegroInvoiceMappingSupport.resolveHeaderComment("order-1", "buyer1"))
-                .isEqualTo("order-1 / buyer1");
-        assertThat(AllegroInvoiceMappingSupport.resolveHeaderComment("order-1", null))
-                .isEqualTo("order-1");
-        assertThat(AllegroInvoiceMappingSupport.resolveHeaderComment(null, "buyer1"))
-                .isEqualTo("buyer1");
+        assertThat(AllegroInvoiceMappingSupport.resolveHeaderComment(
+                        "Sklep EL", "elfabric_pl", "order-1", "buyer1"))
+                .isEqualTo("Sklep EL, elfabric_pl, ID transakcji: order-1 / buyer1");
+        assertThat(AllegroInvoiceMappingSupport.resolveHeaderComment(
+                        "Sklep EL", null, "order-1", "buyer1"))
+                .isEqualTo("Sklep EL, ID transakcji: order-1 / buyer1");
+        assertThat(AllegroInvoiceMappingSupport.resolveHeaderComment(
+                        "Sklep EL", "elfabric_pl", "order-1", null))
+                .isEqualTo("Sklep EL, elfabric_pl, ID transakcji: order-1");
+        assertThat(AllegroInvoiceMappingSupport.resolveHeaderComment(
+                        null, null, "order-1", "buyer1"))
+                .isEqualTo("ID transakcji: order-1 / buyer1");
+        assertThat(AllegroInvoiceMappingSupport.resolveHeaderComment(null, null, null, null))
+                .isNull();
     }
 }

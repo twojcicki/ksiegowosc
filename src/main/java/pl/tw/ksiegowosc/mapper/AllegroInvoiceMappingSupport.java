@@ -79,7 +79,24 @@ public final class AllegroInvoiceMappingSupport {
         return offer.name().trim();
     }
 
-    public static String resolveHeaderComment(String orderId, String buyerLogin) {
+    public static String resolveHeaderComment(
+            String accountName, String sellerLogin, String orderId, String buyerLogin) {
+        String transaction = resolveTransactionPart(orderId, buyerLogin);
+        if (transaction == null) {
+            return null;
+        }
+
+        StringBuilder comment = new StringBuilder();
+        appendSegment(comment, accountName);
+        appendSegment(comment, sellerLogin);
+        if (comment.length() > 0) {
+            comment.append(", ");
+        }
+        comment.append("ID transakcji: ").append(transaction);
+        return comment.toString();
+    }
+
+    private static String resolveTransactionPart(String orderId, String buyerLogin) {
         if (orderId == null || orderId.isBlank()) {
             return buyerLogin == null || buyerLogin.isBlank() ? null : buyerLogin.trim();
         }
@@ -87,6 +104,16 @@ public final class AllegroInvoiceMappingSupport {
             return orderId.trim();
         }
         return orderId.trim() + " / " + buyerLogin.trim();
+    }
+
+    private static void appendSegment(StringBuilder comment, String value) {
+        if (value == null || value.isBlank()) {
+            return;
+        }
+        if (comment.length() > 0) {
+            comment.append(", ");
+        }
+        comment.append(value.trim());
     }
 
     public static String truncateItemCode(String value) {

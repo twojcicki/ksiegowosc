@@ -15,6 +15,7 @@ Format oparty na [Keep a Changelog](https://keepachangelog.com/pl/1.1.0/).
 
 ### Changed
 
+- HComment faktur Allegro: `{AllegroAccount.name}, {login z GET /me}, ID transakcji: {orderId} / {buyer.login}`.
 - Faktury z Allegro nie wypełniają `FComment` (komentarz dolny opcjonalny także w ręcznym tworzeniu).
 - 403 AccessDenied przy pobieraniu zamówień Allegro: log INFO (bez stacktrace) + komunikat w GUI o braku uprawnień.
 - Allegro API Base URL / Auth URL przeniesione z globalnego `application.yml` do pól konta (`allegro_account`).

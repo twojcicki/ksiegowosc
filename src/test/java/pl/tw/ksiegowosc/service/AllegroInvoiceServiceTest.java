@@ -39,6 +39,7 @@ import pl.tw.ksiegowosc.dto.allegro.AllegroInvoiceCompany;
 import pl.tw.ksiegowosc.dto.allegro.AllegroExternalId;
 import pl.tw.ksiegowosc.dto.allegro.AllegroLineItem;
 import pl.tw.ksiegowosc.dto.allegro.AllegroLineItemTax;
+import pl.tw.ksiegowosc.dto.allegro.AllegroMe;
 import pl.tw.ksiegowosc.dto.allegro.AllegroNaturalPerson;
 import pl.tw.ksiegowosc.dto.allegro.AllegroOfferReference;
 import pl.tw.ksiegowosc.dto.allegro.AllegroPrice;
@@ -78,6 +79,8 @@ class AllegroInvoiceServiceTest {
         AllegroAccount account = sampleAccount(9L);
         when(accountService.requireOwnedAccount(9L)).thenReturn(account);
         when(authService.getValidAccessTokenForAccount(account)).thenReturn("token");
+        when(allegroApiClient.getMe("https://api.allegro.pl", "token", "ua"))
+                .thenReturn(new AllegroMe("123", "elfabric_pl"));
         invoiceService = new AllegroInvoiceService(
                 allegroApiClient,
                 authService,
@@ -118,7 +121,7 @@ class AllegroInvoiceServiceTest {
         assertThat(request.lines().getFirst().itemType()).isEqualTo(1);
         assertThat(request.lines().getFirst().uomName()).isEqualTo("szt.");
         assertThat(request.lines().getFirst().taxId()).isEqualTo("tax-23");
-        assertThat(request.headerComment()).isEqualTo("order-1 / buyer1");
+        assertThat(request.headerComment()).isEqualTo("Sklep, elfabric_pl, ID transakcji: order-1 / buyer1");
         assertThat(request.footerComment()).isNull();
         assertThat(request.taxAmounts()).hasSize(1);
         assertThat(request.taxAmounts().getFirst().taxId()).isEqualTo("tax-23");
