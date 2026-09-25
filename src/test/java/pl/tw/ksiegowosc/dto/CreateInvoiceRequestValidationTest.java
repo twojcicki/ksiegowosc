@@ -51,7 +51,7 @@ class CreateInvoiceRequestValidationTest {
     }
 
     @Test
-    void shouldRejectBlankFooterComment() {
+    void shouldAcceptNullFooterComment() {
         CreateInvoiceRequest request = new CreateInvoiceRequest(
                 "665f01a4-357a-4a6b-a565-2f17e6e1da13",
                 "FV/2026/01/01",
@@ -59,14 +59,14 @@ class CreateInvoiceRequestValidationTest {
                 LocalDate.of(2026, 1, 15),
                 "PLN",
                 "Komentarz górny",
-                "",
+                null,
                 new BigDecimal("100.00"),
                 List.of(validLine()),
                 List.of(validTax()));
 
         Set<ConstraintViolation<CreateInvoiceRequest>> violations = validator.validate(request);
 
-        assertThat(violations).anyMatch(v -> "footerComment".equals(v.getPropertyPath().toString()));
+        assertThat(violations).isEmpty();
     }
 
     @Test

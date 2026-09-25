@@ -11,19 +11,19 @@ public final class AllegroMeritInvoiceMappings {
     public static final List<MeritFieldRule> RULES = List.of(
             // CUSTOMER (sendcustomer)
             rule(MeritFieldSection.CUSTOMER, "Name",
-                    "invoice.address.company.name; inaczej naturalPerson (imię+nazwisko); inaczej buyer.login; inaczej „Klient Allegro”"),
+                    "invoice.address.company.name; inaczej naturalPerson (imię+nazwisko); inaczej „Klient Allegro (login|email)”"),
             rule(MeritFieldSection.CUSTOMER, "NotTDCustomer",
                     "false gdy jest nazwa firmy i NIP; w przeciwnym razie true"),
             rule(MeritFieldSection.CUSTOMER, "CountryCode",
-                    "invoice.address.countryCode; domyślnie PL"),
+                    "cały invoice.address.countryCode; inaczej cały delivery.address; domyślnie PL"),
             rule(MeritFieldSection.CUSTOMER, "VatRegNo",
                     "company.ids (PL_NIP/OTHER lub pierwszy); inaczej company.taxId"),
             rule(MeritFieldSection.CUSTOMER, "Address",
-                    "invoice.address.street"),
+                    "cały invoice.address.street; inaczej cały delivery.address.street"),
             rule(MeritFieldSection.CUSTOMER, "City",
-                    "invoice.address.city"),
+                    "cały invoice.address.city; inaczej cały delivery.address.city"),
             rule(MeritFieldSection.CUSTOMER, "PostalCode",
-                    "invoice.address.zipCode"),
+                    "cały invoice.address.zipCode; inaczej cały delivery.address.zipCode"),
             rule(MeritFieldSection.CUSTOMER, "Email",
                     "buyer.email"),
             rule(MeritFieldSection.CUSTOMER, "CurrencyCode",
@@ -33,7 +33,7 @@ public final class AllegroMeritInvoiceMappings {
 
             // HEADER (sendinvoice)
             rule(MeritFieldSection.HEADER, "Customer.Id",
-                    "istniejący klient Merit po VatRegNo; inaczej id z sendcustomer"),
+                    "istniejący klient Merit po VatRegNo; bez NIP po exact Name (filtr „Klient Allegro” dla nazw syntetycznych); inaczej sendcustomer"),
             rule(MeritFieldSection.HEADER, "AccountingDoc",
                     "stała 1 (faktura sprzedaży)"),
             rule(MeritFieldSection.HEADER, "DocDate",
@@ -49,7 +49,7 @@ public final class AllegroMeritInvoiceMappings {
             rule(MeritFieldSection.HEADER, "HComment",
                     "orderId / buyer.login (z fallbackiem gdy brak jednej strony)"),
             rule(MeritFieldSection.HEADER, "FComment",
-                    "NIP gdy jest; inaczej orderId"),
+                    "nie ustawiane"),
 
             // LINE (InvoiceRow + Item) — towary, dostawa, dopłaty, usługi dodatkowe
             rule(MeritFieldSection.LINE, "InvoiceRow[].Item.Code",

@@ -98,7 +98,8 @@ class AllegroOrdersServiceTest {
                                                 null)),
                                 new AllegroDelivery(
                                         new AllegroPrice("12.99", "PLN"),
-                                        new AllegroDeliveryMethod("m1", "Kurier")),
+                                        new AllegroDeliveryMethod("m1", "Kurier"),
+                                        null),
                                 new AllegroCheckoutSummary(new AllegroPrice("72.99", "PLN")),
                                 null)),
                         1,

@@ -27,7 +27,7 @@ public interface MeritInvoiceMapper {
     @Mapping(target = "invoiceRow", source = "lines")
     @Mapping(target = "taxAmount", source = "taxAmounts")
     @Mapping(target = "hComment", source = "headerComment")
-    @Mapping(target = "fComment", source = "footerComment")
+    @Mapping(target = "fComment", source = "footerComment", qualifiedByName = "blankToNull")
     MeritCreateInvoiceRequest toMeritRequest(CreateInvoiceRequest request);
 
     @Mapping(target = "item", source = ".")
@@ -52,5 +52,13 @@ public interface MeritInvoiceMapper {
     @Named("toMeritDate")
     default String toMeritDate(LocalDate date) {
         return date.format(DateTimeFormatter.BASIC_ISO_DATE) + "000000";
+    }
+
+    @Named("blankToNull")
+    default String blankToNull(String value) {
+        if (value == null || value.isBlank()) {
+            return null;
+        }
+        return value.trim();
     }
 }

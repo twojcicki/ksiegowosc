@@ -17,7 +17,7 @@ public record CreateInvoiceRequest(
         @NotNull LocalDate dueDate,
         @NotBlank String currencyCode,
         @NotBlank String headerComment,
-        @NotBlank String footerComment,
+        String footerComment,
         @NotNull BigDecimal totalAmount,
         @NotEmpty @Valid List<CreateInvoiceLineRequest> lines,
         @NotEmpty @Valid List<CreateInvoiceTaxAmountRequest> taxAmounts

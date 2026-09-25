@@ -6,6 +6,7 @@ Format oparty na [Keep a Changelog](https://keepachangelog.com/pl/1.1.0/).
 
 ### Added
 
+- Faktura Allegro dla osoby bez NIP: `NotTDCustomer=true`, Name = imię+nazwisko albo `Klient Allegro (login|email)`; adres = cały `invoice.address` albo cały `delivery.address`; lookup Merit po exact Name (filtr `Klient Allegro` dla nazw syntetycznych).
 - Opcjonalne pominięcie OAuth `scope`: puste `ALLEGRO_SCOPES` / `clients.allegro.scopes` — Allegro używa scope’ów zadeklarowanych w aplikacji.
 - Logi OAuth Allegro (authorize + callback error/token): `clientId`, Auth/API URL, redirect URI; błąd Allegro wraca do Ustawień API z komunikatem zamiast 403.
 - Per konto Allegro: API Base URL, Auth URL i User-Agent (OAuth/API z hostów konta; produkcja i sandbox obok siebie).
@@ -14,6 +15,7 @@ Format oparty na [Keep a Changelog](https://keepachangelog.com/pl/1.1.0/).
 
 ### Changed
 
+- Faktury z Allegro nie wypełniają `FComment` (komentarz dolny opcjonalny także w ręcznym tworzeniu).
 - 403 AccessDenied przy pobieraniu zamówień Allegro: log INFO (bez stacktrace) + komunikat w GUI o braku uprawnień.
 - Allegro API Base URL / Auth URL przeniesione z globalnego `application.yml` do pól konta (`allegro_account`).
 - Zależności: Spring Boot `4.1.0` → `4.1.1` (wersje security z BOM parenta).

@@ -89,16 +89,6 @@ public final class AllegroInvoiceMappingSupport {
         return orderId.trim() + " / " + buyerLogin.trim();
     }
 
-    public static String resolveFooterComment(String vatRegNo, String orderId) {
-        if (vatRegNo != null && !vatRegNo.isBlank()) {
-            return vatRegNo.trim();
-        }
-        if (orderId != null && !orderId.isBlank()) {
-            return orderId.trim();
-        }
-        return null;
-    }
-
     public static String truncateItemCode(String value) {
         if (value == null || value.isBlank()) {
             return null;

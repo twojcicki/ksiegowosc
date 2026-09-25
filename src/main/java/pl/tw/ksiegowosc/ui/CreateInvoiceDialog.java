@@ -159,7 +159,8 @@ public class CreateInvoiceDialog extends Dialog {
         dueDate.setRequiredIndicatorVisible(true);
         currencyCode.setRequiredIndicatorVisible(true);
         headerComment.setRequiredIndicatorVisible(true);
-        footerComment.setRequiredIndicatorVisible(true);
+        footerComment.setRequiredIndicatorVisible(false);
+        footerComment.setHelperText("Opcjonalny");
 
         totalAmount.setReadOnly(true);
         totalAmount.setHelperText("Suma kwot netto pozycji");
@@ -308,8 +309,7 @@ public class CreateInvoiceDialog extends Dialog {
                 || docDate.getValue() == null
                 || dueDate.getValue() == null
                 || isBlank(currencyCode.getValue())
-                || isBlank(headerComment.getValue())
-                || isBlank(footerComment.getValue())) {
+                || isBlank(headerComment.getValue())) {
             showError("Uzupełnij wszystkie wymagane pola.");
             return null;
         }
@@ -347,7 +347,7 @@ public class CreateInvoiceDialog extends Dialog {
                 dueDate.getValue(),
                 currencyCode.getValue().trim(),
                 headerComment.getValue().trim(),
-                footerComment.getValue().trim(),
+                isBlank(footerComment.getValue()) ? null : footerComment.getValue().trim(),
                 totalNet,
                 lineRequests,
                 taxAmounts);

@@ -183,6 +183,11 @@ public class AllegroInvoiceService {
             if (!existing.isEmpty() && existing.getFirst().customerId() != null) {
                 return new CustomerResolution(existing.getFirst().customerId(), true, null);
             }
+        } else if (billing.name() != null && !billing.name().isBlank()) {
+            var byName = customersService.findCustomerByExactName(billing.name());
+            if (byName.isPresent()) {
+                return new CustomerResolution(byName.get().customerId(), true, null);
+            }
         }
 
         MeritCreateCustomerRequest createRequest = invoiceMapper.toCustomerRequest(billing);

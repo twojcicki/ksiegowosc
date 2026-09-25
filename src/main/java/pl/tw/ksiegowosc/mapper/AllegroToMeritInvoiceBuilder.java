@@ -143,9 +143,8 @@ public class AllegroToMeritInvoiceBuilder {
 
         BuyerBilling billing = billingMapper.toBuyerBilling(form);
         String headerComment = resolveHeaderComment(form.id(), billing.login());
-        String footerComment = resolveFooterComment(billing.vatRegNo(), form.id());
-        if (headerComment == null || footerComment == null) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Brak danych Allegro do komentarzy faktury.");
+        if (headerComment == null) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Brak danych Allegro do komentarza faktury.");
         }
 
         List<CreateInvoiceTaxAmountRequest> taxAmounts = vatByTaxId.entrySet().stream()
@@ -159,7 +158,7 @@ public class AllegroToMeritInvoiceBuilder {
                 context.docDate().plusDays(14),
                 currency,
                 headerComment,
-                footerComment,
+                null,
                 totalNet,
                 lines,
                 taxAmounts);
@@ -315,10 +314,6 @@ public class AllegroToMeritInvoiceBuilder {
 
     public String resolveHeaderComment(String orderId, String buyerLogin) {
         return AllegroInvoiceMappingSupport.resolveHeaderComment(orderId, buyerLogin);
-    }
-
-    public String resolveFooterComment(String vatRegNo, String orderId) {
-        return AllegroInvoiceMappingSupport.resolveFooterComment(vatRegNo, orderId);
     }
 
     public MeritTaxDto resolveTax(AllegroLineItem lineItem, List<MeritTaxDto> taxes) {

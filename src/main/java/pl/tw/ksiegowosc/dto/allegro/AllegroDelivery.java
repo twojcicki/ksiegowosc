@@ -5,5 +5,6 @@ import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 @JsonIgnoreProperties(ignoreUnknown = true)
 public record AllegroDelivery(
         AllegroPrice cost,
-        AllegroDeliveryMethod method) {
+        AllegroDeliveryMethod method,
+        AllegroDeliveryAddress address) {
 }

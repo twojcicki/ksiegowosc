@@ -74,12 +74,12 @@ class AllegroInvoiceMappingSupportTest {
     }
 
     @Test
-    void shouldBuildCommentsFromAllegroFields() {
+    void shouldBuildHeaderCommentFromAllegroFields() {
         assertThat(AllegroInvoiceMappingSupport.resolveHeaderComment("order-1", "buyer1"))
                 .isEqualTo("order-1 / buyer1");
-        assertThat(AllegroInvoiceMappingSupport.resolveFooterComment("5252674798", "order-1"))
-                .isEqualTo("5252674798");
-        assertThat(AllegroInvoiceMappingSupport.resolveFooterComment(null, "order-1"))
+        assertThat(AllegroInvoiceMappingSupport.resolveHeaderComment("order-1", null))
                 .isEqualTo("order-1");
+        assertThat(AllegroInvoiceMappingSupport.resolveHeaderComment(null, "buyer1"))
+                .isEqualTo("buyer1");
     }
 }
