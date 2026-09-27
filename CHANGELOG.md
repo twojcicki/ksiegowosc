@@ -15,6 +15,7 @@ Format oparty na [Keep a Changelog](https://keepachangelog.com/pl/1.1.0/).
 
 ### Changed
 
+- Dostawa na fakturze Allegro: `InvoiceRow[].Item.Code` zawsze `Dostawa` (nie `delivery.method.id`).
 - HComment faktur Allegro: `{AllegroAccount.name}, {login z GET /me}, ID transakcji: {orderId} / {buyer.login}`.
 - Faktury z Allegro nie wypełniają `FComment` (komentarz dolny opcjonalny także w ręcznym tworzeniu).
 - 403 AccessDenied przy pobieraniu zamówień Allegro: log INFO (bez stacktrace) + komunikat w GUI o braku uprawnień.
@@ -30,7 +31,7 @@ Format oparty na [Keep a Changelog](https://keepachangelog.com/pl/1.1.0/).
 
 ### Added
 
-- Faktura Allegro obejmuje koszty kupującego: `delivery.cost`, `surcharges`, usługi dodatkowe; brutto = `summary.totalToPay` (±0,01); dostawa: `Item.Code=method.id`, VAT 23%, `Type=2`.
+- Faktura Allegro obejmuje koszty kupującego: `delivery.cost`, `surcharges`, usługi dodatkowe; brutto = `summary.totalToPay` (±0,01); dostawa: `Item.Code=Dostawa`, VAT 23%, `Type=2`.
 - Zakładka Allegro „Mapowanie” z podzakładkami Reguły (`AllegroMeritInvoiceMappings.RULES`) i Podgląd wartości Merit (w tym `InvoiceRow[].Item.*`) bez `sendinvoice`.
 - Prefiks faktury per konto Allegro; numer Merit: `prefiks/kolejny/MM/rrrr` (np. `FS/5/09/2026`), kolejny numer = liczba faktur w Merit w miesiącu dokumentu + 1.
 - Wiele kont Allegro per użytkownik (`allegro_account`): nazwa, Client ID/Secret (szyfrowany at-rest), Połącz/Usuń; oferty i sprzedane ze wszystkich połączonych kont z kolumną „Konto”.

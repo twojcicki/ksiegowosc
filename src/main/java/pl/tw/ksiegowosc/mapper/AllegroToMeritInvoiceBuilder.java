@@ -268,9 +268,6 @@ public class AllegroToMeritInvoiceBuilder {
     }
 
     public String resolveDeliveryCode(AllegroDeliveryMethod method) {
-        if (method != null && method.id() != null && !method.id().isBlank()) {
-            return AllegroInvoiceMappingSupport.truncateItemCode(method.id());
-        }
         return AllegroInvoiceMappingSupport.FALLBACK_DELIVERY_CODE;
     }
 

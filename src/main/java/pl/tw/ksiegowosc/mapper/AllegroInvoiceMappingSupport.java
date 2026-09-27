@@ -12,7 +12,7 @@ public final class AllegroInvoiceMappingSupport {
     public static final int ITEM_TYPE_STOCK = 1;
     public static final int ITEM_TYPE_SERVICE = 2;
     public static final BigDecimal FALLBACK_VAT_PERCENT = new BigDecimal("23");
-    public static final String FALLBACK_DELIVERY_CODE = "DOSTAWA";
+    public static final String FALLBACK_DELIVERY_CODE = "Dostawa";
     public static final String FALLBACK_SURCHARGE_CODE = "DOPLATA";
     private static final int ITEM_CODE_MAX = 20;
 

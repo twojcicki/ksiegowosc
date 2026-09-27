@@ -274,7 +274,7 @@ class AllegroInvoiceServiceTest {
         verify(invoicesService).createInvoice(requestCaptor.capture());
         CreateInvoiceRequest request = requestCaptor.getValue();
         assertThat(request.lines()).hasSize(3);
-        assertThat(request.lines().get(2).itemCode()).isEqualTo("ship-method-1");
+        assertThat(request.lines().get(2).itemCode()).isEqualTo("Dostawa");
         assertThat(request.lines().get(2).description()).isEqualTo("Paczkomat");
         assertThat(request.lines().get(2).itemType()).isEqualTo(2);
         assertThat(request.lines().get(2).price()).isEqualByComparingTo(new BigDecimal("8.13"));

@@ -53,7 +53,7 @@ public final class AllegroMeritInvoiceMappings {
 
             // LINE (InvoiceRow + Item) — towary, dostawa, dopłaty, usługi dodatkowe
             rule(MeritFieldSection.LINE, "InvoiceRow[].Item.Code",
-                    "towar: offer.external.id/offer.id; dostawa: delivery.method.id (max 20); dopłata: surcharge.id; usługa: definitionId"),
+                    "towar: offer.external.id/offer.id; dostawa: stałe „Dostawa”; dopłata: surcharge.id; usługa: definitionId"),
             rule(MeritFieldSection.LINE, "InvoiceRow[].Item.Description",
                     "towar: offer.name; dostawa: method.name/„Dostawa”; dopłata: „Dopłata …”; usługa: name"),
             rule(MeritFieldSection.LINE, "InvoiceRow[].Item.Type",
