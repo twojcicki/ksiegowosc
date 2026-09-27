@@ -203,7 +203,8 @@ class MeritApiClientTest {
                         new BigDecimal("23.00"))),
                 new BigDecimal("100.00"),
                 "Komentarz gorny",
-                "Komentarz dolny");
+                "Komentarz dolny",
+                null);
 
         server.expect(requestTo(startsWith("https://program.360ksiegowosc.pl/api/v1/sendinvoice")))
                 .andExpect(method(HttpMethod.POST))

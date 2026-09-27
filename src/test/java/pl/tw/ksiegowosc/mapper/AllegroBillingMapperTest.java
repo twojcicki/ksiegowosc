@@ -86,6 +86,7 @@ class AllegroBillingMapperTest {
                 List.of(),
                 null,
                 null,
+                null,
                 null);
 
         assertThat(mapper.toBuyerBilling(form).name()).isEqualTo("Klient Allegro (guest@example.com)");
@@ -120,6 +121,7 @@ class AllegroBillingMapperTest {
                 invoiceAddress == null ? null : new AllegroInvoice(false, invoiceAddress),
                 List.of(),
                 delivery,
+                null,
                 null,
                 null);
     }

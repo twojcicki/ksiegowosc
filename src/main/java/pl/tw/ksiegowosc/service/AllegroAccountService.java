@@ -27,6 +27,7 @@ public class AllegroAccountService {
             "Ksiegowosc/0.0.1 (+https://ksiegowosc-a0yu.onrender.com)";
 
     private static final int PREFIX_MAX = 20;
+    private static final int PAYMENT_METHOD_MAX = 100;
 
     private final AllegroAccountRepository accountRepository;
     private final AllegroTokenRepository tokenRepository;
@@ -75,6 +76,7 @@ public class AllegroAccountService {
             String clientId,
             String clientSecret,
             String invoicePrefix,
+            String paymentMethod,
             String apiBaseUrl,
             String authUrl,
             String userAgent) {
@@ -89,6 +91,7 @@ public class AllegroAccountService {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Podaj Allegro Client Secret.");
         }
         String normalizedPrefix = normalizePrefix(invoicePrefix);
+        String normalizedPaymentMethod = requirePaymentMethod(paymentMethod);
         String trimmedClientId = clientId.trim();
         if (accountRepository.existsByUserIdAndClientId(userId, trimmedClientId)) {
             throw new ResponseStatusException(HttpStatus.CONFLICT, "Konto z tym Client ID już istnieje.");
@@ -101,6 +104,7 @@ public class AllegroAccountService {
         account.setClientId(trimmedClientId);
         account.setClientSecret(clientSecret.trim());
         account.setInvoicePrefix(normalizedPrefix);
+        account.setPaymentMethod(normalizedPaymentMethod);
         account.setApiBaseUrl(requireHttpsUrl(apiBaseUrl, "Allegro API Base URL"));
         account.setAuthUrl(requireHttpsUrl(authUrl, "Allegro Auth URL"));
         account.setUserAgent(requireUserAgent(userAgent));
@@ -115,6 +119,7 @@ public class AllegroAccountService {
             Long accountId,
             String name,
             String invoicePrefix,
+            String paymentMethod,
             String apiBaseUrl,
             String authUrl,
             String userAgent) {
@@ -124,6 +129,7 @@ public class AllegroAccountService {
         }
         account.setName(name.trim());
         account.setInvoicePrefix(normalizePrefix(invoicePrefix));
+        account.setPaymentMethod(requirePaymentMethod(paymentMethod));
         account.setApiBaseUrl(requireHttpsUrl(apiBaseUrl, "Allegro API Base URL"));
         account.setAuthUrl(requireHttpsUrl(authUrl, "Allegro Auth URL"));
         account.setUserAgent(requireUserAgent(userAgent));
@@ -186,6 +192,19 @@ public class AllegroAccountService {
         return trimmed;
     }
 
+    private static String requirePaymentMethod(String paymentMethod) {
+        if (!hasText(paymentMethod)) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Podaj metodę płatności Merit.");
+        }
+        String trimmed = paymentMethod.trim();
+        if (trimmed.length() > PAYMENT_METHOD_MAX) {
+            throw new ResponseStatusException(
+                    HttpStatus.BAD_REQUEST,
+                    "Metoda płatności może mieć maksymalnie " + PAYMENT_METHOD_MAX + " znaków.");
+        }
+        return trimmed;
+    }
+
     private static String requireHttpsUrl(String value, String label) {
         if (!hasText(value)) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Podaj " + label + ".");
@@ -217,6 +236,7 @@ public class AllegroAccountService {
                 account.getName(),
                 account.getClientId(),
                 account.getInvoicePrefix(),
+                account.getPaymentMethod(),
                 account.getApiBaseUrl(),
                 account.getAuthUrl(),
                 account.getUserAgent(),

@@ -59,6 +59,7 @@ class AllegroAccountServiceTest {
                 "cid",
                 "secret",
                 "FS",
+                "przelew",
                 AllegroAccountService.DEFAULT_API_BASE_URL,
                 AllegroAccountService.DEFAULT_AUTH_URL,
                 AllegroAccountService.DEFAULT_USER_AGENT);
@@ -67,6 +68,7 @@ class AllegroAccountServiceTest {
         assertThat(dto.name()).isEqualTo("Sklep");
         assertThat(dto.clientId()).isEqualTo("cid");
         assertThat(dto.invoicePrefix()).isEqualTo("FS");
+        assertThat(dto.paymentMethod()).isEqualTo("przelew");
         assertThat(dto.apiBaseUrl()).isEqualTo(AllegroAccountService.DEFAULT_API_BASE_URL);
         assertThat(dto.authUrl()).isEqualTo(AllegroAccountService.DEFAULT_AUTH_URL);
         assertThat(dto.userAgent()).isEqualTo(AllegroAccountService.DEFAULT_USER_AGENT);
@@ -83,6 +85,7 @@ class AllegroAccountServiceTest {
                         "cid",
                         "secret",
                         "FS",
+                        "przelew",
                         AllegroAccountService.DEFAULT_API_BASE_URL,
                         AllegroAccountService.DEFAULT_AUTH_URL,
                         AllegroAccountService.DEFAULT_USER_AGENT))
@@ -97,6 +100,7 @@ class AllegroAccountServiceTest {
                         "cid",
                         "secret",
                         "  ",
+                        "przelew",
                         AllegroAccountService.DEFAULT_API_BASE_URL,
                         AllegroAccountService.DEFAULT_AUTH_URL,
                         AllegroAccountService.DEFAULT_USER_AGENT))
@@ -125,12 +129,14 @@ class AllegroAccountServiceTest {
                 11L,
                 "Sklep 2",
                 "FV",
+                "przelew",
                 "https://api.allegro.pl.allegrosandbox.pl",
                 "https://allegro.pl.allegrosandbox.pl",
                 "App/1.0 (+https://example.test)");
 
         assertThat(dto.name()).isEqualTo("Sklep 2");
         assertThat(dto.invoicePrefix()).isEqualTo("FV");
+        assertThat(dto.paymentMethod()).isEqualTo("przelew");
         assertThat(dto.apiBaseUrl()).isEqualTo("https://api.allegro.pl.allegrosandbox.pl");
         assertThat(dto.authUrl()).isEqualTo("https://allegro.pl.allegrosandbox.pl");
         assertThat(dto.userAgent()).isEqualTo("App/1.0 (+https://example.test)");
@@ -148,6 +154,7 @@ class AllegroAccountServiceTest {
                         11L,
                         "  ",
                         "FS",
+                        "przelew",
                         AllegroAccountService.DEFAULT_API_BASE_URL,
                         AllegroAccountService.DEFAULT_AUTH_URL,
                         AllegroAccountService.DEFAULT_USER_AGENT))
@@ -163,6 +170,7 @@ class AllegroAccountServiceTest {
                         11L,
                         "Sklep",
                         "FS",
+                        "przelew",
                         "http://api.allegro.pl",
                         AllegroAccountService.DEFAULT_AUTH_URL,
                         AllegroAccountService.DEFAULT_USER_AGENT))
@@ -200,6 +208,7 @@ class AllegroAccountServiceTest {
         account.setClientId("cid");
         account.setClientSecret("secret");
         account.setInvoicePrefix("FS");
+        account.setPaymentMethod("przelew");
         account.setApiBaseUrl(AllegroAccountService.DEFAULT_API_BASE_URL);
         account.setAuthUrl(AllegroAccountService.DEFAULT_AUTH_URL);
         account.setUserAgent(AllegroAccountService.DEFAULT_USER_AGENT);

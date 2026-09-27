@@ -101,6 +101,7 @@ class AllegroOrdersServiceTest {
                                         new AllegroDeliveryMethod("m1", "Kurier"),
                                         null),
                                 new AllegroCheckoutSummary(new AllegroPrice("72.99", "PLN")),
+                                null,
                                 null)),
                         1,
                         1));
@@ -154,6 +155,7 @@ class AllegroOrdersServiceTest {
                                         null,
                                         Instant.parse("2026-01-10T08:00:00Z"),
                                         null)),
+                                null,
                                 null,
                                 null,
                                 null)),
@@ -210,6 +212,7 @@ class AllegroOrdersServiceTest {
                                         null,
                                         Instant.parse("2026-01-10T08:00:00Z"),
                                         null)),
+                                null,
                                 null,
                                 null,
                                 null)),

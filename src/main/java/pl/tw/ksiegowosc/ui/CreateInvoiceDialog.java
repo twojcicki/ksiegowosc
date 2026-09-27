@@ -350,7 +350,8 @@ public class CreateInvoiceDialog extends Dialog {
                 isBlank(footerComment.getValue()) ? null : footerComment.getValue().trim(),
                 totalNet,
                 lineRequests,
-                taxAmounts);
+                taxAmounts,
+                null);
     }
 
     private String formatAmount(BigDecimal value) {

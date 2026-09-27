@@ -5,6 +5,7 @@ public record AllegroAccountDto(
         String name,
         String clientId,
         String invoicePrefix,
+        String paymentMethod,
         String apiBaseUrl,
         String authUrl,
         String userAgent,

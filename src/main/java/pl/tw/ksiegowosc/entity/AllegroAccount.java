@@ -36,6 +36,9 @@ public class AllegroAccount {
     @Column(name = "invoice_prefix", nullable = false, length = 20)
     private String invoicePrefix;
 
+    @Column(name = "payment_method", length = 100)
+    private String paymentMethod;
+
     @Column(name = "api_base_url", nullable = false, length = 300)
     private String apiBaseUrl;
 
@@ -97,6 +100,14 @@ public class AllegroAccount {
 
     public void setInvoicePrefix(String invoicePrefix) {
         this.invoicePrefix = invoicePrefix;
+    }
+
+    public String getPaymentMethod() {
+        return paymentMethod;
+    }
+
+    public void setPaymentMethod(String paymentMethod) {
+        this.paymentMethod = paymentMethod;
     }
 
     public String getApiBaseUrl() {

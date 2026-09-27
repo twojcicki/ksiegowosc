@@ -85,6 +85,11 @@ public final class AllegroInvoicePreviewAssembler {
             case "TotalAmount" -> invoice.totalAmount() == null ? null : invoice.totalAmount().toPlainString();
             case "HComment" -> invoice.hComment();
             case "FComment" -> invoice.fComment();
+            case "Payment.PaymentMethod" -> invoice.payment() == null ? null : invoice.payment().paymentMethod();
+            case "Payment.PaidAmount" -> invoice.payment() == null || invoice.payment().paidAmount() == null
+                    ? null
+                    : invoice.payment().paidAmount().toPlainString();
+            case "Payment.PaymDate" -> invoice.payment() == null ? null : invoice.payment().paymDate();
             default -> null;
         };
         rows.add(preview(rule, rule.meritField(), display(value)));

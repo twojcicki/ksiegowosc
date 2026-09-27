@@ -14,5 +14,6 @@ public record AllegroCheckoutForm(
         List<AllegroLineItem> lineItems,
         AllegroDelivery delivery,
         AllegroCheckoutSummary summary,
-        List<AllegroSurcharge> surcharges) {
+        List<AllegroSurcharge> surcharges,
+        AllegroPayment payment) {
 }

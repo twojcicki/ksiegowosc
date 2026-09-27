@@ -6,6 +6,7 @@ Format oparty na [Keep a Changelog](https://keepachangelog.com/pl/1.1.0/).
 
 ### Added
 
+- Płatność na fakturze Allegro→Merit: `Payment` z `paidAmount`/`finishedAt` zamówienia oraz `PaymentMethod` z pola konta Allegro.
 - Faktura Allegro dla osoby bez NIP: `NotTDCustomer=true`, Name = imię+nazwisko albo `Klient Allegro (login|email)`; adres = cały `invoice.address` albo cały `delivery.address`; lookup Merit po exact Name (filtr `Klient Allegro` dla nazw syntetycznych).
 - Opcjonalne pominięcie OAuth `scope`: puste `ALLEGRO_SCOPES` / `clients.allegro.scopes` — Allegro używa scope’ów zadeklarowanych w aplikacji.
 - Logi OAuth Allegro (authorize + callback error/token): `clientId`, Auth/API URL, redirect URI; błąd Allegro wraca do Ustawień API z komunikatem zamiast 403.

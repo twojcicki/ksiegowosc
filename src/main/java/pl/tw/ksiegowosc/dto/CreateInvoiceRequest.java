@@ -20,6 +20,7 @@ public record CreateInvoiceRequest(
         String footerComment,
         @NotNull BigDecimal totalAmount,
         @NotEmpty @Valid List<CreateInvoiceLineRequest> lines,
-        @NotEmpty @Valid List<CreateInvoiceTaxAmountRequest> taxAmounts
+        @NotEmpty @Valid List<CreateInvoiceTaxAmountRequest> taxAmounts,
+        @Valid CreateInvoicePaymentRequest payment
 ) {
 }

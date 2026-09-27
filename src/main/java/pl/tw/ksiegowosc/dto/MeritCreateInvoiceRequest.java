@@ -18,6 +18,7 @@ public record MeritCreateInvoiceRequest(
         @JsonProperty("TaxAmount") List<MeritCreateInvoiceTaxAmount> taxAmount,
         @JsonProperty("TotalAmount") BigDecimal totalAmount,
         @JsonProperty("HComment") String hComment,
-        @JsonProperty("FComment") String fComment
+        @JsonProperty("FComment") String fComment,
+        @JsonProperty("Payment") MeritCreateInvoicePayment payment
 ) {
 }

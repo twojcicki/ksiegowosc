@@ -42,6 +42,7 @@ import pl.tw.ksiegowosc.dto.allegro.AllegroLineItemTax;
 import pl.tw.ksiegowosc.dto.allegro.AllegroMe;
 import pl.tw.ksiegowosc.dto.allegro.AllegroNaturalPerson;
 import pl.tw.ksiegowosc.dto.allegro.AllegroOfferReference;
+import pl.tw.ksiegowosc.dto.allegro.AllegroPayment;
 import pl.tw.ksiegowosc.dto.allegro.AllegroPrice;
 import pl.tw.ksiegowosc.dto.allegro.AllegroSurcharge;
 import pl.tw.ksiegowosc.dto.allegro.AllegroTaxId;
@@ -126,6 +127,7 @@ class AllegroInvoiceServiceTest {
         assertThat(request.taxAmounts()).hasSize(1);
         assertThat(request.taxAmounts().getFirst().taxId()).isEqualTo("tax-23");
         assertThat(request.totalAmount()).isEqualByComparingTo(new BigDecimal("48.79"));
+        assertThat(request.payment()).isNull();
 
         ArgumentCaptor<AllegroSoldInvoice> entityCaptor = ArgumentCaptor.forClass(AllegroSoldInvoice.class);
         verify(soldInvoiceRepository).save(entityCaptor.capture());
@@ -287,6 +289,33 @@ class AllegroInvoiceServiceTest {
     }
 
     @Test
+    void shouldIncludeMeritPaymentWhenOrderPaid() {
+        when(soldInvoiceRepository.existsById("order-1")).thenReturn(false);
+        AllegroPayment payment = new AllegroPayment(
+                "pay-1",
+                "ONLINE",
+                "PAYU",
+                Instant.parse("2026-01-10T08:00:00Z"),
+                new AllegroPrice("60.00", "PLN"));
+        AllegroCheckoutSummary summary = new AllegroCheckoutSummary(new AllegroPrice("60.00", "PLN"));
+        when(allegroApiClient.getCheckoutForm("https://api.allegro.pl", "token", "ua", "order-1"))
+                .thenReturn(sampleForm(null, null, null, summary, null, payment));
+        when(customersService.getCustomersByVatRegNo("5252674798")).thenReturn(List.of(
+                new CustomerDto("cust-1", "Firma", null, "5252674798", null, null, null, "PLN")));
+        when(invoicesService.createInvoice(any())).thenReturn(new CreateInvoiceResponse("merit-inv-1", "cust-1"));
+
+        invoiceService.issueInvoice(9L, "order-1");
+
+        ArgumentCaptor<CreateInvoiceRequest> requestCaptor = ArgumentCaptor.forClass(CreateInvoiceRequest.class);
+        verify(invoicesService).createInvoice(requestCaptor.capture());
+        CreateInvoiceRequest request = requestCaptor.getValue();
+        assertThat(request.payment()).isNotNull();
+        assertThat(request.payment().paymentMethod()).isEqualTo("przelew");
+        assertThat(request.payment().paidAmount()).isEqualByComparingTo(new BigDecimal("60.00"));
+        assertThat(request.payment().paymDate()).isEqualTo("20260110090000");
+    }
+
+    @Test
     void shouldRejectWhenInvoiceGrossDoesNotMatchTotalToPay() {
         when(soldInvoiceRepository.existsById("order-1")).thenReturn(false);
         AllegroCheckoutSummary summary = new AllegroCheckoutSummary(new AllegroPrice("99.00", "PLN"));
@@ -350,6 +379,7 @@ class AllegroInvoiceServiceTest {
         account.setClientId("cid");
         account.setClientSecret("secret");
         account.setInvoicePrefix("FS");
+        account.setPaymentMethod("przelew");
         account.setApiBaseUrl("https://api.allegro.pl");
         account.setAuthUrl("https://allegro.pl");
         account.setUserAgent("ua");
@@ -382,6 +412,7 @@ class AllegroInvoiceServiceTest {
                                 null)),
                 null,
                 new AllegroCheckoutSummary(new AllegroPrice("25.00", "PLN")),
+                null,
                 null);
     }
 
@@ -407,11 +438,12 @@ class AllegroInvoiceServiceTest {
                         new AllegroDeliveryAddress(
                                 "Jan", "Kowalski", "Dostawcza 5", "Wrocław", "50-001", "PL", null)),
                 new AllegroCheckoutSummary(new AllegroPrice("25.00", "PLN")),
+                null,
                 null);
     }
 
     private static AllegroCheckoutForm sampleForm(AllegroLineItemTax tax1, AllegroLineItemTax tax2) {
-        return sampleForm(tax1, tax2, null, null, null);
+        return sampleForm(tax1, tax2, null, null, null, null);
     }
 
     private static AllegroCheckoutForm sampleForm(
@@ -420,6 +452,16 @@ class AllegroInvoiceServiceTest {
             AllegroDelivery delivery,
             AllegroCheckoutSummary summary,
             List<AllegroSurcharge> surcharges) {
+        return sampleForm(tax1, tax2, delivery, summary, surcharges, null);
+    }
+
+    private static AllegroCheckoutForm sampleForm(
+            AllegroLineItemTax tax1,
+            AllegroLineItemTax tax2,
+            AllegroDelivery delivery,
+            AllegroCheckoutSummary summary,
+            List<AllegroSurcharge> surcharges,
+            AllegroPayment payment) {
         return new AllegroCheckoutForm(
                 "order-1",
                 new AllegroBuyer("buyer1", "buyer@example.com"),
@@ -459,6 +501,7 @@ class AllegroInvoiceServiceTest {
                                 null)),
                 delivery,
                 summary,
-                surcharges);
+                surcharges,
+                payment);
     }
 }

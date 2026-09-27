@@ -3,6 +3,8 @@ package pl.tw.ksiegowosc.mapper;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.Instant;
+import java.time.ZoneId;
+import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -15,6 +17,7 @@ import org.springframework.web.server.ResponseStatusException;
 
 import pl.tw.ksiegowosc.dto.BuyerBilling;
 import pl.tw.ksiegowosc.dto.CreateInvoiceLineRequest;
+import pl.tw.ksiegowosc.dto.CreateInvoicePaymentRequest;
 import pl.tw.ksiegowosc.dto.CreateInvoiceRequest;
 import pl.tw.ksiegowosc.dto.CreateInvoiceTaxAmountRequest;
 import pl.tw.ksiegowosc.dto.MeritTaxDto;
@@ -162,7 +165,40 @@ public class AllegroToMeritInvoiceBuilder {
                 null,
                 totalNet,
                 lines,
-                taxAmounts);
+                taxAmounts,
+                resolvePayment(form, context));
+    }
+
+    CreateInvoicePaymentRequest resolvePayment(AllegroCheckoutForm form, AllegroInvoiceMappingContext context) {
+        if (form == null || form.payment() == null) {
+            return null;
+        }
+        String method = context == null ? null : context.paymentMethod();
+        if (method == null || method.isBlank()) {
+            return null;
+        }
+        AllegroPrice paid = form.payment().paidAmount();
+        if (paid == null || paid.amount() == null || paid.amount().isBlank()) {
+            return null;
+        }
+        BigDecimal paidAmount = parseAmount(paid.amount());
+        if (paidAmount == null || paidAmount.compareTo(BigDecimal.ZERO) <= 0) {
+            return null;
+        }
+        String paymDate = formatPaymentDate(form.payment().finishedAt(), context.docDate());
+        return new CreateInvoicePaymentRequest(method.trim(), paidAmount, paymDate);
+    }
+
+    private static String formatPaymentDate(Instant finishedAt, java.time.LocalDate docDate) {
+        if (finishedAt != null) {
+            return DateTimeFormatter.ofPattern("yyyyMMddHHmmss")
+                    .withZone(ZoneId.of("Europe/Warsaw"))
+                    .format(finishedAt);
+        }
+        if (docDate != null) {
+            return docDate.format(DateTimeFormatter.BASIC_ISO_DATE) + "000000";
+        }
+        return null;
     }
 
     private LineAmounts addServiceLine(

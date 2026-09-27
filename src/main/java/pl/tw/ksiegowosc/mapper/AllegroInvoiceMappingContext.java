@@ -12,5 +12,6 @@ public record AllegroInvoiceMappingContext(
         List<MeritTaxDto> taxes,
         String uomName,
         String accountName,
-        String sellerLogin) {
+        String sellerLogin,
+        String paymentMethod) {
 }

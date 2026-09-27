@@ -56,6 +56,7 @@ public class ApiSettingsView extends View implements BeforeEnterObserver {
     private final TextField allegroClientId = new TextField("Allegro Client ID");
     private final PasswordField allegroClientSecret = new PasswordField("Allegro Client Secret");
     private final TextField allegroInvoicePrefix = new TextField("Prefiks faktury");
+    private final TextField allegroPaymentMethod = new TextField("Metoda płatności (Merit)");
     private final TextField allegroApiBaseUrl = new TextField("API Base URL");
     private final TextField allegroAuthUrl = new TextField("Auth URL");
     private final TextField allegroUserAgent = new TextField("User-Agent");
@@ -119,6 +120,9 @@ public class ApiSettingsView extends View implements BeforeEnterObserver {
         allegroInvoicePrefix.setWidthFull();
         allegroInvoicePrefix.setMaxLength(20);
         allegroInvoicePrefix.setHelperText("Numer faktury: prefiks/kolejny/MM/rrrr, np. FS/5/09/2026");
+        allegroPaymentMethod.setWidthFull();
+        allegroPaymentMethod.setMaxLength(100);
+        allegroPaymentMethod.setHelperText("Wartość PaymentMethod w Merit, np. przelew / PayU — używana przy opłaconych zamówieniach.");
         allegroApiBaseUrl.setWidthFull();
         allegroApiBaseUrl.setValue(AllegroAccountService.DEFAULT_API_BASE_URL);
         allegroApiBaseUrl.setHelperText(
@@ -149,6 +153,7 @@ public class ApiSettingsView extends View implements BeforeEnterObserver {
                 allegroClientId,
                 allegroClientSecret,
                 allegroInvoicePrefix,
+                allegroPaymentMethod,
                 allegroApiBaseUrl,
                 allegroAuthUrl,
                 allegroUserAgent);
@@ -156,7 +161,7 @@ public class ApiSettingsView extends View implements BeforeEnterObserver {
         VerticalLayout allegroSection = new VerticalLayout(
                 new H3("Allegro"),
                 new Paragraph(
-                        "Dodaj aplikacje Allegro (Client ID/Secret, URL-e, User-Agent i prefiks). Połącz każde konto osobno."),
+                        "Dodaj aplikacje Allegro (Client ID/Secret, URL-e, User-Agent, prefiks i metoda płatności Merit). Połącz każde konto osobno."),
                 allegroForm,
                 addAllegro,
                 redirectUriHint,
@@ -180,6 +185,10 @@ public class ApiSettingsView extends View implements BeforeEnterObserver {
         allegroAccountsGrid.addColumn(AllegroAccountDto::clientId).setHeader("Client ID").setFlexGrow(1);
         allegroAccountsGrid.addColumn(AllegroAccountDto::invoicePrefix)
                 .setHeader("Prefiks")
+                .setAutoWidth(true)
+                .setFlexGrow(0);
+        allegroAccountsGrid.addColumn(AllegroAccountDto::paymentMethod)
+                .setHeader("Metoda płatności")
                 .setAutoWidth(true)
                 .setFlexGrow(0);
         allegroAccountsGrid.addColumn(AllegroAccountDto::apiBaseUrl).setHeader("API Base URL").setFlexGrow(1);
@@ -244,6 +253,7 @@ public class ApiSettingsView extends View implements BeforeEnterObserver {
                     allegroClientId.getValue(),
                     allegroClientSecret.getValue(),
                     allegroInvoicePrefix.getValue(),
+                    allegroPaymentMethod.getValue(),
                     allegroApiBaseUrl.getValue(),
                     allegroAuthUrl.getValue(),
                     allegroUserAgent.getValue());
@@ -252,6 +262,7 @@ public class ApiSettingsView extends View implements BeforeEnterObserver {
             allegroClientId.clear();
             allegroClientSecret.clear();
             allegroInvoicePrefix.clear();
+            allegroPaymentMethod.clear();
             allegroApiBaseUrl.setValue(AllegroAccountService.DEFAULT_API_BASE_URL);
             allegroAuthUrl.setValue(AllegroAccountService.DEFAULT_AUTH_URL);
             allegroUserAgent.setValue(AllegroAccountService.DEFAULT_USER_AGENT);
@@ -279,6 +290,12 @@ public class ApiSettingsView extends View implements BeforeEnterObserver {
         prefixField.setValue(nullToEmpty(account.invoicePrefix()));
         prefixField.setHelperText("Numer faktury: prefiks/kolejny/MM/rrrr, np. FS/5/09/2026");
 
+        TextField paymentMethodField = new TextField("Metoda płatności (Merit)");
+        paymentMethodField.setWidthFull();
+        paymentMethodField.setMaxLength(100);
+        paymentMethodField.setValue(nullToEmpty(account.paymentMethod()));
+        paymentMethodField.setHelperText("Wartość PaymentMethod w Merit, np. przelew / PayU.");
+
         TextField apiBaseUrlField = new TextField("API Base URL");
         apiBaseUrlField.setWidthFull();
         apiBaseUrlField.setValue(nullToEmpty(account.apiBaseUrl()));
@@ -297,7 +314,13 @@ public class ApiSettingsView extends View implements BeforeEnterObserver {
         userAgentField.setHelperText("Format: NazwaAplikacji/Wersja (+https://url) — nazwa = aplikacja w Allegro.");
 
         FormLayout form = new FormLayout(
-                nameField, clientIdField, prefixField, apiBaseUrlField, authUrlField, userAgentField);
+                nameField,
+                clientIdField,
+                prefixField,
+                paymentMethodField,
+                apiBaseUrlField,
+                authUrlField,
+                userAgentField);
         form.setResponsiveSteps(new FormLayout.ResponsiveStep("0", 1));
         form.setWidthFull();
 
@@ -313,6 +336,7 @@ public class ApiSettingsView extends View implements BeforeEnterObserver {
                         account.id(),
                         nameField.getValue(),
                         prefixField.getValue(),
+                        paymentMethodField.getValue(),
                         apiBaseUrlField.getValue(),
                         authUrlField.getValue(),
                         userAgentField.getValue());

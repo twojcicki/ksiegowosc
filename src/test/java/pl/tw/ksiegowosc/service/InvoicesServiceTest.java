@@ -316,6 +316,7 @@ class InvoicesServiceTest {
                         null)),
                 List.of(new CreateInvoiceTaxAmountRequest(
                         "665f01a4-357a-4a6b-a565-2f17e6e1da13",
-                        new BigDecimal("23.00"))));
+                        new BigDecimal("23.00"))),
+                null);
     }
 }

@@ -43,7 +43,8 @@ class CreateInvoiceRequestValidationTest {
                 "Komentarz dolny",
                 new BigDecimal("100.00"),
                 List.of(validLine()),
-                List.of(validTax()));
+                List.of(validTax()),
+                null);
 
         Set<ConstraintViolation<CreateInvoiceRequest>> violations = validator.validate(request);
 
@@ -62,7 +63,8 @@ class CreateInvoiceRequestValidationTest {
                 null,
                 new BigDecimal("100.00"),
                 List.of(validLine()),
-                List.of(validTax()));
+                List.of(validTax()),
+                null);
 
         Set<ConstraintViolation<CreateInvoiceRequest>> violations = validator.validate(request);
 
@@ -81,7 +83,8 @@ class CreateInvoiceRequestValidationTest {
                 "Komentarz dolny",
                 new BigDecimal("100.00"),
                 Collections.emptyList(),
-                List.of(validTax()));
+                List.of(validTax()),
+                null);
 
         Set<ConstraintViolation<CreateInvoiceRequest>> violations = validator.validate(request);
 
@@ -99,7 +102,8 @@ class CreateInvoiceRequestValidationTest {
                 "Komentarz dolny",
                 new BigDecimal("100.00"),
                 List.of(validLine()),
-                List.of(validTax()));
+                List.of(validTax()),
+                null);
     }
 
     private static CreateInvoiceLineRequest validLine() {

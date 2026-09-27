@@ -160,7 +160,8 @@ public class AllegroInvoiceService {
                         taxesService.listTaxes(),
                         uomName.trim(),
                         account.getName(),
-                        sellerLogin));
+                        sellerLogin,
+                        account.getPaymentMethod()));
         return new PreparedAllegroInvoice(
                 trimmedOrderId,
                 request,

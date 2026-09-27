@@ -9,10 +9,12 @@ import org.mapstruct.MappingConstants;
 import org.mapstruct.Named;
 
 import pl.tw.ksiegowosc.dto.CreateInvoiceLineRequest;
+import pl.tw.ksiegowosc.dto.CreateInvoicePaymentRequest;
 import pl.tw.ksiegowosc.dto.CreateInvoiceRequest;
 import pl.tw.ksiegowosc.dto.CreateInvoiceTaxAmountRequest;
 import pl.tw.ksiegowosc.dto.MeritCreateInvoiceCustomer;
 import pl.tw.ksiegowosc.dto.MeritCreateInvoiceItem;
+import pl.tw.ksiegowosc.dto.MeritCreateInvoicePayment;
 import pl.tw.ksiegowosc.dto.MeritCreateInvoiceRequest;
 import pl.tw.ksiegowosc.dto.MeritCreateInvoiceRow;
 import pl.tw.ksiegowosc.dto.MeritCreateInvoiceTaxAmount;
@@ -43,6 +45,8 @@ public interface MeritInvoiceMapper {
     MeritCreateInvoiceItem toItem(CreateInvoiceLineRequest line);
 
     MeritCreateInvoiceTaxAmount toTaxAmount(CreateInvoiceTaxAmountRequest tax);
+
+    MeritCreateInvoicePayment toPayment(CreateInvoicePaymentRequest payment);
 
     @Named("toCustomer")
     default MeritCreateInvoiceCustomer toCustomer(String customerId) {

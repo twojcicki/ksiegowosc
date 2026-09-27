@@ -50,6 +50,12 @@ public final class AllegroMeritInvoiceMappings {
                     "AllegroAccount.name, login z GET /me, „ID transakcji: ” + orderId / buyer.login"),
             rule(MeritFieldSection.HEADER, "FComment",
                     "nie ustawiane"),
+            rule(MeritFieldSection.HEADER, "Payment.PaymentMethod",
+                    "allegro_account.payment_method (konfiguracja konta)"),
+            rule(MeritFieldSection.HEADER, "Payment.PaidAmount",
+                    "payment.paidAmount.amount gdy opłacone; inaczej pominięte"),
+            rule(MeritFieldSection.HEADER, "Payment.PaymDate",
+                    "payment.finishedAt (yyyyMMddHHmmss Europe/Warsaw); inaczej DocDate 000000"),
 
             // LINE (InvoiceRow + Item) — towary, dostawa, dopłaty, usługi dodatkowe
             rule(MeritFieldSection.LINE, "InvoiceRow[].Item.Code",
