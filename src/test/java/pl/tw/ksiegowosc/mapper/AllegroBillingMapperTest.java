@@ -45,7 +45,7 @@ class AllegroBillingMapperTest {
     }
 
     @Test
-    void shouldUseDeliveryAddressWhenInvoiceAddressMissingAndRequired() {
+    void shouldUseOnlyInvoiceDataWhenRequiredEvenIfDeliveryPresent() {
         AllegroDelivery delivery = new AllegroDelivery(
                 new AllegroPrice("10.00", "PLN"),
                 new AllegroDeliveryMethod("m1", "Kurier"),
@@ -53,11 +53,13 @@ class AllegroBillingMapperTest {
 
         BuyerBilling billing = mapper.toBuyerBilling(invoiceRequiredForm(null, delivery));
 
-        assertThat(billing.name()).isEqualTo("Klient Allegro (buyer1)");
-        assertThat(billing.address()).isEqualTo("Dostawcza 2");
-        assertThat(billing.city()).isEqualTo("Gdańsk");
-        assertThat(billing.postalCode()).isEqualTo("80-001");
+        assertThat(billing.name()).isNull();
+        assertThat(billing.address()).isNull();
+        assertThat(billing.city()).isNull();
+        assertThat(billing.postalCode()).isNull();
         assertThat(billing.countryCode()).isEqualTo("PL");
+        assertThat(billing.vatRegNo()).isNull();
+        assertThat(billing.notTdCustomer()).isTrue();
     }
 
     @Test
@@ -117,7 +119,7 @@ class AllegroBillingMapperTest {
     }
 
     @Test
-    void shouldBuildKlientAllegroFromEmailWhenDeliveryNameMissingAndNotRequired() {
+    void shouldAllowEmptyDeliveryNameWhenInvoiceNotRequired() {
         AllegroCheckoutForm form = new AllegroCheckoutForm(
                 "order-1",
                 new AllegroBuyer(null, "guest@example.com", null, null, null),
@@ -125,12 +127,17 @@ class AllegroBillingMapperTest {
                 null,
                 null,
                 List.of(),
-                null,
+                new AllegroDelivery(
+                        null,
+                        null,
+                        new AllegroDeliveryAddress(null, null, "Dostawcza 2", "Gdańsk", "80-001", "PL", null)),
                 null,
                 null,
                 null);
 
-        assertThat(mapper.toBuyerBilling(form).name()).isEqualTo("Klient Allegro (guest@example.com)");
+        BuyerBilling billing = mapper.toBuyerBilling(form);
+        assertThat(billing.name()).isNull();
+        assertThat(billing.address()).isEqualTo("Dostawcza 2");
     }
 
     @Test

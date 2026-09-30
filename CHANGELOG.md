@@ -7,7 +7,7 @@ Format oparty na [Keep a Changelog](https://keepachangelog.com/pl/1.1.0/).
 ### Added
 
 - Płatność na fakturze Allegro→Merit: `Payment` z `paidAmount`/`finishedAt` zamówienia oraz `PaymentMethod` z pola konta Allegro.
-- Faktura Allegro dla osoby bez NIP (`invoice.required`): `NotTDCustomer=true`, Name = imię+nazwisko albo `Klient Allegro (login|email)`; adres = cały `invoice.address` albo cały `delivery.address`.
+- Faktura Allegro dla osoby bez NIP (`invoice.required`): `NotTDCustomer=true`, Name = `naturalPerson` (imię+nazwisko); adres wyłącznie z `invoice.address`.
 - Opcjonalne pominięcie OAuth `scope`: puste `ALLEGRO_SCOPES` / `clients.allegro.scopes` — Allegro używa scope’ów zadeklarowanych w aplikacji.
 - Logi OAuth Allegro (authorize + callback error/token): `clientId`, Auth/API URL, redirect URI; błąd Allegro wraca do Ustawień API z komunikatem zamiast 403.
 - Per konto Allegro: API Base URL, Auth URL i User-Agent (OAuth/API z hostów konta; produkcja i sandbox obok siebie).
@@ -16,7 +16,7 @@ Format oparty na [Keep a Changelog](https://keepachangelog.com/pl/1.1.0/).
 
 ### Changed
 
-- Mapowanie klienta Allegro wg `invoice.required`: przy chęci faktury dane z `invoice` + lookup Merit tylko po NIP; bez checka — Name/adres z `delivery.address`, zawsze nowy klient (bez lookupu po nazwie).
+- Mapowanie klienta Allegro wg `invoice.required`: przy chęci faktury Name/adres/NIP wyłącznie z `invoice` (company → naturalPerson, bez „Klient Allegro”) + lookup Merit tylko po NIP; bez checka — Name/adres z `delivery.address`, zawsze nowy klient.
 - Dostawa na fakturze Allegro: `InvoiceRow[].Item.Code` zawsze `Dostawa` (nie `delivery.method.id`).
 - HComment faktur Allegro: `{AllegroAccount.name}, {login z GET /me}, ID transakcji: {orderId} / {buyer.login}`.
 - Faktury z Allegro nie wypełniają `FComment` (komentarz dolny opcjonalny także w ręcznym tworzeniu).

@@ -17,8 +17,6 @@ import pl.tw.ksiegowosc.dto.allegro.AllegroTaxId;
 @Mapper(componentModel = MappingConstants.ComponentModel.SPRING)
 public interface AllegroBillingMapper {
 
-    String KLIENT_ALLEGRO = "Klient Allegro";
-
     default BuyerBilling toBuyerBilling(AllegroCheckoutForm form) {
         AllegroBuyer buyer = form.buyer();
         String login = buyer == null ? null : buyer.login();
@@ -41,13 +39,10 @@ public interface AllegroBillingMapper {
             notTdCustomer = !hasText(vatRegNo);
         } else {
             name = personFullName(person);
-            if (!hasText(name)) {
-                name = klientAllegroName(login, email);
-            }
             notTdCustomer = true;
         }
 
-        ResolvedAddress address = resolveInvoiceOrDeliveryAddress(form);
+        ResolvedAddress address = resolveInvoiceAddressOnly(invoiceAddress);
         return new BuyerBilling(
                 name,
                 notTdCustomer,
@@ -62,13 +57,9 @@ public interface AllegroBillingMapper {
 
     default BuyerBilling billingFromDelivery(AllegroDelivery delivery, String login, String email) {
         AllegroDeliveryAddress deliveryAddress = delivery == null ? null : delivery.address();
-        String name = deliveryPartyName(deliveryAddress);
-        if (!hasText(name)) {
-            name = klientAllegroName(login, email);
-        }
         ResolvedAddress address = resolveDeliveryAddressOnly(deliveryAddress);
         return new BuyerBilling(
-                name,
+                deliveryPartyName(deliveryAddress),
                 true,
                 address.countryCode(),
                 null,
@@ -122,37 +113,14 @@ public interface AllegroBillingMapper {
         return full.isEmpty() ? null : full;
     }
 
-    static String klientAllegroName(String login, String email) {
-        String hint = hasText(login) ? login.trim() : (hasText(email) ? email.trim() : null);
-        if (hint == null) {
-            return KLIENT_ALLEGRO;
-        }
-        return KLIENT_ALLEGRO + " (" + hint + ")";
-    }
-
-    /**
-     * Whole invoice.address XOR whole delivery.address — never merge fields from both.
-     * Used only when invoice.required is true.
-     */
-    default ResolvedAddress resolveInvoiceOrDeliveryAddress(AllegroCheckoutForm form) {
-        AllegroInvoice invoice = form.invoice();
-        AllegroInvoiceAddress invoiceAddress = invoice == null ? null : invoice.address();
+    /** Whole invoice.address only — used when invoice.required is true. */
+    static ResolvedAddress resolveInvoiceAddressOnly(AllegroInvoiceAddress invoiceAddress) {
         if (isUsableInvoiceAddress(invoiceAddress)) {
             String country = hasText(invoiceAddress.countryCode()) ? invoiceAddress.countryCode().trim() : "PL";
             return new ResolvedAddress(
                     blankToNull(invoiceAddress.street()),
                     blankToNull(invoiceAddress.city()),
                     blankToNull(invoiceAddress.zipCode()),
-                    country);
-        }
-        AllegroDelivery delivery = form.delivery();
-        AllegroDeliveryAddress deliveryAddress = delivery == null ? null : delivery.address();
-        if (isUsableDeliveryAddress(deliveryAddress)) {
-            String country = hasText(deliveryAddress.countryCode()) ? deliveryAddress.countryCode().trim() : "PL";
-            return new ResolvedAddress(
-                    blankToNull(deliveryAddress.street()),
-                    blankToNull(deliveryAddress.city()),
-                    blankToNull(deliveryAddress.zipCode()),
                     country);
         }
         return new ResolvedAddress(null, null, null, "PL");
