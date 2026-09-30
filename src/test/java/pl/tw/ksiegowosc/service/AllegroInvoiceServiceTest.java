@@ -358,11 +358,11 @@ class AllegroInvoiceServiceTest {
     }
 
     @Test
-    void shouldCreateCustomerFromBuyerWhenInvoiceNotRequired() {
+    void shouldCreateCustomerFromDeliveryWhenInvoiceNotRequired() {
         when(soldInvoiceRepository.existsById("order-1")).thenReturn(false);
         when(allegroApiClient.getCheckoutForm("https://api.allegro.pl", "token", "ua", "order-1"))
                 .thenReturn(noInvoiceRequiredForm());
-        when(customersService.createCustomer(any())).thenReturn(new MeritCreateCustomerResponse("cust-new", "Jan Kowalski"));
+        when(customersService.createCustomer(any())).thenReturn(new MeritCreateCustomerResponse("cust-new", "Zbigniew Glinicki"));
         when(invoicesService.createInvoice(any())).thenReturn(new CreateInvoiceResponse("merit-inv-1", "cust-new"));
 
         invoiceService.issueInvoice(9L, "order-1");
@@ -372,12 +372,12 @@ class AllegroInvoiceServiceTest {
         verify(customersService).createCustomer(customerCaptor.capture());
         verify(customersService, never()).findCustomerByExactName(any());
         verify(customersService, never()).getCustomersByVatRegNo(any());
-        assertThat(customerCaptor.getValue().name()).isEqualTo("Jan Kowalski");
+        assertThat(customerCaptor.getValue().name()).isEqualTo("Zbigniew Glinicki");
         assertThat(customerCaptor.getValue().notTdCustomer()).isTrue();
         assertThat(customerCaptor.getValue().vatRegNo()).isNull();
-        assertThat(customerCaptor.getValue().address()).isEqualTo("Kupiecka 3");
-        assertThat(customerCaptor.getValue().city()).isEqualTo("Warszawa");
-        assertThat(customerCaptor.getValue().postalCode()).isEqualTo("00-001");
+        assertThat(customerCaptor.getValue().address()).isEqualTo("Dostawcza 5");
+        assertThat(customerCaptor.getValue().city()).isEqualTo("Wrocław");
+        assertThat(customerCaptor.getValue().postalCode()).isEqualTo("50-001");
     }
 
     private static AllegroAccount sampleAccount(Long id) {
@@ -449,7 +449,7 @@ class AllegroInvoiceServiceTest {
                         new AllegroPrice("0.00", "PLN"),
                         new AllegroDeliveryMethod("m1", "Kurier"),
                         new AllegroDeliveryAddress(
-                                "Jan", "Kowalski", "Dostawcza 5", "Wrocław", "50-001", "PL", null)),
+                                "Zbigniew", "Glinicki", "Dostawcza 5", "Wrocław", "50-001", "PL", null)),
                 new AllegroCheckoutSummary(new AllegroPrice("25.00", "PLN")),
                 null,
                 null);

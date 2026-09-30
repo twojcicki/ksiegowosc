@@ -77,7 +77,7 @@ class AllegroBillingMapperTest {
     }
 
     @Test
-    void shouldMapBuyerNameAndAddressWhenInvoiceNotRequired() {
+    void shouldMapDeliveryNameAndAddressWhenInvoiceNotRequired() {
         AllegroCheckoutForm form = new AllegroCheckoutForm(
                 "order-1",
                 new AllegroBuyer(
@@ -99,24 +99,25 @@ class AllegroBillingMapperTest {
                 new AllegroDelivery(
                         null,
                         null,
-                        new AllegroDeliveryAddress(null, null, "Dostawcza 2", "Gdańsk", "80-001", "PL", null)),
+                        new AllegroDeliveryAddress("Zbigniew", "Glinicki", "Dostawcza 2", "Gdańsk", "80-001", "PL", "Firma Dostawy")),
                 null,
                 null,
                 null);
 
         BuyerBilling billing = mapper.toBuyerBilling(form);
 
-        assertThat(billing.name()).isEqualTo("Jan Kowalski");
+        assertThat(billing.name()).isEqualTo("Zbigniew Glinicki");
         assertThat(billing.notTdCustomer()).isTrue();
         assertThat(billing.vatRegNo()).isNull();
-        assertThat(billing.address()).isEqualTo("Kupiecka 3");
-        assertThat(billing.city()).isEqualTo("Warszawa");
-        assertThat(billing.postalCode()).isEqualTo("00-001");
+        assertThat(billing.address()).isEqualTo("Dostawcza 2");
+        assertThat(billing.city()).isEqualTo("Gdańsk");
+        assertThat(billing.postalCode()).isEqualTo("80-001");
         assertThat(billing.countryCode()).isEqualTo("PL");
+        assertThat(billing.email()).isEqualTo("buyer@example.com");
     }
 
     @Test
-    void shouldBuildKlientAllegroFromEmailWhenBuyerNameMissingAndNotRequired() {
+    void shouldBuildKlientAllegroFromEmailWhenDeliveryNameMissingAndNotRequired() {
         AllegroCheckoutForm form = new AllegroCheckoutForm(
                 "order-1",
                 new AllegroBuyer(null, "guest@example.com", null, null, null),

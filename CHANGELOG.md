@@ -16,7 +16,7 @@ Format oparty na [Keep a Changelog](https://keepachangelog.com/pl/1.1.0/).
 
 ### Changed
 
-- Mapowanie klienta Allegro wg `invoice.required`: przy chęci faktury dane z `invoice` + lookup Merit tylko po NIP; bez checka — imię/nazwisko i adres z `buyer`, zawsze nowy klient (bez lookupu po nazwie).
+- Mapowanie klienta Allegro wg `invoice.required`: przy chęci faktury dane z `invoice` + lookup Merit tylko po NIP; bez checka — Name/adres z `delivery.address`, zawsze nowy klient (bez lookupu po nazwie).
 - Dostawa na fakturze Allegro: `InvoiceRow[].Item.Code` zawsze `Dostawa` (nie `delivery.method.id`).
 - HComment faktur Allegro: `{AllegroAccount.name}, {login z GET /me}, ID transakcji: {orderId} / {buyer.login}`.
 - Faktury z Allegro nie wypełniają `FComment` (komentarz dolny opcjonalny także w ręcznym tworzeniu).

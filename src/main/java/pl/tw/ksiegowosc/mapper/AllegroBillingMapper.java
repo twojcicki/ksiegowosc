@@ -5,7 +5,6 @@ import org.mapstruct.MappingConstants;
 
 import pl.tw.ksiegowosc.dto.BuyerBilling;
 import pl.tw.ksiegowosc.dto.allegro.AllegroBuyer;
-import pl.tw.ksiegowosc.dto.allegro.AllegroBuyerAddress;
 import pl.tw.ksiegowosc.dto.allegro.AllegroCheckoutForm;
 import pl.tw.ksiegowosc.dto.allegro.AllegroDelivery;
 import pl.tw.ksiegowosc.dto.allegro.AllegroDeliveryAddress;
@@ -27,7 +26,7 @@ public interface AllegroBillingMapper {
 
         AllegroInvoice invoice = form.invoice();
         if (!Boolean.TRUE.equals(invoice == null ? null : invoice.required())) {
-            return buyerBillingWithoutInvoice(buyer, login, email);
+            return billingFromDelivery(form.delivery(), login, email);
         }
 
         AllegroInvoiceAddress invoiceAddress = invoice.address();
@@ -61,12 +60,13 @@ public interface AllegroBillingMapper {
                 login);
     }
 
-    default BuyerBilling buyerBillingWithoutInvoice(AllegroBuyer buyer, String login, String email) {
-        String name = buyerPersonFullName(buyer);
+    default BuyerBilling billingFromDelivery(AllegroDelivery delivery, String login, String email) {
+        AllegroDeliveryAddress deliveryAddress = delivery == null ? null : delivery.address();
+        String name = deliveryPartyName(deliveryAddress);
         if (!hasText(name)) {
             name = klientAllegroName(login, email);
         }
-        ResolvedAddress address = resolveBuyerAddress(buyer == null ? null : buyer.address());
+        ResolvedAddress address = resolveDeliveryAddressOnly(deliveryAddress);
         return new BuyerBilling(
                 name,
                 true,
@@ -104,12 +104,12 @@ public interface AllegroBillingMapper {
         return null;
     }
 
-    static String buyerPersonFullName(AllegroBuyer buyer) {
-        if (buyer == null) {
+    static String deliveryPartyName(AllegroDeliveryAddress address) {
+        if (address == null) {
             return null;
         }
-        String full = ((buyer.firstName() == null ? "" : buyer.firstName().trim()) + " "
-                + (buyer.lastName() == null ? "" : buyer.lastName().trim())).trim();
+        String full = ((address.firstName() == null ? "" : address.firstName().trim()) + " "
+                + (address.lastName() == null ? "" : address.lastName().trim())).trim();
         return full.isEmpty() ? null : full;
     }
 
@@ -158,20 +158,16 @@ public interface AllegroBillingMapper {
         return new ResolvedAddress(null, null, null, "PL");
     }
 
-    static ResolvedAddress resolveBuyerAddress(AllegroBuyerAddress address) {
-        if (address == null) {
-            return new ResolvedAddress(null, null, null, "PL");
+    static ResolvedAddress resolveDeliveryAddressOnly(AllegroDeliveryAddress deliveryAddress) {
+        if (isUsableDeliveryAddress(deliveryAddress)) {
+            String country = hasText(deliveryAddress.countryCode()) ? deliveryAddress.countryCode().trim() : "PL";
+            return new ResolvedAddress(
+                    blankToNull(deliveryAddress.street()),
+                    blankToNull(deliveryAddress.city()),
+                    blankToNull(deliveryAddress.zipCode()),
+                    country);
         }
-        boolean usable = hasText(address.street()) || hasText(address.city()) || hasText(address.postCode());
-        if (!usable) {
-            return new ResolvedAddress(null, null, null, "PL");
-        }
-        String country = hasText(address.countryCode()) ? address.countryCode().trim() : "PL";
-        return new ResolvedAddress(
-                blankToNull(address.street()),
-                blankToNull(address.city()),
-                blankToNull(address.postCode()),
-                country);
+        return new ResolvedAddress(null, null, null, "PL");
     }
 
     static boolean isUsableInvoiceAddress(AllegroInvoiceAddress address) {
