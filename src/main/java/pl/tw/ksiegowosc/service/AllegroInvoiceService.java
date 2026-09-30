@@ -24,7 +24,6 @@ import pl.tw.ksiegowosc.dto.AllegroInvoicePreviewRow;
 import pl.tw.ksiegowosc.dto.BuyerBilling;
 import pl.tw.ksiegowosc.dto.CreateInvoiceRequest;
 import pl.tw.ksiegowosc.dto.CreateInvoiceResponse;
-import pl.tw.ksiegowosc.dto.CustomerDto;
 import pl.tw.ksiegowosc.dto.IssueAllegroInvoiceResponse;
 import pl.tw.ksiegowosc.dto.MeritCreateCustomerRequest;
 import pl.tw.ksiegowosc.dto.MeritCreateCustomerResponse;
@@ -217,13 +216,6 @@ public class AllegroInvoiceService {
 
     private CustomerResolution resolveCustomer(AllegroCheckoutForm form, boolean createMissing) {
         BuyerBilling billing = billingMapper.toBuyerBilling(form);
-        if (billing.vatRegNo() != null && !billing.vatRegNo().isBlank()) {
-            List<CustomerDto> existing = customersService.getCustomersByVatRegNo(billing.vatRegNo());
-            if (!existing.isEmpty() && existing.getFirst().customerId() != null) {
-                return new CustomerResolution(existing.getFirst().customerId(), true, null);
-            }
-        }
-
         MeritCreateCustomerRequest createRequest = invoiceMapper.toCustomerRequest(billing);
         if (!createMissing) {
             return new CustomerResolution(null, false, createRequest);

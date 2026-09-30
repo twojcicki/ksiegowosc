@@ -33,7 +33,7 @@ public final class AllegroMeritInvoiceMappings {
 
             // HEADER (sendinvoice)
             rule(MeritFieldSection.HEADER, "Customer.Id",
-                    "gdy jest NIP: istniejący klient Merit po VatRegNo; inaczej zawsze sendcustomer (bez lookupu po nazwie)"),
+                    "zawsze sendcustomer z danymi invoice/delivery (bez lookupu istniejącego klienta)"),
             rule(MeritFieldSection.HEADER, "AccountingDoc",
                     "stała 1 (faktura sprzedaży)"),
             rule(MeritFieldSection.HEADER, "DocDate",

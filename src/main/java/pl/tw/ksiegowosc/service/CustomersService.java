@@ -23,14 +23,6 @@ public class CustomersService {
         return meritApiClient.getCustomers(filter);
     }
 
-    public List<CustomerDto> getCustomersByVatRegNo(String vatRegNo) {
-        String filter = (vatRegNo == null || vatRegNo.isBlank()) ? null : vatRegNo.trim();
-        if (filter == null) {
-            return List.of();
-        }
-        return meritApiClient.getCustomers(null, filter);
-    }
-
     public MeritCreateCustomerResponse createCustomer(MeritCreateCustomerRequest request) {
         return meritApiClient.createCustomer(request);
     }

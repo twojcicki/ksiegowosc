@@ -44,15 +44,4 @@ class CustomersServiceTest {
         assertThat(customers).isEmpty();
         verify(meritApiClient).getCustomers(null);
     }
-
-    @Test
-    void shouldPassVatRegNoToClient() {
-        when(meritApiClient.getCustomers(null, "5252674798")).thenReturn(List.of(
-                new CustomerDto("id", "Firma", null, "5252674798", null, null, null, null)));
-
-        List<CustomerDto> customers = customersService.getCustomersByVatRegNo("  5252674798  ");
-
-        assertThat(customers).hasSize(1);
-        verify(meritApiClient).getCustomers(null, "5252674798");
-    }
 }
