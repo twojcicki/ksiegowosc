@@ -5,6 +5,7 @@ import org.mapstruct.MappingConstants;
 
 import pl.tw.ksiegowosc.dto.BuyerBilling;
 import pl.tw.ksiegowosc.dto.allegro.AllegroBuyer;
+import pl.tw.ksiegowosc.dto.allegro.AllegroBuyerAddress;
 import pl.tw.ksiegowosc.dto.allegro.AllegroCheckoutForm;
 import pl.tw.ksiegowosc.dto.allegro.AllegroDelivery;
 import pl.tw.ksiegowosc.dto.allegro.AllegroDeliveryAddress;
@@ -25,7 +26,11 @@ public interface AllegroBillingMapper {
         String email = buyer == null ? null : buyer.email();
 
         AllegroInvoice invoice = form.invoice();
-        AllegroInvoiceAddress invoiceAddress = invoice == null ? null : invoice.address();
+        if (!Boolean.TRUE.equals(invoice == null ? null : invoice.required())) {
+            return buyerBillingWithoutInvoice(buyer, login, email);
+        }
+
+        AllegroInvoiceAddress invoiceAddress = invoice.address();
         AllegroInvoiceCompany company = invoiceAddress == null ? null : invoiceAddress.company();
         AllegroNaturalPerson person = invoiceAddress == null ? null : invoiceAddress.naturalPerson();
 
@@ -43,12 +48,30 @@ public interface AllegroBillingMapper {
             notTdCustomer = true;
         }
 
-        ResolvedAddress address = resolveAddress(form);
+        ResolvedAddress address = resolveInvoiceOrDeliveryAddress(form);
         return new BuyerBilling(
                 name,
                 notTdCustomer,
                 address.countryCode(),
                 vatRegNo,
+                address.street(),
+                address.city(),
+                address.postalCode(),
+                email,
+                login);
+    }
+
+    default BuyerBilling buyerBillingWithoutInvoice(AllegroBuyer buyer, String login, String email) {
+        String name = buyerPersonFullName(buyer);
+        if (!hasText(name)) {
+            name = klientAllegroName(login, email);
+        }
+        ResolvedAddress address = resolveBuyerAddress(buyer == null ? null : buyer.address());
+        return new BuyerBilling(
+                name,
+                true,
+                address.countryCode(),
+                null,
                 address.street(),
                 address.city(),
                 address.postalCode(),
@@ -81,6 +104,15 @@ public interface AllegroBillingMapper {
         return null;
     }
 
+    static String buyerPersonFullName(AllegroBuyer buyer) {
+        if (buyer == null) {
+            return null;
+        }
+        String full = ((buyer.firstName() == null ? "" : buyer.firstName().trim()) + " "
+                + (buyer.lastName() == null ? "" : buyer.lastName().trim())).trim();
+        return full.isEmpty() ? null : full;
+    }
+
     static String personFullName(AllegroNaturalPerson person) {
         if (person == null) {
             return null;
@@ -100,8 +132,9 @@ public interface AllegroBillingMapper {
 
     /**
      * Whole invoice.address XOR whole delivery.address — never merge fields from both.
+     * Used only when invoice.required is true.
      */
-    default ResolvedAddress resolveAddress(AllegroCheckoutForm form) {
+    default ResolvedAddress resolveInvoiceOrDeliveryAddress(AllegroCheckoutForm form) {
         AllegroInvoice invoice = form.invoice();
         AllegroInvoiceAddress invoiceAddress = invoice == null ? null : invoice.address();
         if (isUsableInvoiceAddress(invoiceAddress)) {
@@ -123,6 +156,22 @@ public interface AllegroBillingMapper {
                     country);
         }
         return new ResolvedAddress(null, null, null, "PL");
+    }
+
+    static ResolvedAddress resolveBuyerAddress(AllegroBuyerAddress address) {
+        if (address == null) {
+            return new ResolvedAddress(null, null, null, "PL");
+        }
+        boolean usable = hasText(address.street()) || hasText(address.city()) || hasText(address.postCode());
+        if (!usable) {
+            return new ResolvedAddress(null, null, null, "PL");
+        }
+        String country = hasText(address.countryCode()) ? address.countryCode().trim() : "PL";
+        return new ResolvedAddress(
+                blankToNull(address.street()),
+                blankToNull(address.city()),
+                blankToNull(address.postCode()),
+                country);
     }
 
     static boolean isUsableInvoiceAddress(AllegroInvoiceAddress address) {

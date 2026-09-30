@@ -27,6 +27,7 @@ import pl.tw.ksiegowosc.dto.MeritCreateCustomerRequest;
 import pl.tw.ksiegowosc.dto.MeritCreateCustomerResponse;
 import pl.tw.ksiegowosc.dto.MeritUnitDto;
 import pl.tw.ksiegowosc.dto.allegro.AllegroBuyer;
+import pl.tw.ksiegowosc.dto.allegro.AllegroBuyerAddress;
 import pl.tw.ksiegowosc.dto.allegro.AllegroCheckoutForm;
 import pl.tw.ksiegowosc.dto.allegro.AllegroCheckoutSummary;
 import pl.tw.ksiegowosc.dto.allegro.AllegroDelivery;
@@ -332,18 +333,24 @@ class AllegroInvoiceServiceTest {
     }
 
     @Test
-    void shouldReusePrivateCustomerByExactName() {
+    void shouldCreatePrivateCustomerWithoutNameLookupWhenNoNip() {
         when(soldInvoiceRepository.existsById("order-1")).thenReturn(false);
         when(allegroApiClient.getCheckoutForm("https://api.allegro.pl", "token", "ua", "order-1"))
                 .thenReturn(privatePersonForm());
-        when(customersService.findCustomerByExactName("Anna Nowak")).thenReturn(java.util.Optional.of(
-                new CustomerDto("cust-priv", "Anna Nowak", null, null, null, null, null, "PLN")));
+        when(customersService.createCustomer(any())).thenReturn(new MeritCreateCustomerResponse("cust-priv", "Anna Nowak"));
         when(invoicesService.createInvoice(any())).thenReturn(new CreateInvoiceResponse("merit-inv-1", "cust-priv"));
 
         var response = invoiceService.issueInvoice(9L, "order-1");
 
         assertThat(response.meritInvoiceId()).isEqualTo("merit-inv-1");
-        verify(customersService, never()).createCustomer(any());
+        verify(customersService, never()).findCustomerByExactName(any());
+        verify(customersService, never()).getCustomersByVatRegNo(any());
+        ArgumentCaptor<MeritCreateCustomerRequest> customerCaptor =
+                ArgumentCaptor.forClass(MeritCreateCustomerRequest.class);
+        verify(customersService).createCustomer(customerCaptor.capture());
+        assertThat(customerCaptor.getValue().name()).isEqualTo("Anna Nowak");
+        assertThat(customerCaptor.getValue().notTdCustomer()).isTrue();
+        assertThat(customerCaptor.getValue().vatRegNo()).isNull();
         ArgumentCaptor<CreateInvoiceRequest> requestCaptor = ArgumentCaptor.forClass(CreateInvoiceRequest.class);
         verify(invoicesService).createInvoice(requestCaptor.capture());
         assertThat(requestCaptor.getValue().customerId()).isEqualTo("cust-priv");
@@ -351,13 +358,11 @@ class AllegroInvoiceServiceTest {
     }
 
     @Test
-    void shouldCreateKlientAllegroWhenNoNaturalPerson() {
+    void shouldCreateCustomerFromBuyerWhenInvoiceNotRequired() {
         when(soldInvoiceRepository.existsById("order-1")).thenReturn(false);
         when(allegroApiClient.getCheckoutForm("https://api.allegro.pl", "token", "ua", "order-1"))
-                .thenReturn(noInvoiceAddressForm());
-        when(customersService.findCustomerByExactName("Klient Allegro (buyer1)"))
-                .thenReturn(java.util.Optional.empty());
-        when(customersService.createCustomer(any())).thenReturn(new MeritCreateCustomerResponse("cust-new", "Klient Allegro (buyer1)"));
+                .thenReturn(noInvoiceRequiredForm());
+        when(customersService.createCustomer(any())).thenReturn(new MeritCreateCustomerResponse("cust-new", "Jan Kowalski"));
         when(invoicesService.createInvoice(any())).thenReturn(new CreateInvoiceResponse("merit-inv-1", "cust-new"));
 
         invoiceService.issueInvoice(9L, "order-1");
@@ -365,11 +370,14 @@ class AllegroInvoiceServiceTest {
         ArgumentCaptor<MeritCreateCustomerRequest> customerCaptor =
                 ArgumentCaptor.forClass(MeritCreateCustomerRequest.class);
         verify(customersService).createCustomer(customerCaptor.capture());
-        assertThat(customerCaptor.getValue().name()).isEqualTo("Klient Allegro (buyer1)");
+        verify(customersService, never()).findCustomerByExactName(any());
+        verify(customersService, never()).getCustomersByVatRegNo(any());
+        assertThat(customerCaptor.getValue().name()).isEqualTo("Jan Kowalski");
         assertThat(customerCaptor.getValue().notTdCustomer()).isTrue();
         assertThat(customerCaptor.getValue().vatRegNo()).isNull();
-        assertThat(customerCaptor.getValue().address()).isEqualTo("Dostawcza 5");
-        assertThat(customerCaptor.getValue().city()).isEqualTo("Wrocław");
+        assertThat(customerCaptor.getValue().address()).isEqualTo("Kupiecka 3");
+        assertThat(customerCaptor.getValue().city()).isEqualTo("Warszawa");
+        assertThat(customerCaptor.getValue().postalCode()).isEqualTo("00-001");
     }
 
     private static AllegroAccount sampleAccount(Long id) {
@@ -389,7 +397,7 @@ class AllegroInvoiceServiceTest {
     private static AllegroCheckoutForm privatePersonForm() {
         return new AllegroCheckoutForm(
                 "order-1",
-                new AllegroBuyer("buyer1", "buyer@example.com"),
+                new AllegroBuyer("buyer1", "buyer@example.com", null, null, null),
                 "READY_FOR_PROCESSING",
                 new AllegroFulfillment("SENT"),
                 new AllegroInvoice(
@@ -416,10 +424,15 @@ class AllegroInvoiceServiceTest {
                 null);
     }
 
-    private static AllegroCheckoutForm noInvoiceAddressForm() {
+    private static AllegroCheckoutForm noInvoiceRequiredForm() {
         return new AllegroCheckoutForm(
                 "order-1",
-                new AllegroBuyer("buyer1", "buyer@example.com"),
+                new AllegroBuyer(
+                        "buyer1",
+                        "buyer@example.com",
+                        "Jan",
+                        "Kowalski",
+                        new AllegroBuyerAddress("Kupiecka 3", "Warszawa", "00-001", "PL")),
                 "READY_FOR_PROCESSING",
                 new AllegroFulfillment("SENT"),
                 new AllegroInvoice(false, null),
@@ -464,7 +477,7 @@ class AllegroInvoiceServiceTest {
             AllegroPayment payment) {
         return new AllegroCheckoutForm(
                 "order-1",
-                new AllegroBuyer("buyer1", "buyer@example.com"),
+                new AllegroBuyer("buyer1", "buyer@example.com", null, null, null),
                 "READY_FOR_PROCESSING",
                 new AllegroFulfillment("SENT"),
                 new AllegroInvoice(

@@ -8,6 +8,7 @@ import org.junit.jupiter.api.Test;
 
 import pl.tw.ksiegowosc.dto.BuyerBilling;
 import pl.tw.ksiegowosc.dto.allegro.AllegroBuyer;
+import pl.tw.ksiegowosc.dto.allegro.AllegroBuyerAddress;
 import pl.tw.ksiegowosc.dto.allegro.AllegroCheckoutForm;
 import pl.tw.ksiegowosc.dto.allegro.AllegroDelivery;
 import pl.tw.ksiegowosc.dto.allegro.AllegroDeliveryAddress;
@@ -24,8 +25,8 @@ class AllegroBillingMapperTest {
     private final AllegroBillingMapper mapper = MapperFixtures.billingMapper();
 
     @Test
-    void shouldMapNaturalPersonNameAndInvoiceAddress() {
-        BuyerBilling billing = mapper.toBuyerBilling(form(
+    void shouldMapNaturalPersonNameAndInvoiceAddressWhenRequired() {
+        BuyerBilling billing = mapper.toBuyerBilling(invoiceRequiredForm(
                 new AllegroInvoiceAddress(
                         "Ul. Faktury 1",
                         "Kraków",
@@ -44,13 +45,13 @@ class AllegroBillingMapperTest {
     }
 
     @Test
-    void shouldUseDeliveryAddressWhenInvoiceAddressMissing() {
+    void shouldUseDeliveryAddressWhenInvoiceAddressMissingAndRequired() {
         AllegroDelivery delivery = new AllegroDelivery(
                 new AllegroPrice("10.00", "PLN"),
                 new AllegroDeliveryMethod("m1", "Kurier"),
                 new AllegroDeliveryAddress("Jan", "Kowalski", "Dostawcza 2", "Gdańsk", "80-001", "PL", null));
 
-        BuyerBilling billing = mapper.toBuyerBilling(form(null, delivery));
+        BuyerBilling billing = mapper.toBuyerBilling(invoiceRequiredForm(null, delivery));
 
         assertThat(billing.name()).isEqualTo("Klient Allegro (buyer1)");
         assertThat(billing.address()).isEqualTo("Dostawcza 2");
@@ -60,13 +61,13 @@ class AllegroBillingMapperTest {
     }
 
     @Test
-    void shouldNotMergeDeliveryIntoPartialInvoiceAddress() {
+    void shouldNotMergeDeliveryIntoPartialInvoiceAddressWhenRequired() {
         AllegroDelivery delivery = new AllegroDelivery(
                 null,
                 null,
                 new AllegroDeliveryAddress(null, null, "Dostawcza 2", "Gdańsk", "80-001", "PL", null));
 
-        BuyerBilling billing = mapper.toBuyerBilling(form(
+        BuyerBilling billing = mapper.toBuyerBilling(invoiceRequiredForm(
                 new AllegroInvoiceAddress("Tylko ulica", null, null, "PL", null, new AllegroNaturalPerson("Ewa", "Lis")),
                 delivery));
 
@@ -76,10 +77,49 @@ class AllegroBillingMapperTest {
     }
 
     @Test
-    void shouldBuildKlientAllegroFromEmailWhenLoginMissing() {
+    void shouldMapBuyerNameAndAddressWhenInvoiceNotRequired() {
         AllegroCheckoutForm form = new AllegroCheckoutForm(
                 "order-1",
-                new AllegroBuyer(null, "guest@example.com"),
+                new AllegroBuyer(
+                        "buyer1",
+                        "buyer@example.com",
+                        "Jan",
+                        "Kowalski",
+                        new AllegroBuyerAddress("Kupiecka 3", "Warszawa", "00-001", "PL")),
+                "READY_FOR_PROCESSING",
+                null,
+                new AllegroInvoice(false, new AllegroInvoiceAddress(
+                        "Fakturowa 1",
+                        "Kraków",
+                        "30-001",
+                        "PL",
+                        new AllegroInvoiceCompany("Firma", "5252674798", null),
+                        null)),
+                List.of(),
+                new AllegroDelivery(
+                        null,
+                        null,
+                        new AllegroDeliveryAddress(null, null, "Dostawcza 2", "Gdańsk", "80-001", "PL", null)),
+                null,
+                null,
+                null);
+
+        BuyerBilling billing = mapper.toBuyerBilling(form);
+
+        assertThat(billing.name()).isEqualTo("Jan Kowalski");
+        assertThat(billing.notTdCustomer()).isTrue();
+        assertThat(billing.vatRegNo()).isNull();
+        assertThat(billing.address()).isEqualTo("Kupiecka 3");
+        assertThat(billing.city()).isEqualTo("Warszawa");
+        assertThat(billing.postalCode()).isEqualTo("00-001");
+        assertThat(billing.countryCode()).isEqualTo("PL");
+    }
+
+    @Test
+    void shouldBuildKlientAllegroFromEmailWhenBuyerNameMissingAndNotRequired() {
+        AllegroCheckoutForm form = new AllegroCheckoutForm(
+                "order-1",
+                new AllegroBuyer(null, "guest@example.com", null, null, null),
                 "READY_FOR_PROCESSING",
                 null,
                 null,
@@ -93,8 +133,8 @@ class AllegroBillingMapperTest {
     }
 
     @Test
-    void shouldKeepCompanyWithNipAsTdCustomer() {
-        BuyerBilling billing = mapper.toBuyerBilling(form(
+    void shouldKeepCompanyWithNipAsTdCustomerWhenRequired() {
+        BuyerBilling billing = mapper.toBuyerBilling(invoiceRequiredForm(
                 new AllegroInvoiceAddress(
                         "Grunwaldzka 1",
                         "Poznań",
@@ -112,13 +152,14 @@ class AllegroBillingMapperTest {
         assertThat(billing.vatRegNo()).isEqualTo("5252674798");
     }
 
-    private static AllegroCheckoutForm form(AllegroInvoiceAddress invoiceAddress, AllegroDelivery delivery) {
+    private static AllegroCheckoutForm invoiceRequiredForm(
+            AllegroInvoiceAddress invoiceAddress, AllegroDelivery delivery) {
         return new AllegroCheckoutForm(
                 "order-1",
-                new AllegroBuyer("buyer1", "buyer@example.com"),
+                new AllegroBuyer("buyer1", "buyer@example.com", null, null, null),
                 "READY_FOR_PROCESSING",
                 null,
-                invoiceAddress == null ? null : new AllegroInvoice(false, invoiceAddress),
+                new AllegroInvoice(true, invoiceAddress),
                 List.of(),
                 delivery,
                 null,

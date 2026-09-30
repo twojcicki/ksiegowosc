@@ -75,7 +75,7 @@ class AllegroOrdersServiceTest {
                 .thenReturn(new AllegroCheckoutFormsResponse(
                         List.of(new AllegroCheckoutForm(
                                 "order-1",
-                                new AllegroBuyer("buyer1", null),
+                                new AllegroBuyer("buyer1", null, null, null, null),
                                 "READY_FOR_PROCESSING",
                                 new AllegroFulfillment("SENT"),
                                 null,
@@ -143,7 +143,7 @@ class AllegroOrdersServiceTest {
                 .thenReturn(new AllegroCheckoutFormsResponse(
                         List.of(new AllegroCheckoutForm(
                                 "order-1",
-                                new AllegroBuyer("buyer1", null),
+                                new AllegroBuyer("buyer1", null, null, null, null),
                                 "READY_FOR_PROCESSING",
                                 new AllegroFulfillment("SENT"),
                                 null,
@@ -200,7 +200,7 @@ class AllegroOrdersServiceTest {
                 .thenReturn(new AllegroCheckoutFormsResponse(
                         List.of(new AllegroCheckoutForm(
                                 "order-2",
-                                new AllegroBuyer("buyer2", null),
+                                new AllegroBuyer("buyer2", null, null, null, null),
                                 "READY_FOR_PROCESSING",
                                 new AllegroFulfillment("SENT"),
                                 null,

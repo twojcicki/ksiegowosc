@@ -5,5 +5,8 @@ import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 @JsonIgnoreProperties(ignoreUnknown = true)
 public record AllegroBuyer(
         String login,
-        String email) {
+        String email,
+        String firstName,
+        String lastName,
+        AllegroBuyerAddress address) {
 }
