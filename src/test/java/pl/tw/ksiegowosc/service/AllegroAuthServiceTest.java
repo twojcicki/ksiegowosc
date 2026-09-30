@@ -135,7 +135,7 @@ class AllegroAuthServiceTest {
         authService.exchangeAuthorizationCode("auth-code", AllegroAuthService.encodeState(USER_ID, ACCOUNT_ID));
 
         assertThat(authService.isConnected()).isTrue();
-        assertThat(authService.getValidAccessToken(ACCOUNT_ID)).isEqualTo("access-1");
+        assertThat(authService.getValidAccessTokenForAccount(account)).isEqualTo("access-1");
         assertThat(storedToken.get().getAccountId()).isEqualTo(ACCOUNT_ID);
         server.verify();
     }
@@ -164,7 +164,7 @@ class AllegroAuthServiceTest {
                         }
                         """, MediaType.APPLICATION_JSON));
 
-        assertThat(authService.getValidAccessToken(ACCOUNT_ID)).isEqualTo("new-access");
+        assertThat(authService.getValidAccessTokenForAccount(account)).isEqualTo("new-access");
         assertThat(storedToken.get().getRefreshToken()).isEqualTo("refresh-2");
         server.verify();
     }

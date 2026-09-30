@@ -66,11 +66,6 @@ public class AllegroAuthService {
         return !accountService.listConnectedAccounts().isEmpty();
     }
 
-    public boolean isConnected(Long accountId) {
-        accountService.requireOwnedAccount(accountId);
-        return tokenRepository.existsById(accountId);
-    }
-
     public String buildAuthorizationUrl(Long accountId) {
         AllegroAccount account = accountService.requireOwnedAccount(accountId);
         Long userId = credentialsService.requireCurrentUserId();
@@ -198,12 +193,6 @@ public class AllegroAuthService {
                     truncateForLog(ex.getResponseBodyAsString()));
             throw ex;
         }
-    }
-
-    @Transactional
-    public String getValidAccessToken(Long accountId) {
-        AllegroAccount account = accountService.requireOwnedAccount(accountId);
-        return getValidAccessTokenForAccount(account);
     }
 
     @Transactional

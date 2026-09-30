@@ -343,7 +343,6 @@ class AllegroInvoiceServiceTest {
         var response = invoiceService.issueInvoice(9L, "order-1");
 
         assertThat(response.meritInvoiceId()).isEqualTo("merit-inv-1");
-        verify(customersService, never()).findCustomerByExactName(any());
         verify(customersService, never()).getCustomersByVatRegNo(any());
         ArgumentCaptor<MeritCreateCustomerRequest> customerCaptor =
                 ArgumentCaptor.forClass(MeritCreateCustomerRequest.class);
@@ -370,7 +369,6 @@ class AllegroInvoiceServiceTest {
         ArgumentCaptor<MeritCreateCustomerRequest> customerCaptor =
                 ArgumentCaptor.forClass(MeritCreateCustomerRequest.class);
         verify(customersService).createCustomer(customerCaptor.capture());
-        verify(customersService, never()).findCustomerByExactName(any());
         verify(customersService, never()).getCustomersByVatRegNo(any());
         assertThat(customerCaptor.getValue().name()).isEqualTo("Zbigniew Glinicki");
         assertThat(customerCaptor.getValue().notTdCustomer()).isTrue();

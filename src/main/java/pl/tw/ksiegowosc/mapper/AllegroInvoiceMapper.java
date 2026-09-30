@@ -1,8 +1,6 @@
 package pl.tw.ksiegowosc.mapper;
 
-import java.math.BigDecimal;
 import java.time.Instant;
-import java.time.LocalDate;
 import java.util.List;
 
 import org.mapstruct.Mapper;
@@ -44,14 +42,6 @@ public abstract class AllegroInvoiceMapper {
             AllegroCheckoutForm form,
             AllegroInvoiceMappingContext context) {
         return invoiceBuilder.toCreateInvoiceRequest(form, context);
-    }
-
-    public String buildInvoiceNo(String prefix, int sequenceNumber, LocalDate docDate) {
-        return AllegroInvoiceMappingSupport.buildInvoiceNo(prefix, sequenceNumber, docDate);
-    }
-
-    public BigDecimal toNet(BigDecimal gross, BigDecimal vatRate) {
-        return AllegroInvoiceMappingSupport.toNet(gross, vatRate);
     }
 
     public Instant earliestBoughtAt(List<AllegroLineItem> lineItems) {

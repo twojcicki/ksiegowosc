@@ -3,7 +3,6 @@ package pl.tw.ksiegowosc.service;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.when;
 
 import java.math.BigDecimal;
 import java.util.List;
@@ -52,10 +51,10 @@ class TaxesServiceTest {
 
     @Test
     void shouldResolveFallbackTwentyThree() {
-        when(meritApiClient.getTaxes()).thenReturn(List.of(
-                new MeritTaxDto("tax-23", "23", "VAT 23%", new BigDecimal("23"))));
+        List<MeritTaxDto> taxes = List.of(
+                new MeritTaxDto("tax-23", "23", "VAT 23%", new BigDecimal("23")));
 
-        MeritTaxDto tax = taxesService.requireFallbackTax();
+        MeritTaxDto tax = taxesService.requireFallbackTax(taxes);
 
         assertThat(tax.id()).isEqualTo("tax-23");
         assertThat(tax.taxPct()).isEqualByComparingTo(TaxesService.FALLBACK_VAT_PERCENT);

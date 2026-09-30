@@ -28,10 +28,6 @@ public class TaxesService {
         return meritApiClient.getTaxes();
     }
 
-    public MeritTaxDto resolveByPercent(BigDecimal percent) {
-        return resolveByPercent(percent, listTaxes());
-    }
-
     public MeritTaxDto resolveByPercent(BigDecimal percent, List<MeritTaxDto> taxes) {
         if (percent == null) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Brak stawki VAT.");
@@ -53,10 +49,6 @@ public class TaxesService {
                     "Brak stawki VAT " + codeHint + "% w Merit (Ustawienia → VAT).");
         }
         return matches.getFirst();
-    }
-
-    public MeritTaxDto requireFallbackTax() {
-        return resolveByPercent(FALLBACK_VAT_PERCENT);
     }
 
     public MeritTaxDto requireFallbackTax(List<MeritTaxDto> taxes) {
