@@ -6,11 +6,16 @@ import java.time.LocalDate;
 import java.time.ZoneId;
 import java.util.List;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.client.RestClientResponseException;
 import org.springframework.web.server.ResponseStatusException;
+
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 
 import pl.tw.ksiegowosc.client.AllegroApiClient;
 import pl.tw.ksiegowosc.client.AllegroErrorMessages;
@@ -39,6 +44,8 @@ import pl.tw.ksiegowosc.repository.AllegroSoldInvoiceRepository;
 @Service
 public class AllegroInvoiceService {
 
+    private static final Logger log = LoggerFactory.getLogger(AllegroInvoiceService.class);
+    private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
     private static final ZoneId ZONE = ZoneId.of("Europe/Warsaw");
 
     private final AllegroApiClient allegroApiClient;
@@ -129,6 +136,13 @@ public class AllegroInvoiceService {
         String sellerLogin = fetchSellerLogin(account.getApiBaseUrl(), accessToken, account.getUserAgent());
         AllegroCheckoutForm form = fetchCheckoutForm(
                 account.getApiBaseUrl(), accessToken, account.getUserAgent(), trimmedOrderId);
+        if (!createMissingCustomer) {
+            log.info(
+                    "Allegro invoice preview orderId={} buyer={} invoice={}",
+                    trimmedOrderId,
+                    toJson(form.buyer()),
+                    toJson(form.invoice()));
+        }
         if (form.lineItems() == null || form.lineItems().isEmpty()) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Zamówienie nie ma pozycji do zafakturowania.");
         }
@@ -227,6 +241,17 @@ public class AllegroInvoiceService {
                     ? ex.getStatusCode()
                     : HttpStatus.BAD_GATEWAY;
             throw new ResponseStatusException(status, "Nie udało się utworzyć klienta w Merit.", ex);
+        }
+    }
+
+    private static String toJson(Object value) {
+        if (value == null) {
+            return "null";
+        }
+        try {
+            return OBJECT_MAPPER.writeValueAsString(value);
+        } catch (JsonProcessingException ex) {
+            return String.valueOf(value);
         }
     }
 
