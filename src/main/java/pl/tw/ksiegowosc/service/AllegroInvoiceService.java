@@ -138,10 +138,11 @@ public class AllegroInvoiceService {
                 account.getApiBaseUrl(), accessToken, account.getUserAgent(), trimmedOrderId);
         if (!createMissingCustomer) {
             log.info(
-                    "Allegro invoice preview orderId={} buyer={} invoice={}",
+                    "Allegro invoice preview orderId={} buyer={} invoice={} delivery={}",
                     trimmedOrderId,
                     toJson(form.buyer()),
-                    toJson(form.invoice()));
+                    toJson(form.invoice()),
+                    toJson(form.delivery()));
         }
         if (form.lineItems() == null || form.lineItems().isEmpty()) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Zamówienie nie ma pozycji do zafakturowania.");
