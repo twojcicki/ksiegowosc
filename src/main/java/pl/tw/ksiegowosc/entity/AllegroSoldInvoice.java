@@ -15,7 +15,7 @@ public class AllegroSoldInvoice {
     @Column(name = "order_id", length = 64, nullable = false)
     private String orderId;
 
-    @Column(name = "invoice_no", length = 35, nullable = false, unique = true)
+    @Column(name = "invoice_no", length = 35, unique = true)
     private String invoiceNo;
 
     @Column(name = "merit_invoice_id", length = 64)
@@ -23,6 +23,12 @@ public class AllegroSoldInvoice {
 
     @Column(name = "created_at", nullable = false)
     private Instant createdAt;
+
+    @Column(name = "issue_error")
+    private String issueError;
+
+    @Column(name = "issue_error_at")
+    private Instant issueErrorAt;
 
     public String getOrderId() {
         return orderId;
@@ -54,5 +60,25 @@ public class AllegroSoldInvoice {
 
     public void setCreatedAt(Instant createdAt) {
         this.createdAt = createdAt;
+    }
+
+    public String getIssueError() {
+        return issueError;
+    }
+
+    public void setIssueError(String issueError) {
+        this.issueError = issueError;
+    }
+
+    public Instant getIssueErrorAt() {
+        return issueErrorAt;
+    }
+
+    public void setIssueErrorAt(Instant issueErrorAt) {
+        this.issueErrorAt = issueErrorAt;
+    }
+
+    public boolean hasIssuedInvoice() {
+        return invoiceNo != null && !invoiceNo.isBlank();
     }
 }

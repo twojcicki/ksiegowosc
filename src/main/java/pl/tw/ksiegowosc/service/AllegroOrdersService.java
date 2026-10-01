@@ -101,18 +101,29 @@ public class AllegroOrdersService {
             }
         }
 
-        Map<String, String> invoiceNos = loadInvoiceNos(orders.stream()
+        Map<String, AllegroSoldInvoice> soldInvoices = loadSoldInvoices(orders.stream()
                 .map(AllegroSoldItemDto::orderId)
                 .filter(Objects::nonNull)
                 .toList());
 
         List<AllegroSoldItemDto> resultOrders = orders;
-        if (!invoiceNos.isEmpty()) {
-            List<AllegroSoldItemDto> withInvoices = new ArrayList<>(orders.size());
+        if (!soldInvoices.isEmpty()) {
+            List<AllegroSoldItemDto> enriched = new ArrayList<>(orders.size());
             for (AllegroSoldItemDto order : orders) {
-                withInvoices.add(soldItemMapper.withInvoiceNo(order, invoiceNos.get(order.orderId())));
+                AllegroSoldInvoice saved = soldInvoices.get(order.orderId());
+                if (saved == null) {
+                    enriched.add(order);
+                    continue;
+                }
+                AllegroSoldItemDto withInvoice = saved.hasIssuedInvoice()
+                        ? soldItemMapper.withInvoiceNo(order, saved.getInvoiceNo())
+                        : order;
+                if (saved.getIssueError() != null && !saved.getIssueError().isBlank()) {
+                    withInvoice = soldItemMapper.withIssueError(withInvoice, saved.getIssueError());
+                }
+                enriched.add(withInvoice);
             }
-            resultOrders = withInvoices;
+            resultOrders = enriched;
         }
         return new AllegroSoldItemsResult(resultOrders, warnings);
     }
@@ -134,12 +145,12 @@ public class AllegroOrdersService {
         return false;
     }
 
-    private Map<String, String> loadInvoiceNos(List<String> orderIds) {
+    private Map<String, AllegroSoldInvoice> loadSoldInvoices(List<String> orderIds) {
         if (orderIds.isEmpty()) {
             return Map.of();
         }
         return soldInvoiceRepository.findByOrderIdIn(orderIds).stream()
-                .collect(Collectors.toMap(AllegroSoldInvoice::getOrderId, AllegroSoldInvoice::getInvoiceNo));
+                .collect(Collectors.toMap(AllegroSoldInvoice::getOrderId, invoice -> invoice, (a, b) -> a));
     }
 
     private static void validateDateRange(LocalDate from, LocalDate to) {

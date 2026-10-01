@@ -329,6 +329,17 @@ public class AllegroView extends View {
     }
 
     private void openSoldDetailsDialog(AllegroSoldItemDto item) {
+        VerticalLayout content = new VerticalLayout();
+        content.setPadding(false);
+        content.setSpacing(true);
+
+        if (item.issueError() != null && !item.issueError().isBlank()) {
+            Paragraph error = new Paragraph(item.issueError());
+            error.getStyle().set("color", "var(--lumo-error-text-color)");
+            error.getStyle().set("white-space", "pre-wrap");
+            content.add(error);
+        }
+
         Grid<AllegroSoldLineDto> linesGrid = new Grid<>(AllegroSoldLineDto.class, false);
         linesGrid.addThemeVariants(GridVariant.NO_BORDER);
         linesGrid.addColumn(AllegroSoldLineDto::name).setHeader("Pozycja").setFlexGrow(1);
@@ -340,8 +351,10 @@ public class AllegroView extends View {
         List<AllegroSoldLineDto> lines = item.lines() == null ? List.of() : item.lines();
         linesGrid.setItems(lines);
         linesGrid.setAllRowsVisible(true);
+        content.add(linesGrid);
+        content.setFlexGrow(1, linesGrid);
 
-        Dialog dialog = new Dialog(linesGrid);
+        Dialog dialog = new Dialog(content);
         dialog.setHeaderTitle("Pozycje zamówienia " + item.orderId());
         dialog.setWidth("640px");
         Button close = new Button("Zamknij", e -> dialog.close());

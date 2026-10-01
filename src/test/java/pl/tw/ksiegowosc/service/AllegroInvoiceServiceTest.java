@@ -17,6 +17,10 @@ import java.util.List;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
+import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.TransactionDefinition;
+import org.springframework.transaction.TransactionStatus;
+import org.springframework.transaction.support.SimpleTransactionStatus;
 import org.springframework.web.server.ResponseStatusException;
 
 import pl.tw.ksiegowosc.client.AllegroApiClient;
@@ -82,6 +86,20 @@ class AllegroInvoiceServiceTest {
         when(authService.getValidAccessTokenForAccount(account)).thenReturn("token");
         when(allegroApiClient.getMe("https://api.allegro.pl", "token", "ua"))
                 .thenReturn(new AllegroMe("123", "elfabric_pl"));
+        PlatformTransactionManager transactionManager = new PlatformTransactionManager() {
+            @Override
+            public TransactionStatus getTransaction(TransactionDefinition definition) {
+                return new SimpleTransactionStatus();
+            }
+
+            @Override
+            public void commit(TransactionStatus status) {
+            }
+
+            @Override
+            public void rollback(TransactionStatus status) {
+            }
+        };
         invoiceService = new AllegroInvoiceService(
                 allegroApiClient,
                 authService,
@@ -95,12 +113,13 @@ class AllegroInvoiceServiceTest {
                 MapperFixtures.invoiceMapper(),
                 MapperFixtures.meritInvoiceMapper(),
                 MapperFixtures.soldInvoiceMapper(),
-                clock);
+                clock,
+                transactionManager);
     }
 
     @Test
     void shouldIssueInvoiceForAllLineItemsCreatingCustomer() {
-        when(soldInvoiceRepository.existsById("order-1")).thenReturn(false);
+        when(soldInvoiceRepository.findById("order-1")).thenReturn(java.util.Optional.empty());
         when(allegroApiClient.getCheckoutForm("https://api.allegro.pl", "token", "ua", "order-1")).thenReturn(sampleForm(null, null));
         when(customersService.createCustomer(any())).thenReturn(new MeritCreateCustomerResponse("cust-1", "Allegro Sp. z o.o."));
         when(invoicesService.createInvoice(any())).thenReturn(new CreateInvoiceResponse("merit-inv-1", "cust-1"));
@@ -115,7 +134,7 @@ class AllegroInvoiceServiceTest {
         CreateInvoiceRequest request = requestCaptor.getValue();
         assertThat(request.customerId()).isEqualTo("cust-1");
         assertThat(request.lines()).hasSize(2);
-        assertThat(request.lines().getFirst().price()).isEqualByComparingTo(new BigDecimal("20.33"));
+        assertThat(request.lines().getFirst().price()).isEqualByComparingTo(new BigDecimal("20.3252033"));
         assertThat(request.lines().getFirst().itemCode()).isEqualTo("SKU-BOOK");
         assertThat(request.lines().getFirst().description()).isEqualTo("Książka");
         assertThat(request.lines().getFirst().itemType()).isEqualTo(1);
@@ -125,7 +144,7 @@ class AllegroInvoiceServiceTest {
         assertThat(request.footerComment()).isNull();
         assertThat(request.taxAmounts()).hasSize(1);
         assertThat(request.taxAmounts().getFirst().taxId()).isEqualTo("tax-23");
-        assertThat(request.totalAmount()).isEqualByComparingTo(new BigDecimal("48.79"));
+        assertThat(request.totalAmount()).isEqualByComparingTo(new BigDecimal("48.78"));
         assertThat(request.payment()).isNull();
 
         ArgumentCaptor<AllegroSoldInvoice> entityCaptor = ArgumentCaptor.forClass(AllegroSoldInvoice.class);
@@ -139,7 +158,7 @@ class AllegroInvoiceServiceTest {
 
     @Test
     void shouldUseAllegroTaxRateAndGroupTaxAmounts() {
-        when(soldInvoiceRepository.existsById("order-1")).thenReturn(false);
+        when(soldInvoiceRepository.findById("order-1")).thenReturn(java.util.Optional.empty());
         when(allegroApiClient.getCheckoutForm("https://api.allegro.pl", "token", "ua", "order-1")).thenReturn(sampleForm(
                 new AllegroLineItemTax("23.00", "GOODS", null),
                 new AllegroLineItemTax("8.00", "GOODS", null)));
@@ -161,7 +180,7 @@ class AllegroInvoiceServiceTest {
 
     @Test
     void shouldAlwaysCreateCustomerFromInvoiceData() {
-        when(soldInvoiceRepository.existsById("order-1")).thenReturn(false);
+        when(soldInvoiceRepository.findById("order-1")).thenReturn(java.util.Optional.empty());
         when(allegroApiClient.getCheckoutForm("https://api.allegro.pl", "token", "ua", "order-1")).thenReturn(sampleForm(null, null));
         when(customersService.createCustomer(any())).thenReturn(new MeritCreateCustomerResponse("new-cust", "Allegro"));
         when(invoicesService.createInvoice(any())).thenReturn(new CreateInvoiceResponse("merit-inv-1", "new-cust"));
@@ -178,7 +197,10 @@ class AllegroInvoiceServiceTest {
 
     @Test
     void shouldRejectAlreadyInvoicedOrder() {
-        when(soldInvoiceRepository.existsById("order-1")).thenReturn(true);
+        AllegroSoldInvoice existing = new AllegroSoldInvoice();
+        existing.setOrderId("order-1");
+        existing.setInvoiceNo("FS/1/01/2026");
+        when(soldInvoiceRepository.findById("order-1")).thenReturn(java.util.Optional.of(existing));
 
         assertThatThrownBy(() -> invoiceService.issueInvoice(9L, "order-1"))
                 .isInstanceOf(ResponseStatusException.class)
@@ -238,7 +260,7 @@ class AllegroInvoiceServiceTest {
 
     @Test
     void shouldAddDeliveryLineAndMatchTotalToPay() {
-        when(soldInvoiceRepository.existsById("order-1")).thenReturn(false);
+        when(soldInvoiceRepository.findById("order-1")).thenReturn(java.util.Optional.empty());
         AllegroDelivery delivery = new AllegroDelivery(
                 new AllegroPrice("10.00", "PLN"),
                 new AllegroDeliveryMethod("ship-method-1", "Paczkomat"),
@@ -258,7 +280,7 @@ class AllegroInvoiceServiceTest {
         assertThat(request.lines().get(2).itemCode()).isEqualTo("Dostawa");
         assertThat(request.lines().get(2).description()).isEqualTo("Paczkomat");
         assertThat(request.lines().get(2).itemType()).isEqualTo(2);
-        assertThat(request.lines().get(2).price()).isEqualByComparingTo(new BigDecimal("8.13"));
+        assertThat(request.lines().get(2).price()).isEqualByComparingTo(new BigDecimal("8.1300813"));
         assertThat(request.lines().get(2).taxId()).isEqualTo("tax-23");
         BigDecimal invoiceGross = request.totalAmount()
                 .add(request.taxAmounts().stream()
@@ -269,7 +291,7 @@ class AllegroInvoiceServiceTest {
 
     @Test
     void shouldIncludeMeritPaymentWhenOrderPaid() {
-        when(soldInvoiceRepository.existsById("order-1")).thenReturn(false);
+        when(soldInvoiceRepository.findById("order-1")).thenReturn(java.util.Optional.empty());
         AllegroPayment payment = new AllegroPayment(
                 "pay-1",
                 "ONLINE",
@@ -295,22 +317,57 @@ class AllegroInvoiceServiceTest {
 
     @Test
     void shouldRejectWhenInvoiceGrossDoesNotMatchTotalToPay() {
-        when(soldInvoiceRepository.existsById("order-1")).thenReturn(false);
+        when(soldInvoiceRepository.findById("order-1")).thenReturn(java.util.Optional.empty());
         AllegroCheckoutSummary summary = new AllegroCheckoutSummary(new AllegroPrice("99.00", "PLN"));
         when(allegroApiClient.getCheckoutForm("https://api.allegro.pl", "token", "ua", "order-1"))
                 .thenReturn(sampleForm(null, null, null, summary, null));
-        when(customersService.createCustomer(any())).thenReturn(new MeritCreateCustomerResponse("cust-1", "Allegro Sp. z o.o."));
 
         assertThatThrownBy(() -> invoiceService.issueInvoice(9L, "order-1"))
                 .isInstanceOf(ResponseStatusException.class)
-                .hasMessageContaining("summary.totalToPay");
+                .hasMessageContaining("kwoty Allegro")
+                .hasMessageContaining("99.00")
+                .hasMessageContaining("60.00");
 
+        verify(accountService, never()).allocateInvoiceNo(any(), any());
         verify(invoicesService, never()).createInvoice(any());
+        verify(customersService, never()).createCustomer(any());
+        ArgumentCaptor<AllegroSoldInvoice> saved = ArgumentCaptor.forClass(AllegroSoldInvoice.class);
+        verify(soldInvoiceRepository).save(saved.capture());
+        assertThat(saved.getValue().getOrderId()).isEqualTo("order-1");
+        assertThat(saved.getValue().getInvoiceNo()).isNull();
+        assertThat(saved.getValue().getIssueError()).contains("kwoty Allegro");
+    }
+
+    @Test
+    void shouldAdjustDeliveryGrossByOneGroszToMatchTotalToPay() {
+        when(soldInvoiceRepository.findById("order-1")).thenReturn(java.util.Optional.empty());
+        AllegroDelivery delivery = new AllegroDelivery(
+                new AllegroPrice("10.00", "PLN"),
+                new AllegroDeliveryMethod("ship-method-1", "Paczkomat"),
+                null);
+        AllegroCheckoutSummary summary = new AllegroCheckoutSummary(new AllegroPrice("70.01", "PLN"));
+        when(allegroApiClient.getCheckoutForm("https://api.allegro.pl", "token", "ua", "order-1"))
+                .thenReturn(sampleForm(null, null, delivery, summary, null));
+        when(customersService.createCustomer(any())).thenReturn(new MeritCreateCustomerResponse("cust-1", "Allegro Sp. z o.o."));
+        when(invoicesService.createInvoice(any())).thenReturn(new CreateInvoiceResponse("merit-inv-1", "cust-1"));
+
+        invoiceService.issueInvoice(9L, "order-1");
+
+        ArgumentCaptor<CreateInvoiceRequest> requestCaptor = ArgumentCaptor.forClass(CreateInvoiceRequest.class);
+        verify(invoicesService).createInvoice(requestCaptor.capture());
+        CreateInvoiceRequest request = requestCaptor.getValue();
+        BigDecimal invoiceGross = request.totalAmount()
+                .add(request.taxAmounts().stream()
+                        .map(t -> t.amount())
+                        .reduce(BigDecimal.ZERO, BigDecimal::add));
+        assertThat(invoiceGross).isEqualByComparingTo(new BigDecimal("70.01"));
+        // delivery 10.00 → 10.01; Price = 10.01/1.23 (7 dp)
+        assertThat(request.lines().get(2).price()).isEqualByComparingTo(new BigDecimal("8.1382114"));
     }
 
     @Test
     void shouldCreatePrivateCustomerWithoutNameLookupWhenNoNip() {
-        when(soldInvoiceRepository.existsById("order-1")).thenReturn(false);
+        when(soldInvoiceRepository.findById("order-1")).thenReturn(java.util.Optional.empty());
         when(allegroApiClient.getCheckoutForm("https://api.allegro.pl", "token", "ua", "order-1"))
                 .thenReturn(privatePersonForm());
         when(customersService.createCustomer(any())).thenReturn(new MeritCreateCustomerResponse("cust-priv", "Anna Nowak"));
@@ -333,7 +390,7 @@ class AllegroInvoiceServiceTest {
 
     @Test
     void shouldCreateCustomerFromDeliveryWhenInvoiceNotRequired() {
-        when(soldInvoiceRepository.existsById("order-1")).thenReturn(false);
+        when(soldInvoiceRepository.findById("order-1")).thenReturn(java.util.Optional.empty());
         when(allegroApiClient.getCheckoutForm("https://api.allegro.pl", "token", "ua", "order-1"))
                 .thenReturn(noInvoiceRequiredForm());
         when(customersService.createCustomer(any())).thenReturn(new MeritCreateCustomerResponse("cust-new", "Zbigniew Glinicki"));

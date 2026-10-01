@@ -11,6 +11,7 @@ public final class AllegroInvoiceMappingSupport {
 
     public static final int ITEM_TYPE_STOCK = 1;
     public static final int ITEM_TYPE_SERVICE = 2;
+    public static final int UNIT_NET_SCALE = 7;
     public static final BigDecimal FALLBACK_VAT_PERCENT = new BigDecimal("23");
     public static final String FALLBACK_DELIVERY_CODE = "Dostawa";
     public static final String FALLBACK_SURCHARGE_CODE = "DOPLATA";
@@ -51,8 +52,26 @@ public final class AllegroInvoiceMappingSupport {
     }
 
     public static BigDecimal toNet(BigDecimal gross, BigDecimal vatRate) {
+        return toNet(gross, vatRate, 2);
+    }
+
+    public static BigDecimal toNet(BigDecimal gross, BigDecimal vatRate, int scale) {
         BigDecimal divisor = BigDecimal.ONE.add(vatRate);
-        return gross.divide(divisor, 2, RoundingMode.HALF_UP);
+        return gross.divide(divisor, scale, RoundingMode.HALF_UP);
+    }
+
+    public static BigDecimal lineNetFromUnitNet(BigDecimal unitNet, int quantity) {
+        if (quantity < 1) {
+            throw new IllegalArgumentException("quantity must be >= 1");
+        }
+        return unitNet.multiply(BigDecimal.valueOf(quantity)).setScale(UNIT_NET_SCALE, RoundingMode.HALF_UP);
+    }
+
+    public static BigDecimal unitNetFromLineNet(BigDecimal lineNet, int quantity) {
+        if (quantity < 1) {
+            throw new IllegalArgumentException("quantity must be >= 1");
+        }
+        return lineNet.divide(BigDecimal.valueOf(quantity), UNIT_NET_SCALE, RoundingMode.HALF_UP);
     }
 
     public static BigDecimal vatRateFromPercent(BigDecimal percent) {

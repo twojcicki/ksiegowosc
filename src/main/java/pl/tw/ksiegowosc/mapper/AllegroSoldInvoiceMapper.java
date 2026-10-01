@@ -15,5 +15,7 @@ public interface AllegroSoldInvoiceMapper {
     @Mapping(target = "invoiceNo", source = "invoiceNo")
     @Mapping(target = "meritInvoiceId", source = "meritInvoiceId")
     @Mapping(target = "createdAt", source = "createdAt")
+    @Mapping(target = "issueError", ignore = true)
+    @Mapping(target = "issueErrorAt", ignore = true)
     AllegroSoldInvoice toEntity(String orderId, String invoiceNo, String meritInvoiceId, Instant createdAt);
 }

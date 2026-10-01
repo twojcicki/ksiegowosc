@@ -16,6 +16,7 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 import pl.tw.ksiegowosc.dto.MeritCreateCustomerRequest;
 import pl.tw.ksiegowosc.dto.MeritCreateInvoiceCustomer;
 import pl.tw.ksiegowosc.dto.MeritCreateInvoiceItem;
+import pl.tw.ksiegowosc.dto.MeritCreateInvoicePayment;
 import pl.tw.ksiegowosc.dto.MeritCreateInvoiceRequest;
 import pl.tw.ksiegowosc.dto.MeritCreateInvoiceRow;
 import pl.tw.ksiegowosc.dto.MeritCreateInvoiceTaxAmount;
@@ -28,7 +29,10 @@ class AllegroMeritInvoiceMappingsTest {
         jsonProperties(MeritCreateCustomerRequest.class).forEach(expected::add);
         expected.add("Customer.Id");
         jsonProperties(MeritCreateInvoiceRequest.class).stream()
-                .filter(name -> !"Customer".equals(name) && !"InvoiceRow".equals(name) && !"TaxAmount".equals(name))
+                .filter(name -> !"Customer".equals(name)
+                        && !"InvoiceRow".equals(name)
+                        && !"TaxAmount".equals(name)
+                        && !"Payment".equals(name))
                 .forEach(expected::add);
         jsonProperties(MeritCreateInvoiceItem.class)
                 .forEach(name -> expected.add("InvoiceRow[].Item." + name));
@@ -37,6 +41,8 @@ class AllegroMeritInvoiceMappingsTest {
                 .forEach(name -> expected.add("InvoiceRow[]." + name));
         jsonProperties(MeritCreateInvoiceTaxAmount.class)
                 .forEach(name -> expected.add("TaxAmount[]." + name));
+        jsonProperties(MeritCreateInvoicePayment.class)
+                .forEach(name -> expected.add("Payment." + name));
 
         assertThat(jsonProperties(MeritCreateInvoiceCustomer.class)).containsExactly("Id");
 

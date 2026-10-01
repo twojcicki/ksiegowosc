@@ -18,5 +18,6 @@ public record AllegroSoldItemDto(
         String buyerLogin,
         String orderStatus,
         String fulfillmentStatus,
-        String invoiceNo) {
+        String invoiceNo,
+        String issueError) {
 }

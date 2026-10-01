@@ -45,7 +45,7 @@ public final class AllegroMeritInvoiceMappings {
             rule(MeritFieldSection.HEADER, "CurrencyCode",
                     "lineItems/delivery/summary currency; domyślnie PLN"),
             rule(MeritFieldSection.HEADER, "TotalAmount",
-                    "suma netto pozycji (towary + dostawa + dopłaty); brutto faktury = summary.totalToPay (±0,01)"),
+                    "round(Σ (Price×Quantity), 2); Price z brutto/szt. Allegro; brutto faktury ≈ TotalAmount + TaxAmount = paidAmount/totalToPay"),
             rule(MeritFieldSection.HEADER, "HComment",
                     "AllegroAccount.name, login z GET /me, „ID transakcji: ” + orderId / buyer.login"),
             rule(MeritFieldSection.HEADER, "FComment",
@@ -69,7 +69,7 @@ public final class AllegroMeritInvoiceMappings {
             rule(MeritFieldSection.LINE, "InvoiceRow[].Quantity",
                     "towar/usługa: quantity; dostawa/dopłata: 1"),
             rule(MeritFieldSection.LINE, "InvoiceRow[].Price",
-                    "netto z brutto Allegro / (1+VAT); brutto z lineItems.price, delivery.cost, surcharges.paidAmount, additionalServices.price"),
+                    "netto/szt. = brutto/szt. Allegro / (1+VAT), 7 dp; lineNet = Price×qty (7 dp); TotalAmount = round(Σ lineNet, 2)"),
             rule(MeritFieldSection.LINE, "InvoiceRow[].TaxId",
                     "towar: lineItems[].tax.rate; dostawa/dopłaty/usługi: fallback 23%"),
 
@@ -77,7 +77,7 @@ public final class AllegroMeritInvoiceMappings {
             rule(MeritFieldSection.TAX, "TaxAmount[].TaxId",
                     "TaxId z pozycji po zgrupowaniu"),
             rule(MeritFieldSection.TAX, "TaxAmount[].Amount",
-                    "suma VAT pozycji o tym samym TaxId (brutto − netto)")
+                    "VAT jako reszta (brutto linii − round(lineNet, 2)); dopięcie sumy do TotalAmount + Tax = Σ brutto")
     );
 
     private AllegroMeritInvoiceMappings() {

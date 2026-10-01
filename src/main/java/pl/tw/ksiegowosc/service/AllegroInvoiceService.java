@@ -10,7 +10,10 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.TransactionDefinition;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionTemplate;
 import org.springframework.web.client.RestClientResponseException;
 import org.springframework.web.server.ResponseStatusException;
 
@@ -37,6 +40,7 @@ import pl.tw.ksiegowosc.mapper.AllegroInvoiceMapper;
 import pl.tw.ksiegowosc.mapper.AllegroInvoiceMappingContext;
 import pl.tw.ksiegowosc.mapper.AllegroInvoicePreviewAssembler;
 import pl.tw.ksiegowosc.mapper.AllegroSoldInvoiceMapper;
+import pl.tw.ksiegowosc.mapper.AllegroToMeritInvoiceBuilder;
 import pl.tw.ksiegowosc.mapper.MeritInvoiceMapper;
 import pl.tw.ksiegowosc.repository.AllegroSoldInvoiceRepository;
 
@@ -60,6 +64,7 @@ public class AllegroInvoiceService {
     private final MeritInvoiceMapper meritInvoiceMapper;
     private final AllegroSoldInvoiceMapper soldInvoiceMapper;
     private final Clock clock;
+    private final TransactionTemplate requiresNewTx;
 
     public AllegroInvoiceService(
             AllegroApiClient allegroApiClient,
@@ -74,7 +79,8 @@ public class AllegroInvoiceService {
             AllegroInvoiceMapper invoiceMapper,
             MeritInvoiceMapper meritInvoiceMapper,
             AllegroSoldInvoiceMapper soldInvoiceMapper,
-            Clock clock) {
+            Clock clock,
+            PlatformTransactionManager transactionManager) {
         this.allegroApiClient = allegroApiClient;
         this.authService = authService;
         this.accountService = accountService;
@@ -88,6 +94,8 @@ public class AllegroInvoiceService {
         this.meritInvoiceMapper = meritInvoiceMapper;
         this.soldInvoiceMapper = soldInvoiceMapper;
         this.clock = clock;
+        this.requiresNewTx = new TransactionTemplate(transactionManager);
+        this.requiresNewTx.setPropagationBehavior(TransactionDefinition.PROPAGATION_REQUIRES_NEW);
     }
 
     @Transactional
@@ -97,6 +105,8 @@ public class AllegroInvoiceService {
 
         AllegroSoldInvoice entity = soldInvoiceMapper.toEntity(
                 prepared.orderId(), prepared.request().invoiceNo(), created.invoiceId(), Instant.now(clock));
+        entity.setIssueError(null);
+        entity.setIssueErrorAt(null);
         soldInvoiceRepository.save(entity);
 
         return new IssueAllegroInvoiceResponse(prepared.request().invoiceNo(), created.invoiceId());
@@ -126,8 +136,11 @@ public class AllegroInvoiceService {
         }
         String trimmedOrderId = orderId.trim();
 
-        if (createMissingCustomer && soldInvoiceRepository.existsById(trimmedOrderId)) {
-            throw new ResponseStatusException(HttpStatus.CONFLICT, "Dla tego zamówienia faktura została już wystawiona.");
+        if (createMissingCustomer) {
+            AllegroSoldInvoice existing = soldInvoiceRepository.findById(trimmedOrderId).orElse(null);
+            if (existing != null && existing.hasIssuedInvoice()) {
+                throw new ResponseStatusException(HttpStatus.CONFLICT, "Dla tego zamówienia faktura została już wystawiona.");
+            }
         }
 
         AllegroAccount account = accountService.requireOwnedAccount(accountId);
@@ -151,6 +164,34 @@ public class AllegroInvoiceService {
         LocalDate docDate = boughtAt == null
                 ? LocalDate.now(clock.withZone(ZONE))
                 : boughtAt.atZone(ZONE).toLocalDate();
+
+        String uomName = unitsService.requireDefaultUnit().name();
+        if (uomName == null || uomName.isBlank()) {
+            throw new ResponseStatusException(
+                    HttpStatus.BAD_REQUEST,
+                    "Wybrana jednostka miary z Merit nie ma nazwy.");
+        }
+        uomName = uomName.trim();
+        var taxes = taxesService.listTaxes();
+
+        AllegroInvoiceMappingContext validationContext = new AllegroInvoiceMappingContext(
+                null,
+                "VALIDATE",
+                docDate,
+                taxes,
+                uomName,
+                account.getName(),
+                sellerLogin,
+                account.getPaymentMethod());
+        try {
+            invoiceMapper.toCreateInvoiceRequest(form, validationContext);
+        } catch (ResponseStatusException ex) {
+            if (createMissingCustomer && AllegroToMeritInvoiceBuilder.isGrossMismatchMessage(ex.getReason())) {
+                saveIssueError(trimmedOrderId, ex.getReason());
+            }
+            throw ex;
+        }
+
         String invoiceNo;
         try {
             invoiceNo = accountService.allocateInvoiceNo(accountId, docDate);
@@ -159,20 +200,14 @@ public class AllegroInvoiceService {
         }
 
         CustomerResolution customer = resolveCustomer(form, createMissingCustomer);
-        String uomName = unitsService.requireDefaultUnit().name();
-        if (uomName == null || uomName.isBlank()) {
-            throw new ResponseStatusException(
-                    HttpStatus.BAD_REQUEST,
-                    "Wybrana jednostka miary z Merit nie ma nazwy.");
-        }
         CreateInvoiceRequest request = invoiceMapper.toCreateInvoiceRequest(
                 form,
                 new AllegroInvoiceMappingContext(
                         customer.customerId(),
                         invoiceNo,
                         docDate,
-                        taxesService.listTaxes(),
-                        uomName.trim(),
+                        taxes,
+                        uomName,
                         account.getName(),
                         sellerLogin,
                         account.getPaymentMethod()));
@@ -181,6 +216,23 @@ public class AllegroInvoiceService {
                 request,
                 customer.exists(),
                 customer.toCreate());
+    }
+
+    private void saveIssueError(String orderId, String message) {
+        requiresNewTx.executeWithoutResult(status -> {
+            AllegroSoldInvoice entity = soldInvoiceRepository.findById(orderId).orElseGet(AllegroSoldInvoice::new);
+            if (entity.hasIssuedInvoice()) {
+                return;
+            }
+            Instant now = Instant.now(clock);
+            entity.setOrderId(orderId);
+            entity.setIssueError(message);
+            entity.setIssueErrorAt(now);
+            if (entity.getCreatedAt() == null) {
+                entity.setCreatedAt(now);
+            }
+            soldInvoiceRepository.save(entity);
+        });
     }
 
     private String fetchSellerLogin(String apiBaseUrl, String accessToken, String userAgent) {
