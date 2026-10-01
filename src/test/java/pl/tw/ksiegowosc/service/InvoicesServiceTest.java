@@ -278,6 +278,8 @@ class InvoicesServiceTest {
         assertThat(meritRequest.fComment()).isEqualTo("Komentarz dolny");
         assertThat(meritRequest.invoiceRow()).hasSize(1);
         assertThat(meritRequest.taxAmount()).hasSize(1);
+        assertThat(meritRequest.taxAmount().getFirst().taxId()).isEqualTo("665f01a4-357a-4a6b-a565-2f17e6e1da13");
+        assertThat(meritRequest.taxAmount().getFirst().amount()).isNull();
     }
 
     @Test
