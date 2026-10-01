@@ -61,7 +61,11 @@ class InvoicesServiceTest {
                 "FV/1",
                 "2026-01-15T00:00:00",
                 "Klient",
+                new BigDecimal("2.30"),
+                BigDecimal.ZERO,
                 new BigDecimal("10.00"),
+                new BigDecimal("10.00"),
+                new BigDecimal("12.30"),
                 false,
                 null,
                 null));
@@ -86,7 +90,11 @@ class InvoicesServiceTest {
                 "FV/1",
                 "2026-01-15T00:00:00",
                 "Klient",
+                new BigDecimal("2.30"),
+                BigDecimal.ZERO,
                 new BigDecimal("10.00"),
+                new BigDecimal("10.00"),
+                new BigDecimal("12.30"),
                 false,
                 null,
                 null)));
@@ -277,9 +285,9 @@ class InvoicesServiceTest {
         LocalDate docDate = LocalDate.of(2026, 9, 15);
         when(meritApiClient.getInvoices(LocalDate.of(2026, 9, 1), LocalDate.of(2026, 9, 30)))
                 .thenReturn(List.of(
-                        new SalesInvoiceDto("a", "FS/2/09/2026", null, null, null, null, null, null),
-                        new SalesInvoiceDto("b", "FS/5/09/2026", null, null, null, null, null, null),
-                        new SalesInvoiceDto("c", "OTHER/9/09/2026", null, null, null, null, null, null)));
+                        new SalesInvoiceDto("a", "FS/2/09/2026", null, null, null, null, null, null, null, null, null, null),
+                        new SalesInvoiceDto("b", "FS/5/09/2026", null, null, null, null, null, null, null, null, null, null),
+                        new SalesInvoiceDto("c", "OTHER/9/09/2026", null, null, null, null, null, null, null, null, null, null)));
 
         String invoiceNo = invoicesService.nextInvoiceNoFromMerit("FS", docDate);
 

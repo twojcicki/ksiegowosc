@@ -161,7 +161,11 @@ public class InvoicesService {
                     invoice.invoiceNo(),
                     invoice.documentDate(),
                     invoice.customerName(),
+                    invoice.taxAmount(),
+                    invoice.roundingAmount(),
                     invoice.totalAmount(),
+                    invoice.profitAmount(),
+                    invoice.totalSum(),
                     invoice.paid(),
                     false,
                     null);
@@ -171,7 +175,11 @@ public class InvoicesService {
                 invoice.invoiceNo(),
                 invoice.documentDate(),
                 invoice.customerName(),
+                invoice.taxAmount(),
+                invoice.roundingAmount(),
                 invoice.totalAmount(),
+                invoice.profitAmount(),
+                invoice.totalSum(),
                 invoice.paid(),
                 status.isEmailSent(),
                 status.getEmailSentAt());

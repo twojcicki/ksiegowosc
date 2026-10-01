@@ -69,7 +69,11 @@ class MeritApiClientTest {
                             "InvoiceNo": "FV/2026/08/17",
                             "DocumentDate": "2026-08-17T00:00:00",
                             "CustomerName": "Przykładowy Klient",
-                            "TotalAmount": 123.45,
+                            "TaxAmount": 23.00,
+                            "RoundingAmount": 0.00,
+                            "TotalAmount": 100.00,
+                            "ProfitAmount": 100.00,
+                            "TotalSum": 123.00,
                             "Paid": false
                           }
                         ]
@@ -82,6 +86,11 @@ class MeritApiClientTest {
         assertThat(invoices).hasSize(1);
         assertThat(invoices.getFirst().invoiceNo()).isEqualTo("FV/2026/08/17");
         assertThat(invoices.getFirst().customerName()).isEqualTo("Przykładowy Klient");
+        assertThat(invoices.getFirst().taxAmount()).isEqualByComparingTo("23.00");
+        assertThat(invoices.getFirst().roundingAmount()).isEqualByComparingTo("0.00");
+        assertThat(invoices.getFirst().totalAmount()).isEqualByComparingTo("100.00");
+        assertThat(invoices.getFirst().profitAmount()).isEqualByComparingTo("100.00");
+        assertThat(invoices.getFirst().totalSum()).isEqualByComparingTo("123.00");
         server.verify();
     }
 

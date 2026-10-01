@@ -1,6 +1,7 @@
 package pl.tw.ksiegowosc.ui;
 
 import java.text.NumberFormat;
+import java.math.BigDecimal;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.ZoneId;
@@ -107,8 +108,20 @@ public class InvoiceListView extends View {
         grid.addColumn(SalesInvoiceDto::invoiceNo).setHeader("Numer").setAutoWidth(true).setSortable(true);
         grid.addColumn(SalesInvoiceDto::documentDate).setHeader("Data").setAutoWidth(true).setSortable(true);
         grid.addColumn(SalesInvoiceDto::customerName).setHeader("Klient").setFlexGrow(1).setSortable(true);
-        grid.addColumn(invoice -> invoice.totalAmount() == null ? "" : amountFormat.format(invoice.totalAmount()))
-                .setHeader("Kwota")
+        grid.addColumn(invoice -> formatAmount(invoice.totalAmount()))
+                .setHeader("Netto")
+                .setAutoWidth(true);
+        grid.addColumn(invoice -> formatAmount(invoice.taxAmount()))
+                .setHeader("VAT")
+                .setAutoWidth(true);
+        grid.addColumn(invoice -> formatAmount(invoice.roundingAmount()))
+                .setHeader("Zaokr.")
+                .setAutoWidth(true);
+        grid.addColumn(invoice -> formatAmount(invoice.profitAmount()))
+                .setHeader("Marża")
+                .setAutoWidth(true);
+        grid.addColumn(invoice -> formatAmount(invoice.totalSum()))
+                .setHeader("Brutto")
                 .setAutoWidth(true);
         grid.addColumn(invoice -> Boolean.TRUE.equals(invoice.paid()) ? "Tak" : "Nie")
                 .setHeader("Zapłacono")
@@ -160,15 +173,15 @@ public class InvoiceListView extends View {
             content.addClassName("dialog-content");
             SalesInvoiceHeaderDto header = details.header();
             if (header != null) {
+                String currency = header.currencyCode() == null ? "" : " " + header.currencyCode();
                 content.add(detailRow("Klient", header.customerName()));
                 content.add(detailRow("Data dokumentu", header.documentDate()));
                 content.add(detailRow("Termin płatności", header.dueDate()));
-                content.add(detailRow(
-                        "Kwota",
-                        header.totalAmount() == null
-                                ? null
-                                : amountFormat.format(header.totalAmount())
-                                        + (header.currencyCode() == null ? "" : " " + header.currencyCode())));
+                content.add(detailRow("Netto", formatAmountWithCurrency(header.totalAmount(), currency)));
+                content.add(detailRow("VAT", formatAmountWithCurrency(header.taxAmount(), currency)));
+                content.add(detailRow("Zaokrąglenie", formatAmountWithCurrency(header.roundingAmount(), currency)));
+                content.add(detailRow("Marża", formatAmountWithCurrency(header.profitAmount(), currency)));
+                content.add(detailRow("Brutto", formatAmountWithCurrency(header.totalSum(), currency)));
                 content.add(detailRow("NIP", header.vatRegNo()));
                 content.add(detailRow("Komentarz", header.headerComment()));
             } else {
@@ -277,6 +290,17 @@ public class InvoiceListView extends View {
         } catch (RuntimeException ex) {
             showError("Nie udało się pobrać faktur.");
         }
+    }
+
+    private String formatAmount(BigDecimal amount) {
+        return amount == null ? "" : amountFormat.format(amount);
+    }
+
+    private String formatAmountWithCurrency(BigDecimal amount, String currencySuffix) {
+        if (amount == null) {
+            return null;
+        }
+        return amountFormat.format(amount) + currencySuffix;
     }
 
     private String formatEmailSentAt(Instant emailSentAt) {

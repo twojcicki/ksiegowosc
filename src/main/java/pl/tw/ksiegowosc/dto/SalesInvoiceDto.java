@@ -12,7 +12,11 @@ public record SalesInvoiceDto(
         @JsonProperty("InvoiceNo") String invoiceNo,
         @JsonProperty("DocumentDate") String documentDate,
         @JsonProperty("CustomerName") String customerName,
+        @JsonProperty("TaxAmount") BigDecimal taxAmount,
+        @JsonProperty("RoundingAmount") BigDecimal roundingAmount,
         @JsonProperty("TotalAmount") BigDecimal totalAmount,
+        @JsonProperty("ProfitAmount") BigDecimal profitAmount,
+        @JsonProperty("TotalSum") BigDecimal totalSum,
         @JsonProperty("Paid") Boolean paid,
         Boolean emailSent,
         Instant emailSentAt
