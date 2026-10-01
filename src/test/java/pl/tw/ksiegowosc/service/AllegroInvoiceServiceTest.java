@@ -20,10 +20,6 @@ import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
-import org.springframework.transaction.PlatformTransactionManager;
-import org.springframework.transaction.TransactionDefinition;
-import org.springframework.transaction.TransactionStatus;
-import org.springframework.transaction.support.SimpleTransactionStatus;
 import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.server.ResponseStatusException;
 
@@ -90,20 +86,6 @@ class AllegroInvoiceServiceTest {
         when(authService.getValidAccessTokenForAccount(account)).thenReturn("token");
         when(allegroApiClient.getMe("https://api.allegro.pl", "token", "ua"))
                 .thenReturn(new AllegroMe("123", "elfabric_pl"));
-        PlatformTransactionManager transactionManager = new PlatformTransactionManager() {
-            @Override
-            public TransactionStatus getTransaction(TransactionDefinition definition) {
-                return new SimpleTransactionStatus();
-            }
-
-            @Override
-            public void commit(TransactionStatus status) {
-            }
-
-            @Override
-            public void rollback(TransactionStatus status) {
-            }
-        };
         invoiceService = new AllegroInvoiceService(
                 allegroApiClient,
                 authService,
@@ -117,8 +99,7 @@ class AllegroInvoiceServiceTest {
                 MapperFixtures.invoiceMapper(),
                 MapperFixtures.meritInvoiceMapper(),
                 MapperFixtures.soldInvoiceMapper(),
-                clock,
-                transactionManager);
+                clock);
     }
 
     @Test
@@ -324,11 +305,8 @@ class AllegroInvoiceServiceTest {
         assertThat(request.lines().get(2).itemType()).isEqualTo(2);
         assertThat(request.lines().get(2).price()).isEqualByComparingTo(new BigDecimal("8.1300813"));
         assertThat(request.lines().get(2).taxId()).isEqualTo("tax-23");
-        BigDecimal invoiceGross = request.totalAmount()
-                .add(request.taxAmounts().stream()
-                        .map(t -> t.amount())
-                        .reduce(BigDecimal.ZERO, BigDecimal::add));
-        assertThat(invoiceGross).isEqualByComparingTo(new BigDecimal("70.00"));
+        // TotalAmount = 70.00 / 1.23
+        assertThat(request.totalAmount()).isEqualByComparingTo(new BigDecimal("56.91"));
     }
 
     @Test
@@ -358,30 +336,24 @@ class AllegroInvoiceServiceTest {
     }
 
     @Test
-    void shouldRejectWhenInvoiceGrossDoesNotMatchTotalToPay() {
+    void shouldUseTotalToPayForTotalAmountEvenWhenLineGrossDiffers() {
         when(soldInvoiceRepository.findById("order-1")).thenReturn(java.util.Optional.empty());
         AllegroCheckoutSummary summary = new AllegroCheckoutSummary(new AllegroPrice("99.00", "PLN"));
         when(allegroApiClient.getCheckoutForm("https://api.allegro.pl", "token", "ua", "order-1"))
                 .thenReturn(sampleForm(null, null, null, summary, null));
+        when(customersService.createCustomer(any())).thenReturn(new MeritCreateCustomerResponse("cust-1", "Allegro Sp. z o.o."));
+        when(invoicesService.createInvoice(any())).thenReturn(new CreateInvoiceResponse("merit-inv-1", "cust-1"));
 
-        assertThatThrownBy(() -> invoiceService.issueInvoice(9L, "order-1"))
-                .isInstanceOf(ResponseStatusException.class)
-                .hasMessageContaining("kwoty Allegro")
-                .hasMessageContaining("99.00")
-                .hasMessageContaining("60.00");
+        invoiceService.issueInvoice(9L, "order-1");
 
-        verify(accountService, never()).allocateInvoiceNo(any(), any());
-        verify(invoicesService, never()).createInvoice(any());
-        verify(customersService, never()).createCustomer(any());
-        ArgumentCaptor<AllegroSoldInvoice> saved = ArgumentCaptor.forClass(AllegroSoldInvoice.class);
-        verify(soldInvoiceRepository).save(saved.capture());
-        assertThat(saved.getValue().getOrderId()).isEqualTo("order-1");
-        assertThat(saved.getValue().getInvoiceNo()).isNull();
-        assertThat(saved.getValue().getIssueError()).contains("kwoty Allegro");
+        ArgumentCaptor<CreateInvoiceRequest> requestCaptor = ArgumentCaptor.forClass(CreateInvoiceRequest.class);
+        verify(invoicesService).createInvoice(requestCaptor.capture());
+        // TotalAmount = 99.00 / 1.23 (nie blokuje przy rozjazdzie z sumą pozycji)
+        assertThat(requestCaptor.getValue().totalAmount()).isEqualByComparingTo(new BigDecimal("80.49"));
     }
 
     @Test
-    void shouldAdjustDeliveryGrossByOneGroszToMatchTotalToPay() {
+    void shouldNotAdjustLinePricesWhenTotalToPayDiffersByOneGrosz() {
         when(soldInvoiceRepository.findById("order-1")).thenReturn(java.util.Optional.empty());
         AllegroDelivery delivery = new AllegroDelivery(
                 new AllegroPrice("10.00", "PLN"),
@@ -398,13 +370,9 @@ class AllegroInvoiceServiceTest {
         ArgumentCaptor<CreateInvoiceRequest> requestCaptor = ArgumentCaptor.forClass(CreateInvoiceRequest.class);
         verify(invoicesService).createInvoice(requestCaptor.capture());
         CreateInvoiceRequest request = requestCaptor.getValue();
-        BigDecimal invoiceGross = request.totalAmount()
-                .add(request.taxAmounts().stream()
-                        .map(t -> t.amount())
-                        .reduce(BigDecimal.ZERO, BigDecimal::add));
-        assertThat(invoiceGross).isEqualByComparingTo(new BigDecimal("70.01"));
-        // delivery 10.00 → 10.01; Price = 10.01/1.23 (7 dp)
-        assertThat(request.lines().get(2).price()).isEqualByComparingTo(new BigDecimal("8.1382114"));
+        assertThat(request.totalAmount()).isEqualByComparingTo(new BigDecimal("56.92"));
+        // dostawa bez korekty grosza: 10.00 / 1.23
+        assertThat(request.lines().get(2).price()).isEqualByComparingTo(new BigDecimal("8.1300813"));
     }
 
     @Test

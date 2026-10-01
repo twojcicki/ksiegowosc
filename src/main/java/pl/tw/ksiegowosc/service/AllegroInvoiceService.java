@@ -10,10 +10,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.PlatformTransactionManager;
-import org.springframework.transaction.TransactionDefinition;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.transaction.support.TransactionTemplate;
 import org.springframework.web.client.RestClientResponseException;
 import org.springframework.web.server.ResponseStatusException;
 
@@ -65,7 +62,6 @@ public class AllegroInvoiceService {
     private final MeritInvoiceMapper meritInvoiceMapper;
     private final AllegroSoldInvoiceMapper soldInvoiceMapper;
     private final Clock clock;
-    private final TransactionTemplate requiresNewTx;
 
     public AllegroInvoiceService(
             AllegroApiClient allegroApiClient,
@@ -80,8 +76,7 @@ public class AllegroInvoiceService {
             AllegroInvoiceMapper invoiceMapper,
             MeritInvoiceMapper meritInvoiceMapper,
             AllegroSoldInvoiceMapper soldInvoiceMapper,
-            Clock clock,
-            PlatformTransactionManager transactionManager) {
+            Clock clock) {
         this.allegroApiClient = allegroApiClient;
         this.authService = authService;
         this.accountService = accountService;
@@ -95,8 +90,6 @@ public class AllegroInvoiceService {
         this.meritInvoiceMapper = meritInvoiceMapper;
         this.soldInvoiceMapper = soldInvoiceMapper;
         this.clock = clock;
-        this.requiresNewTx = new TransactionTemplate(transactionManager);
-        this.requiresNewTx.setPropagationBehavior(TransactionDefinition.PROPAGATION_REQUIRES_NEW);
     }
 
     @Transactional
@@ -179,14 +172,7 @@ public class AllegroInvoiceService {
                 account.getName(),
                 sellerLogin,
                 account.getPaymentMethod());
-        try {
-            invoiceMapper.toCreateInvoiceRequest(form, validationContext);
-        } catch (ResponseStatusException ex) {
-            if (createMissingCustomer && AllegroToMeritInvoiceBuilder.isGrossMismatchMessage(ex.getReason())) {
-                saveIssueError(trimmedOrderId, ex.getReason());
-            }
-            throw ex;
-        }
+        invoiceMapper.toCreateInvoiceRequest(form, validationContext);
 
         String invoiceNo;
         try {
@@ -213,23 +199,6 @@ public class AllegroInvoiceService {
                 request,
                 customer.exists(),
                 customer.toCreate());
-    }
-
-    private void saveIssueError(String orderId, String message) {
-        requiresNewTx.executeWithoutResult(status -> {
-            AllegroSoldInvoice entity = soldInvoiceRepository.findById(orderId).orElseGet(AllegroSoldInvoice::new);
-            if (entity.hasIssuedInvoice()) {
-                return;
-            }
-            Instant now = Instant.now(clock);
-            entity.setOrderId(orderId);
-            entity.setIssueError(message);
-            entity.setIssueErrorAt(now);
-            if (entity.getCreatedAt() == null) {
-                entity.setCreatedAt(now);
-            }
-            soldInvoiceRepository.save(entity);
-        });
     }
 
     private String fetchSellerLogin(String apiBaseUrl, String accessToken, String userAgent) {
