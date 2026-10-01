@@ -29,9 +29,6 @@ public interface MeritInvoiceMapper {
     @Mapping(target = "dueDate", source = "dueDate", qualifiedByName = "toMeritDate")
     @Mapping(target = "invoiceRow", source = "lines")
     @Mapping(target = "taxAmount", source = "taxAmounts")
-    // Tymczasowo nie wysyłamy TotalAmount — przywróć: usunięcie ignore.
-    // @Mapping(target = "totalAmount", source = "totalAmount")
-    @Mapping(target = "totalAmount", ignore = true)
     @Mapping(target = "hComment", source = "headerComment")
     @Mapping(target = "fComment", source = "footerComment", qualifiedByName = "blankToNull")
     MeritCreateInvoiceRequest toMeritRequest(CreateInvoiceRequest request);

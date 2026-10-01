@@ -280,7 +280,7 @@ class InvoicesServiceTest {
         assertThat(meritRequest.taxAmount()).hasSize(1);
         assertThat(meritRequest.taxAmount().getFirst().taxId()).isEqualTo("665f01a4-357a-4a6b-a565-2f17e6e1da13");
         assertThat(meritRequest.taxAmount().getFirst().amount()).isNull();
-        assertThat(meritRequest.totalAmount()).isNull();
+        assertThat(meritRequest.totalAmount()).isEqualByComparingTo("100.00");
     }
 
     @Test
