@@ -115,6 +115,20 @@ class AllegroOrdersServiceTest {
         assertThat(result.items().getFirst().orderId()).isEqualTo("order-1");
         assertThat(result.items().getFirst().name()).isEqualTo("Książka (+1)");
         assertThat(result.items().getFirst().itemCount()).isEqualTo(2);
+        assertThat(result.items().getFirst().quantityTotal()).isEqualTo(3);
+        assertThat(result.items().getFirst().lines()).hasSize(3);
+        assertThat(result.items().getFirst().lines().get(0).name()).isEqualTo("Książka");
+        assertThat(result.items().getFirst().lines().get(0).quantity()).isEqualTo(2);
+        assertThat(result.items().getFirst().lines().get(0).unitPriceGross())
+                .isEqualByComparingTo(new BigDecimal("25.00"));
+        assertThat(result.items().getFirst().lines().get(1).name()).isEqualTo("Długopis");
+        assertThat(result.items().getFirst().lines().get(1).quantity()).isEqualTo(1);
+        assertThat(result.items().getFirst().lines().get(1).unitPriceGross())
+                .isEqualByComparingTo(new BigDecimal("10.00"));
+        assertThat(result.items().getFirst().lines().get(2).name()).isEqualTo("Kurier");
+        assertThat(result.items().getFirst().lines().get(2).quantity()).isEqualTo(1);
+        assertThat(result.items().getFirst().lines().get(2).unitPriceGross())
+                .isEqualByComparingTo(new BigDecimal("12.99"));
         assertThat(result.items().getFirst().totalGross()).isEqualByComparingTo(new BigDecimal("72.99"));
         assertThat(result.items().getFirst().boughtAt()).isEqualTo(Instant.parse("2026-01-10T08:00:00Z"));
         assertThat(result.items().getFirst().buyerLogin()).isEqualTo("buyer1");

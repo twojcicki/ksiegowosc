@@ -17,6 +17,7 @@ import com.vaadin.flow.component.button.Button;
 import com.vaadin.flow.component.button.ButtonVariant;
 import com.vaadin.flow.component.combobox.ComboBox;
 import com.vaadin.flow.component.datepicker.DatePicker;
+import com.vaadin.flow.component.dialog.Dialog;
 import com.vaadin.flow.component.grid.Grid;
 import com.vaadin.flow.component.grid.GridVariant;
 import com.vaadin.flow.component.html.Div;
@@ -38,6 +39,7 @@ import pl.tw.ksiegowosc.dto.AllegroInvoicePreviewDto;
 import pl.tw.ksiegowosc.dto.AllegroInvoicePreviewRow;
 import pl.tw.ksiegowosc.dto.AllegroOfferDto;
 import pl.tw.ksiegowosc.dto.AllegroSoldItemDto;
+import pl.tw.ksiegowosc.dto.AllegroSoldLineDto;
 import pl.tw.ksiegowosc.dto.IssueAllegroInvoiceResponse;
 import pl.tw.ksiegowosc.mapper.AllegroMeritInvoiceMappings;
 import pl.tw.ksiegowosc.mapper.MeritFieldRule;
@@ -261,6 +263,7 @@ public class AllegroView extends View {
         soldGrid.addColumn(AllegroSoldItemDto::orderId).setHeader("ID zamówienia").setAutoWidth(true).setSortable(true);
         soldGrid.addColumn(AllegroSoldItemDto::name).setHeader("Pozycje").setFlexGrow(1).setSortable(true);
         soldGrid.addColumn(AllegroSoldItemDto::itemCount).setHeader("Liczba pozycji").setAutoWidth(true).setSortable(true);
+        soldGrid.addColumn(AllegroSoldItemDto::quantityTotal).setHeader("Sztuki").setAutoWidth(true).setSortable(true);
         soldGrid.addColumn(item -> formatAmount(item.totalGross(), item.currency()))
                 .setHeader("Suma brutto")
                 .setAutoWidth(true);
@@ -311,14 +314,40 @@ public class AllegroView extends View {
         }
         issue.addClickListener(event -> issueInvoice(item, issue));
 
+        Button details = new Button("Szczegóły");
+        details.addThemeVariants(ButtonVariant.LUMO_SMALL, ButtonVariant.LUMO_TERTIARY);
+        details.addClickListener(event -> openSoldDetailsDialog(item));
+
         Button preview = new Button("Podgląd mapowania");
         preview.addThemeVariants(ButtonVariant.LUMO_SMALL, ButtonVariant.LUMO_TERTIARY);
         preview.addClickListener(event -> openMappingPreview(item));
 
-        HorizontalLayout actions = new HorizontalLayout(issue, preview);
+        HorizontalLayout actions = new HorizontalLayout(issue, details, preview);
         actions.setSpacing(true);
         actions.setPadding(false);
         return actions;
+    }
+
+    private void openSoldDetailsDialog(AllegroSoldItemDto item) {
+        Grid<AllegroSoldLineDto> linesGrid = new Grid<>(AllegroSoldLineDto.class, false);
+        linesGrid.addThemeVariants(GridVariant.NO_BORDER);
+        linesGrid.addColumn(AllegroSoldLineDto::name).setHeader("Pozycja").setFlexGrow(1);
+        linesGrid.addColumn(AllegroSoldLineDto::quantity).setHeader("Sztuki").setAutoWidth(true);
+        linesGrid
+                .addColumn(line -> formatAmount(line.unitPriceGross(), item.currency()))
+                .setHeader("Cena jedn.")
+                .setAutoWidth(true);
+        List<AllegroSoldLineDto> lines = item.lines() == null ? List.of() : item.lines();
+        linesGrid.setItems(lines);
+        linesGrid.setAllRowsVisible(true);
+
+        Dialog dialog = new Dialog(linesGrid);
+        dialog.setHeaderTitle("Pozycje zamówienia " + item.orderId());
+        dialog.setWidth("640px");
+        Button close = new Button("Zamknij", e -> dialog.close());
+        close.addThemeVariants(ButtonVariant.LUMO_TERTIARY);
+        dialog.getFooter().add(close);
+        dialog.open();
     }
 
     private void openMappingPreview(AllegroSoldItemDto item) {

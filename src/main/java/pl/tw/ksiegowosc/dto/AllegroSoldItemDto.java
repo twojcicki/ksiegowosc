@@ -2,6 +2,7 @@ package pl.tw.ksiegowosc.dto;
 
 import java.math.BigDecimal;
 import java.time.Instant;
+import java.util.List;
 
 public record AllegroSoldItemDto(
         Long accountId,
@@ -9,6 +10,8 @@ public record AllegroSoldItemDto(
         String orderId,
         String name,
         Integer itemCount,
+        Integer quantityTotal,
+        List<AllegroSoldLineDto> lines,
         BigDecimal totalGross,
         String currency,
         Instant boughtAt,
