@@ -57,7 +57,7 @@ public final class AllegroMeritInvoiceMappings {
             rule(MeritFieldSection.HEADER, "Payment.PaidAmount",
                     "payment.paidAmount.amount gdy opłacone; inaczej pominięte"),
             rule(MeritFieldSection.HEADER, "Payment.PaymDate",
-                    "payment.finishedAt (yyyyMMddHHmmss Europe/Warsaw); inaczej DocDate 000000"),
+                    "zawsze payment.finishedAt (yyyyMMddHHmmss Europe/Warsaw); bez finishedAt — bez Payment"),
 
             // LINE (InvoiceRow + Item) — towary, dostawa, dopłaty, usługi dodatkowe
             rule(MeritFieldSection.LINE, "InvoiceRow[].Item.Code",

@@ -195,20 +195,20 @@ public class AllegroToMeritInvoiceBuilder {
         if (paidAmount == null || paidAmount.compareTo(BigDecimal.ZERO) <= 0) {
             return null;
         }
-        String paymDate = formatPaymentDate(form.payment().finishedAt(), context.docDate());
+        String paymDate = formatPaymentDate(form.payment().finishedAt());
+        if (paymDate == null) {
+            return null;
+        }
         return new CreateInvoicePaymentRequest(method.trim(), paidAmount, paymDate);
     }
 
-    private static String formatPaymentDate(Instant finishedAt, java.time.LocalDate docDate) {
-        if (finishedAt != null) {
-            return DateTimeFormatter.ofPattern("yyyyMMddHHmmss")
-                    .withZone(ZoneId.of("Europe/Warsaw"))
-                    .format(finishedAt);
+    private static String formatPaymentDate(Instant finishedAt) {
+        if (finishedAt == null) {
+            return null;
         }
-        if (docDate != null) {
-            return docDate.format(DateTimeFormatter.BASIC_ISO_DATE) + "000000";
-        }
-        return null;
+        return DateTimeFormatter.ofPattern("yyyyMMddHHmmss")
+                .withZone(ZoneId.of("Europe/Warsaw"))
+                .format(finishedAt);
     }
 
     private BuiltLine buildServiceLine(
