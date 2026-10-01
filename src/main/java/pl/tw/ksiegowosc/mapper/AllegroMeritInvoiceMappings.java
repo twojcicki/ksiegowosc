@@ -47,7 +47,7 @@ public final class AllegroMeritInvoiceMappings {
             rule(MeritFieldSection.HEADER, "CurrencyCode",
                     "lineItems/delivery/summary currency; domyślnie PLN"),
             rule(MeritFieldSection.HEADER, "TotalAmount",
-                    "brutto Allegro (paidAmount/totalToPay) / (1+VAT), skala 2; wiele stawek: Σ toNet(brutto grupy)"),
+                    "tymczasowo nie wysyłane; było: round(G/(1+VAT),2) z korektą −0,01 pod Merit"),
             rule(MeritFieldSection.HEADER, "HComment",
                     "AllegroAccount.name, login z GET /me, „ID transakcji: ” + orderId / buyer.login"),
             rule(MeritFieldSection.HEADER, "FComment",
@@ -79,7 +79,7 @@ public final class AllegroMeritInvoiceMappings {
             rule(MeritFieldSection.TAX, "TaxAmount[].TaxId",
                     "TaxId z pozycji po zgrupowaniu"),
             rule(MeritFieldSection.TAX, "TaxAmount[].Amount",
-                    "VAT jako reszta (brutto linii − round(lineNet, 2))")
+                    "nie wysyłane; Merit liczy VAT z netto pozycji")
     );
 
     private AllegroMeritInvoiceMappings() {

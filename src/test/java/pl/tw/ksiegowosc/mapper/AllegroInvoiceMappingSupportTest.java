@@ -70,6 +70,25 @@ class AllegroInvoiceMappingSupportTest {
     }
 
     @Test
+    void shouldPickMeritCompatibleNetSubtractingOneGroszWhenNeeded() {
+        BigDecimal rate = AllegroInvoiceMappingSupport.vatRateFromPercent(new BigDecimal("23"));
+        // 1120.50 → 910.98 daje Merit 1120.51; po −0.01 → 910.97 → 1120.49
+        assertThat(AllegroInvoiceMappingSupport.meritCompatibleNet(new BigDecimal("1120.50"), rate))
+                .isEqualByComparingTo(new BigDecimal("910.97"));
+        assertThat(AllegroInvoiceMappingSupport.meritGrossFromNet(new BigDecimal("910.97"), rate))
+                .isEqualByComparingTo(new BigDecimal("1120.49"));
+    }
+
+    @Test
+    void shouldKeepNetWhenMeritGrossMatchesTarget() {
+        BigDecimal rate = AllegroInvoiceMappingSupport.vatRateFromPercent(new BigDecimal("23"));
+        assertThat(AllegroInvoiceMappingSupport.meritCompatibleNet(new BigDecimal("60.00"), rate))
+                .isEqualByComparingTo(new BigDecimal("48.78"));
+        assertThat(AllegroInvoiceMappingSupport.meritGrossFromNet(new BigDecimal("48.78"), rate))
+                .isEqualByComparingTo(new BigDecimal("60.00"));
+    }
+
+    @Test
     void shouldConvertGrossToNetWithEightPercent() {
         BigDecimal rate = AllegroInvoiceMappingSupport.vatRateFromPercent(new BigDecimal("8"));
         assertThat(AllegroInvoiceMappingSupport.toNet(new BigDecimal("108.00"), rate))

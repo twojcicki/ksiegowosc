@@ -127,15 +127,15 @@ public class AllegroToMeritInvoiceBuilder {
         Map<String, BigDecimal> vatByTaxId = new LinkedHashMap<>();
         Map<String, BigDecimal> grossByTaxId = new LinkedHashMap<>();
         Map<String, MeritTaxDto> taxById = new LinkedHashMap<>();
-        List<CreateInvoiceLineRequest> lines = new ArrayList<>(builtLines.size());
         for (BuiltLine builtLine : builtLines) {
             linesGross = linesGross.add(builtLine.lineGross());
             vatByTaxId.merge(builtLine.tax().id(), builtLine.lineVat(), BigDecimal::add);
             grossByTaxId.merge(builtLine.tax().id(), builtLine.lineGross(), BigDecimal::add);
             taxById.putIfAbsent(builtLine.tax().id(), builtLine.tax());
-            lines.add(builtLine.toRequest(resolveItemUomName(context)));
         }
         BigDecimal totalAmount = resolveTotalAmount(form, grossByTaxId, taxById, linesGross);
+        List<CreateInvoiceLineRequest> lines = alignLinePricesToTotal(
+                builtLines, totalAmount, resolveItemUomName(context));
 
         BuyerBilling billing = billingMapper.toBuyerBilling(form);
         String headerComment = resolveHeaderComment(
@@ -226,8 +226,8 @@ public class AllegroToMeritInvoiceBuilder {
     }
 
     /**
-     * TotalAmount = brutto Allegro / (1+VAT). Jedna stawka: paidAmount/totalToPay (fallback: suma linii).
-     * Wiele stawek: suma toNet(brutto grupy, rate) per TaxId.
+     * TotalAmount pod model Merit (netto + round(netto×VAT)). Jedna stawka: paidAmount/totalToPay.
+     * Wiele stawek: suma meritCompatibleNet per TaxId.
      */
     static BigDecimal resolveTotalAmount(
             AllegroCheckoutForm form,
@@ -244,15 +244,53 @@ public class AllegroToMeritInvoiceBuilder {
             if (brutto == null) {
                 brutto = linesGross;
             }
-            return AllegroInvoiceMappingSupport.toNet(brutto, rate, 2);
+            return AllegroInvoiceMappingSupport.meritCompatibleNet(brutto, rate);
         }
         BigDecimal total = BigDecimal.ZERO.setScale(2, RoundingMode.HALF_UP);
         for (Map.Entry<String, BigDecimal> entry : grossByTaxId.entrySet()) {
             MeritTaxDto tax = taxById.get(entry.getKey());
             BigDecimal rate = AllegroInvoiceMappingSupport.vatRateFromPercent(tax.taxPct());
-            total = total.add(AllegroInvoiceMappingSupport.toNet(entry.getValue(), rate, 2));
+            total = total.add(AllegroInvoiceMappingSupport.meritCompatibleNet(entry.getValue(), rate));
         }
         return total;
+    }
+
+    /**
+     * Dopina Price ostatniej linii, żeby Σ (Price×Quantity) = TotalAmount.
+     */
+    static List<CreateInvoiceLineRequest> alignLinePricesToTotal(
+            List<BuiltLine> builtLines, BigDecimal totalAmount, String uomName) {
+        if (builtLines == null || builtLines.isEmpty()) {
+            return List.of();
+        }
+        List<CreateInvoiceLineRequest> lines = new ArrayList<>(builtLines.size());
+        BigDecimal othersNet = BigDecimal.ZERO.setScale(
+                AllegroInvoiceMappingSupport.UNIT_NET_SCALE, RoundingMode.HALF_UP);
+        for (int i = 0; i < builtLines.size() - 1; i++) {
+            BuiltLine line = builtLines.get(i);
+            othersNet = othersNet.add(line.lineNet());
+            lines.add(line.toRequest(uomName));
+        }
+        BuiltLine last = builtLines.getLast();
+        BigDecimal lastLineNet = totalAmount
+                .setScale(AllegroInvoiceMappingSupport.UNIT_NET_SCALE, RoundingMode.HALF_UP)
+                .subtract(othersNet)
+                .setScale(AllegroInvoiceMappingSupport.UNIT_NET_SCALE, RoundingMode.HALF_UP);
+        if (lastLineNet.compareTo(BigDecimal.ZERO) <= 0) {
+            lines.add(last.toRequest(uomName));
+            return lines;
+        }
+        BigDecimal adjustedUnitNet = AllegroInvoiceMappingSupport.unitNetFromLineNet(
+                lastLineNet, last.quantity());
+        lines.add(new CreateInvoiceLineRequest(
+                last.itemCode(),
+                last.description(),
+                last.itemType(),
+                BigDecimal.valueOf(last.quantity()),
+                adjustedUnitNet,
+                last.tax().id(),
+                uomName));
+        return lines;
     }
 
     /**

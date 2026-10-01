@@ -29,6 +29,9 @@ public interface MeritInvoiceMapper {
     @Mapping(target = "dueDate", source = "dueDate", qualifiedByName = "toMeritDate")
     @Mapping(target = "invoiceRow", source = "lines")
     @Mapping(target = "taxAmount", source = "taxAmounts")
+    // Tymczasowo nie wysyłamy TotalAmount — przywróć: usunięcie ignore.
+    // @Mapping(target = "totalAmount", source = "totalAmount")
+    @Mapping(target = "totalAmount", ignore = true)
     @Mapping(target = "hComment", source = "headerComment")
     @Mapping(target = "fComment", source = "footerComment", qualifiedByName = "blankToNull")
     MeritCreateInvoiceRequest toMeritRequest(CreateInvoiceRequest request);
@@ -45,6 +48,9 @@ public interface MeritInvoiceMapper {
     @Mapping(target = "uomName", source = "uomName")
     MeritCreateInvoiceItem toItem(CreateInvoiceLineRequest line);
 
+    // TaxAmount[].Amount nie wysyłamy — Merit liczy VAT z netto.
+    // @Mapping(target = "amount", source = "amount")
+    @Mapping(target = "amount", ignore = true)
     MeritCreateInvoiceTaxAmount toTaxAmount(CreateInvoiceTaxAmountRequest tax);
 
     MeritCreateInvoicePayment toPayment(CreateInvoicePaymentRequest payment);
