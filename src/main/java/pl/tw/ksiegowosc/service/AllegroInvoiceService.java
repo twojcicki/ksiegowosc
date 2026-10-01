@@ -136,13 +136,6 @@ public class AllegroInvoiceService {
         }
         String trimmedOrderId = orderId.trim();
 
-        if (createMissingCustomer) {
-            AllegroSoldInvoice existing = soldInvoiceRepository.findById(trimmedOrderId).orElse(null);
-            if (existing != null && existing.hasIssuedInvoice()) {
-                throw new ResponseStatusException(HttpStatus.CONFLICT, "Dla tego zamówienia faktura została już wystawiona.");
-            }
-        }
-
         AllegroAccount account = accountService.requireOwnedAccount(accountId);
         String accessToken = authService.getValidAccessTokenForAccount(account);
         String sellerLogin = fetchSellerLogin(account.getApiBaseUrl(), accessToken, account.getUserAgent());

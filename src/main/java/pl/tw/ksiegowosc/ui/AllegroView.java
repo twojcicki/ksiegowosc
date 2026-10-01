@@ -16,6 +16,7 @@ import com.vaadin.flow.component.applayout.DrawerToggle;
 import com.vaadin.flow.component.button.Button;
 import com.vaadin.flow.component.button.ButtonVariant;
 import com.vaadin.flow.component.combobox.ComboBox;
+import com.vaadin.flow.component.confirmdialog.ConfirmDialog;
 import com.vaadin.flow.component.datepicker.DatePicker;
 import com.vaadin.flow.component.dialog.Dialog;
 import com.vaadin.flow.component.grid.Grid;
@@ -306,13 +307,15 @@ public class AllegroView extends View {
 
     private HorizontalLayout createSoldActions(AllegroSoldItemDto item) {
         boolean alreadyIssued = item.invoiceNo() != null && !item.invoiceNo().isBlank();
-        Button issue = new Button("Wystaw fakturę");
+        Button issue = new Button(alreadyIssued ? "Wystaw ponownie" : "Wystaw fakturę");
         issue.addThemeVariants(ButtonVariant.LUMO_SMALL, ButtonVariant.LUMO_PRIMARY);
-        issue.setEnabled(!alreadyIssued);
-        if (alreadyIssued) {
-            issue.getElement().setAttribute("title", "Faktura już wystawiona");
-        }
-        issue.addClickListener(event -> issueInvoice(item, issue));
+        issue.addClickListener(event -> {
+            if (alreadyIssued) {
+                confirmReissueInvoice(item, issue);
+            } else {
+                issueInvoice(item, issue);
+            }
+        });
 
         Button details = new Button("Szczegóły");
         details.addThemeVariants(ButtonVariant.LUMO_SMALL, ButtonVariant.LUMO_TERTIARY);
@@ -326,6 +329,23 @@ public class AllegroView extends View {
         actions.setSpacing(true);
         actions.setPadding(false);
         return actions;
+    }
+
+    private void confirmReissueInvoice(AllegroSoldItemDto item, Button button) {
+        ConfirmDialog dialog = new ConfirmDialog();
+        dialog.setHeader("Wystawić fakturę ponownie?");
+        dialog.setText(
+                "Powstanie nowa faktura w Merit. Poprzednia ("
+                        + item.invoiceNo()
+                        + ") pozostanie bez zmian; lokalny numer zostanie nadpisany.");
+        dialog.setCancelable(true);
+        dialog.setCancelText("Anuluj");
+        dialog.setConfirmText("Wystaw ponownie");
+        dialog.addConfirmListener(event -> {
+            dialog.close();
+            issueInvoice(item, button);
+        });
+        dialog.open();
     }
 
     private void openSoldDetailsDialog(AllegroSoldItemDto item) {
@@ -378,9 +398,7 @@ public class AllegroView extends View {
             loadSoldItems();
         } catch (ResponseStatusException ex) {
             showError(reason(ex));
-            if (item.invoiceNo() == null || item.invoiceNo().isBlank()) {
-                button.setEnabled(true);
-            }
+            button.setEnabled(true);
         } catch (RestClientResponseException ex) {
             String message = MeritErrorMessages.from(ex);
             if (message == null || message.isBlank()) {

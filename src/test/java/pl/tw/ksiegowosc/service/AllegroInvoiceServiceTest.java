@@ -196,18 +196,30 @@ class AllegroInvoiceServiceTest {
     }
 
     @Test
-    void shouldRejectAlreadyInvoicedOrder() {
+    void shouldReissueInvoiceWhenAlreadyIssued() {
         AllegroSoldInvoice existing = new AllegroSoldInvoice();
         existing.setOrderId("order-1");
         existing.setInvoiceNo("FS/1/01/2026");
+        existing.setMeritInvoiceId("old-merit-id");
         when(soldInvoiceRepository.findById("order-1")).thenReturn(java.util.Optional.of(existing));
+        when(allegroApiClient.getCheckoutForm("https://api.allegro.pl", "token", "ua", "order-1"))
+                .thenReturn(sampleForm(null, null));
+        when(customersService.createCustomer(any()))
+                .thenReturn(new MeritCreateCustomerResponse("cust-1", "Allegro Sp. z o.o."));
+        when(accountService.allocateInvoiceNo(any(), any())).thenReturn("FS/2/01/2026");
+        when(invoicesService.createInvoice(any())).thenReturn(new CreateInvoiceResponse("merit-inv-2", "cust-1"));
 
-        assertThatThrownBy(() -> invoiceService.issueInvoice(9L, "order-1"))
-                .isInstanceOf(ResponseStatusException.class)
-                .hasMessageContaining("już wystawiona");
+        var response = invoiceService.issueInvoice(9L, "order-1");
 
-        verify(allegroApiClient, never()).getCheckoutForm(any(), any(), any(), any());
-        verify(invoicesService, never()).createInvoice(any());
+        assertThat(response.invoiceNo()).isEqualTo("FS/2/01/2026");
+        assertThat(response.meritInvoiceId()).isEqualTo("merit-inv-2");
+        verify(invoicesService).createInvoice(any());
+        ArgumentCaptor<AllegroSoldInvoice> saved = ArgumentCaptor.forClass(AllegroSoldInvoice.class);
+        verify(soldInvoiceRepository).save(saved.capture());
+        assertThat(saved.getValue().getOrderId()).isEqualTo("order-1");
+        assertThat(saved.getValue().getInvoiceNo()).isEqualTo("FS/2/01/2026");
+        assertThat(saved.getValue().getMeritInvoiceId()).isEqualTo("merit-inv-2");
+        assertThat(saved.getValue().getIssueError()).isNull();
     }
 
     @Test
