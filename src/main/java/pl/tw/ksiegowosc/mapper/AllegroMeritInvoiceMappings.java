@@ -79,7 +79,7 @@ public final class AllegroMeritInvoiceMappings {
             rule(MeritFieldSection.TAX, "TaxAmount[].TaxId",
                     "TaxId z pozycji po zgrupowaniu"),
             rule(MeritFieldSection.TAX, "TaxAmount[].Amount",
-                    "tymczasowo nie wysyłane; było: VAT jako reszta (brutto linii − round(lineNet, 2))")
+                    "VAT jako reszta (brutto linii − round(lineNet, 2))")
     );
 
     private AllegroMeritInvoiceMappings() {

@@ -45,9 +45,6 @@ public interface MeritInvoiceMapper {
     @Mapping(target = "uomName", source = "uomName")
     MeritCreateInvoiceItem toItem(CreateInvoiceLineRequest line);
 
-    // Tymczasowo nie wysyłamy TaxAmount[].Amount do Merit — przywróć: usunięcie ignore + mapping source.
-    // @Mapping(target = "amount", source = "amount")
-    @Mapping(target = "amount", ignore = true)
     MeritCreateInvoiceTaxAmount toTaxAmount(CreateInvoiceTaxAmountRequest tax);
 
     MeritCreateInvoicePayment toPayment(CreateInvoicePaymentRequest payment);
