@@ -155,10 +155,10 @@ public class AllegroInvoiceService {
         }
 
         Instant boughtAt = invoiceMapper.earliestBoughtAt(form.lineItems());
-        LocalDate docDate = LocalDate.now(clock.withZone(ZONE));
         LocalDate transactionDate = boughtAt == null
-                ? docDate
+                ? LocalDate.now(clock.withZone(ZONE))
                 : boughtAt.atZone(ZONE).toLocalDate();
+        LocalDate docDate = transactionDate;
 
         String uomName = unitsService.requireDefaultUnit().name();
         if (uomName == null || uomName.isBlank()) {
