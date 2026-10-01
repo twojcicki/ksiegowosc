@@ -303,14 +303,9 @@ class AllegroInvoiceServiceTest {
         assertThat(request.lines().get(2).itemCode()).isEqualTo("Dostawa");
         assertThat(request.lines().get(2).description()).isEqualTo("Paczkomat");
         assertThat(request.lines().get(2).itemType()).isEqualTo(2);
+        assertThat(request.lines().get(2).price()).isEqualByComparingTo(new BigDecimal("8.1300813"));
         assertThat(request.lines().get(2).taxId()).isEqualTo("tax-23");
-        // TotalAmount = Merit-compatible netto z 70.00
         assertThat(request.totalAmount()).isEqualByComparingTo(new BigDecimal("56.91"));
-        BigDecimal linesNet = request.lines().stream()
-                .map(l -> l.price().multiply(l.quantity()))
-                .reduce(BigDecimal.ZERO, BigDecimal::add)
-                .setScale(2, java.math.RoundingMode.HALF_UP);
-        assertThat(linesNet).isEqualByComparingTo(request.totalAmount());
     }
 
     @Test
@@ -357,7 +352,7 @@ class AllegroInvoiceServiceTest {
     }
 
     @Test
-    void shouldAlignLastLinePriceSoSumMatchesTotalAmount() {
+    void shouldKeepSimpleUnitNetPriceWhenTotalToPayDiffersByOneGrosz() {
         when(soldInvoiceRepository.findById("order-1")).thenReturn(java.util.Optional.empty());
         AllegroDelivery delivery = new AllegroDelivery(
                 new AllegroPrice("10.00", "PLN"),
@@ -375,11 +370,8 @@ class AllegroInvoiceServiceTest {
         verify(invoicesService).createInvoice(requestCaptor.capture());
         CreateInvoiceRequest request = requestCaptor.getValue();
         assertThat(request.totalAmount()).isEqualByComparingTo(new BigDecimal("56.92"));
-        BigDecimal linesNet = request.lines().stream()
-                .map(l -> l.price().multiply(l.quantity()))
-                .reduce(BigDecimal.ZERO, BigDecimal::add)
-                .setScale(2, java.math.RoundingMode.HALF_UP);
-        assertThat(linesNet).isEqualByComparingTo(request.totalAmount());
+        // Price bez korekty do TotalAmount: 10.00 / 1.23
+        assertThat(request.lines().get(2).price()).isEqualByComparingTo(new BigDecimal("8.1300813"));
     }
 
     @Test
