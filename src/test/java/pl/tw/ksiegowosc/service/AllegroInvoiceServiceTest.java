@@ -9,6 +9,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import java.math.BigDecimal;
+import java.nio.charset.StandardCharsets;
 import java.time.Clock;
 import java.time.Instant;
 import java.time.ZoneOffset;
@@ -17,10 +18,13 @@ import java.util.List;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpStatus;
 import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.TransactionDefinition;
 import org.springframework.transaction.TransactionStatus;
 import org.springframework.transaction.support.SimpleTransactionStatus;
+import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.server.ResponseStatusException;
 
 import pl.tw.ksiegowosc.client.AllegroApiClient;
@@ -146,6 +150,9 @@ class AllegroInvoiceServiceTest {
         assertThat(request.taxAmounts().getFirst().taxId()).isEqualTo("tax-23");
         assertThat(request.totalAmount()).isEqualByComparingTo(new BigDecimal("48.78"));
         assertThat(request.payment()).isNull();
+        assertThat(request.docDate()).isEqualTo(java.time.LocalDate.of(2026, 9, 6));
+        assertThat(request.transactionDate()).isEqualTo(java.time.LocalDate.of(2026, 1, 10));
+        assertThat(request.dueDate()).isNull();
 
         ArgumentCaptor<AllegroSoldInvoice> entityCaptor = ArgumentCaptor.forClass(AllegroSoldInvoice.class);
         verify(soldInvoiceRepository).save(entityCaptor.capture());
@@ -153,7 +160,7 @@ class AllegroInvoiceServiceTest {
         assertThat(entityCaptor.getValue().getInvoiceNo()).isEqualTo("FS/1/01/2026");
         verify(customersService).createCustomer(any());
         verify(taxesService).listTaxes();
-        verify(accountService).allocateInvoiceNo(9L, java.time.LocalDate.of(2026, 1, 10));
+        verify(accountService).allocateInvoiceNo(9L, java.time.LocalDate.of(2026, 9, 6));
     }
 
     @Test
@@ -193,6 +200,29 @@ class AllegroInvoiceServiceTest {
         assertThat(customerCaptor.getValue().name()).isEqualTo("Allegro Sp. z o.o.");
         assertThat(customerCaptor.getValue().vatRegNo()).isEqualTo("5252674798");
         assertThat(customerCaptor.getValue().countryCode()).isEqualTo("PL");
+    }
+
+    @Test
+    void shouldReuseExistingMeritCustomerWhenCreateReturnsCustExists() {
+        when(soldInvoiceRepository.findById("order-1")).thenReturn(java.util.Optional.empty());
+        when(allegroApiClient.getCheckoutForm("https://api.allegro.pl", "token", "ua", "order-1"))
+                .thenReturn(sampleForm(null, null));
+        when(customersService.createCustomer(any())).thenThrow(HttpClientErrorException.create(
+                HttpStatus.BAD_REQUEST,
+                "Bad Request",
+                HttpHeaders.EMPTY,
+                "{\"Message\":\"api-custexists\"}".getBytes(StandardCharsets.UTF_8),
+                StandardCharsets.UTF_8));
+        when(customersService.findCustomerId(any())).thenReturn("existing-cust-9");
+        when(invoicesService.createInvoice(any())).thenReturn(new CreateInvoiceResponse("merit-inv-1", "existing-cust-9"));
+
+        invoiceService.issueInvoice(9L, "order-1");
+
+        verify(customersService).createCustomer(any());
+        verify(customersService).findCustomerId(any());
+        ArgumentCaptor<CreateInvoiceRequest> requestCaptor = ArgumentCaptor.forClass(CreateInvoiceRequest.class);
+        verify(invoicesService).createInvoice(requestCaptor.capture());
+        assertThat(requestCaptor.getValue().customerId()).isEqualTo("existing-cust-9");
     }
 
     @Test

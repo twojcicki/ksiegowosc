@@ -310,6 +310,7 @@ class InvoicesServiceTest {
                 "FV/2026/01/01",
                 LocalDate.of(2026, 1, 1),
                 LocalDate.of(2026, 1, 15),
+                null,
                 "PLN",
                 "Komentarz górny",
                 "Komentarz dolny",

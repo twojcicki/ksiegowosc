@@ -33,13 +33,15 @@ public final class AllegroMeritInvoiceMappings {
 
             // HEADER (sendinvoice)
             rule(MeritFieldSection.HEADER, "Customer.Id",
-                    "zawsze sendcustomer z danymi invoice/delivery (bez lookupu istniejącego klienta)"),
+                    "sendcustomer; przy api-custexists — CustomerId z getcustomers po Name"),
             rule(MeritFieldSection.HEADER, "AccountingDoc",
                     "stała 1 (faktura sprzedaży)"),
             rule(MeritFieldSection.HEADER, "DocDate",
-                    "najwcześniejszy lineItems[].boughtAt (Europe/Warsaw); inaczej dziś"),
+                    "dziś (Europe/Warsaw)"),
+            rule(MeritFieldSection.HEADER, "TransactionDate",
+                    "najwcześniejszy lineItems[].boughtAt (Europe/Warsaw); inaczej DocDate"),
             rule(MeritFieldSection.HEADER, "DueDate",
-                    "DocDate + 14 dni"),
+                    "nie ustawiane"),
             rule(MeritFieldSection.HEADER, "InvoiceNo",
                     "prefiks konta / (liczba faktur w miesiącu + 1) / MM / rrrr"),
             rule(MeritFieldSection.HEADER, "CurrencyCode",

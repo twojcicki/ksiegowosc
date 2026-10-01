@@ -199,6 +199,7 @@ class MeritApiClientTest {
                 new MeritCreateInvoiceCustomer("665f01a4-357a-4a6b-a565-2f17e6e1da13"),
                 1,
                 "20260101000000",
+                null,
                 "20260115000000",
                 "FV/2026/01/01",
                 "PLN",

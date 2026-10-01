@@ -29,6 +29,11 @@ public final class MeritErrorMessages {
         return body.trim();
     }
 
+    public static boolean isCustomerExists(RestClientResponseException ex) {
+        String message = from(ex);
+        return message != null && message.toLowerCase().contains("api-custexists");
+    }
+
     private static String defaultMessage(RestClientResponseException ex) {
         String statusText = ex.getStatusText();
         return statusText == null || statusText.isBlank()

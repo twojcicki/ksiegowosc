@@ -24,4 +24,22 @@ class MeritErrorMessagesTest {
         assertThat(MeritErrorMessages.from(ex))
                 .isEqualTo("E-mail nadawcy nie został wpisany w ustawieniach faktury sprzedaży.");
     }
+
+    @Test
+    void shouldDetectCustomerExistsError() {
+        HttpClientErrorException ex = HttpClientErrorException.create(
+                HttpStatus.BAD_REQUEST,
+                "Bad Request",
+                HttpHeaders.EMPTY,
+                "{\"Message\":\"api-custexists\"}".getBytes(StandardCharsets.UTF_8),
+                StandardCharsets.UTF_8);
+
+        assertThat(MeritErrorMessages.isCustomerExists(ex)).isTrue();
+        assertThat(MeritErrorMessages.isCustomerExists(HttpClientErrorException.create(
+                HttpStatus.BAD_REQUEST,
+                "Bad Request",
+                HttpHeaders.EMPTY,
+                "{\"Message\":\"other\"}".getBytes(StandardCharsets.UTF_8),
+                StandardCharsets.UTF_8))).isFalse();
+    }
 }

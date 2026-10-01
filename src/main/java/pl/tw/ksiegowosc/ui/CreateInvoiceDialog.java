@@ -345,6 +345,7 @@ public class CreateInvoiceDialog extends Dialog {
                 invoiceNo.getValue().trim(),
                 docDate.getValue(),
                 dueDate.getValue(),
+                null,
                 currencyCode.getValue().trim(),
                 headerComment.getValue().trim(),
                 isBlank(footerComment.getValue()) ? null : footerComment.getValue().trim(),

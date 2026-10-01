@@ -22,6 +22,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 
 import pl.tw.ksiegowosc.client.AllegroApiClient;
 import pl.tw.ksiegowosc.client.AllegroErrorMessages;
+import pl.tw.ksiegowosc.client.MeritErrorMessages;
 import pl.tw.ksiegowosc.dto.AllegroInvoicePreviewDto;
 import pl.tw.ksiegowosc.dto.AllegroInvoicePreviewRow;
 import pl.tw.ksiegowosc.dto.BuyerBilling;
@@ -154,8 +155,9 @@ public class AllegroInvoiceService {
         }
 
         Instant boughtAt = invoiceMapper.earliestBoughtAt(form.lineItems());
-        LocalDate docDate = boughtAt == null
-                ? LocalDate.now(clock.withZone(ZONE))
+        LocalDate docDate = LocalDate.now(clock.withZone(ZONE));
+        LocalDate transactionDate = boughtAt == null
+                ? docDate
                 : boughtAt.atZone(ZONE).toLocalDate();
 
         String uomName = unitsService.requireDefaultUnit().name();
@@ -171,6 +173,7 @@ public class AllegroInvoiceService {
                 null,
                 "VALIDATE",
                 docDate,
+                transactionDate,
                 taxes,
                 uomName,
                 account.getName(),
@@ -199,6 +202,7 @@ public class AllegroInvoiceService {
                         customer.customerId(),
                         invoiceNo,
                         docDate,
+                        transactionDate,
                         taxes,
                         uomName,
                         account.getName(),
@@ -275,6 +279,16 @@ public class AllegroInvoiceService {
             }
             return new CustomerResolution(created.id(), false, createRequest);
         } catch (RestClientResponseException ex) {
+            if (MeritErrorMessages.isCustomerExists(ex)) {
+                String existingId = customersService.findCustomerId(createRequest);
+                if (existingId != null && !existingId.isBlank()) {
+                    return new CustomerResolution(existingId, true, createRequest);
+                }
+                throw new ResponseStatusException(
+                        HttpStatus.BAD_REQUEST,
+                        "Klient już istnieje w Merit, ale nie udało się go odnaleźć po NIP/nazwie.",
+                        ex);
+            }
             org.springframework.http.HttpStatusCode status = ex.getStatusCode().is4xxClientError()
                     ? ex.getStatusCode()
                     : HttpStatus.BAD_GATEWAY;

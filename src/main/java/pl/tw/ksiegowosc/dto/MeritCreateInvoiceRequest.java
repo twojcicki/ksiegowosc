@@ -11,6 +11,7 @@ public record MeritCreateInvoiceRequest(
         @JsonProperty("Customer") MeritCreateInvoiceCustomer customer,
         @JsonProperty("AccountingDoc") int accountingDoc,
         @JsonProperty("DocDate") String docDate,
+        @JsonProperty("TransactionDate") String transactionDate,
         @JsonProperty("DueDate") String dueDate,
         @JsonProperty("InvoiceNo") String invoiceNo,
         @JsonProperty("CurrencyCode") String currencyCode,

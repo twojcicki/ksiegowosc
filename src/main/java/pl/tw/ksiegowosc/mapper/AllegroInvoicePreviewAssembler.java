@@ -79,6 +79,7 @@ public final class AllegroInvoicePreviewAssembler {
             }
             case "AccountingDoc" -> String.valueOf(invoice.accountingDoc());
             case "DocDate" -> invoice.docDate();
+            case "TransactionDate" -> invoice.transactionDate();
             case "DueDate" -> invoice.dueDate();
             case "InvoiceNo" -> invoice.invoiceNo();
             case "CurrencyCode" -> invoice.currencyCode();

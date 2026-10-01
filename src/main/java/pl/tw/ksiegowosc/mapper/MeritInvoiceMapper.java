@@ -25,6 +25,7 @@ public interface MeritInvoiceMapper {
     @Mapping(target = "customer", source = "customerId", qualifiedByName = "toCustomer")
     @Mapping(target = "accountingDoc", constant = "1")
     @Mapping(target = "docDate", source = "docDate", qualifiedByName = "toMeritDate")
+    @Mapping(target = "transactionDate", source = "transactionDate", qualifiedByName = "toMeritDate")
     @Mapping(target = "dueDate", source = "dueDate", qualifiedByName = "toMeritDate")
     @Mapping(target = "invoiceRow", source = "lines")
     @Mapping(target = "taxAmount", source = "taxAmounts")
@@ -55,6 +56,9 @@ public interface MeritInvoiceMapper {
 
     @Named("toMeritDate")
     default String toMeritDate(LocalDate date) {
+        if (date == null) {
+            return null;
+        }
         return date.format(DateTimeFormatter.BASIC_ISO_DATE) + "000000";
     }
 
