@@ -130,6 +130,7 @@ class AllegroInvoiceServiceTest {
         assertThat(request.taxAmounts()).hasSize(1);
         assertThat(request.taxAmounts().getFirst().taxId()).isEqualTo("tax-23");
         assertThat(request.totalAmount()).isEqualByComparingTo(new BigDecimal("48.78"));
+        assertThat(request.roundingAmount()).isNull();
         assertThat(request.payment()).isNull();
         assertThat(request.docDate()).isEqualTo(java.time.LocalDate.of(2026, 1, 10));
         assertThat(request.transactionDate()).isEqualTo(java.time.LocalDate.of(2026, 1, 10));
@@ -370,8 +371,38 @@ class AllegroInvoiceServiceTest {
         verify(invoicesService).createInvoice(requestCaptor.capture());
         CreateInvoiceRequest request = requestCaptor.getValue();
         assertThat(request.totalAmount()).isEqualByComparingTo(new BigDecimal("56.92"));
+        assertThat(request.roundingAmount()).isNull();
         // Price bez korekty do TotalAmount: 10.00 / 1.23
         assertThat(request.lines().get(2).price()).isEqualByComparingTo(new BigDecimal("8.1300813"));
+    }
+
+    @Test
+    void shouldSetNegativeRoundingAmountWhenMeritGrossExceedsPaidGross() {
+        when(soldInvoiceRepository.findById("order-1")).thenReturn(java.util.Optional.empty());
+        AllegroCheckoutSummary summary = new AllegroCheckoutSummary(new AllegroPrice("1120.50", "PLN"));
+        when(allegroApiClient.getCheckoutForm("https://api.allegro.pl", "token", "ua", "order-1"))
+                .thenReturn(sampleForm(
+                        null,
+                        null,
+                        null,
+                        summary,
+                        null,
+                        new AllegroPayment(
+                                "pay-1",
+                                "ONLINE",
+                                "PAYU",
+                                Instant.parse("2026-01-10T08:00:00Z"),
+                                new AllegroPrice("1120.50", "PLN"))));
+        when(customersService.createCustomer(any())).thenReturn(new MeritCreateCustomerResponse("cust-1", "Allegro Sp. z o.o."));
+        when(invoicesService.createInvoice(any())).thenReturn(new CreateInvoiceResponse("merit-inv-1", "cust-1"));
+
+        invoiceService.issueInvoice(9L, "order-1");
+
+        ArgumentCaptor<CreateInvoiceRequest> requestCaptor = ArgumentCaptor.forClass(CreateInvoiceRequest.class);
+        verify(invoicesService).createInvoice(requestCaptor.capture());
+        CreateInvoiceRequest request = requestCaptor.getValue();
+        assertThat(request.totalAmount()).isEqualByComparingTo(new BigDecimal("910.98"));
+        assertThat(request.roundingAmount()).isEqualByComparingTo(new BigDecimal("-0.01"));
     }
 
     @Test

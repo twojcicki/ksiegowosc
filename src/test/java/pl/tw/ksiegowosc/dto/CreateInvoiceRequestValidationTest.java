@@ -43,6 +43,7 @@ class CreateInvoiceRequestValidationTest {
                 " ",
                 "Komentarz dolny",
                 new BigDecimal("100.00"),
+                null,
                 List.of(validLine()),
                 List.of(validTax()),
                 null);
@@ -64,6 +65,7 @@ class CreateInvoiceRequestValidationTest {
                 "Komentarz górny",
                 null,
                 new BigDecimal("100.00"),
+                null,
                 List.of(validLine()),
                 List.of(validTax()),
                 null);
@@ -85,6 +87,7 @@ class CreateInvoiceRequestValidationTest {
                 "Komentarz górny",
                 "Komentarz dolny",
                 new BigDecimal("100.00"),
+                null,
                 Collections.emptyList(),
                 List.of(validTax()),
                 null);
@@ -105,6 +108,7 @@ class CreateInvoiceRequestValidationTest {
                 "Komentarz górny",
                 "Komentarz dolny",
                 new BigDecimal("100.00"),
+                null,
                 List.of(validLine()),
                 List.of(validTax()),
                 null);

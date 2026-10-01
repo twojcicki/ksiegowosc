@@ -350,6 +350,7 @@ public class CreateInvoiceDialog extends Dialog {
                 headerComment.getValue().trim(),
                 isBlank(footerComment.getValue()) ? null : footerComment.getValue().trim(),
                 totalNet,
+                null,
                 lineRequests,
                 taxAmounts,
                 null);

@@ -84,6 +84,7 @@ public final class AllegroInvoicePreviewAssembler {
             case "InvoiceNo" -> invoice.invoiceNo();
             case "CurrencyCode" -> invoice.currencyCode();
             case "TotalAmount" -> invoice.totalAmount() == null ? null : invoice.totalAmount().toPlainString();
+            case "RoundingAmount" -> invoice.roundingAmount() == null ? null : invoice.roundingAmount().toPlainString();
             case "HComment" -> invoice.hComment();
             case "FComment" -> invoice.fComment();
             case "Payment.PaymentMethod" -> invoice.payment() == null ? null : invoice.payment().paymentMethod();

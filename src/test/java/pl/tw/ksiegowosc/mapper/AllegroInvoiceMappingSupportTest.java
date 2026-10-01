@@ -70,22 +70,26 @@ class AllegroInvoiceMappingSupportTest {
     }
 
     @Test
-    void shouldPickMeritCompatibleNetSubtractingOneGroszWhenNeeded() {
+    void shouldUseSimpleNetAndNegativeRoundingWhenMeritGrossExceedsTarget() {
         BigDecimal rate = AllegroInvoiceMappingSupport.vatRateFromPercent(new BigDecimal("23"));
-        // 1120.50 → 910.98 daje Merit 1120.51; po −0.01 → 910.97 → 1120.49
-        assertThat(AllegroInvoiceMappingSupport.meritCompatibleNet(new BigDecimal("1120.50"), rate))
-                .isEqualByComparingTo(new BigDecimal("910.97"));
-        assertThat(AllegroInvoiceMappingSupport.meritGrossFromNet(new BigDecimal("910.97"), rate))
-                .isEqualByComparingTo(new BigDecimal("1120.49"));
+        BigDecimal totalAmount = AllegroInvoiceMappingSupport.toNet(new BigDecimal("1120.50"), rate);
+        BigDecimal meritGross = AllegroInvoiceMappingSupport.meritGrossFromNet(totalAmount, rate);
+
+        assertThat(totalAmount).isEqualByComparingTo(new BigDecimal("910.98"));
+        assertThat(meritGross).isEqualByComparingTo(new BigDecimal("1120.51"));
+        assertThat(AllegroInvoiceMappingSupport.roundingAmount(new BigDecimal("1120.50"), meritGross))
+                .isEqualByComparingTo(new BigDecimal("-0.01"));
     }
 
     @Test
-    void shouldKeepNetWhenMeritGrossMatchesTarget() {
+    void shouldOmitRoundingWhenMeritGrossMatchesTarget() {
         BigDecimal rate = AllegroInvoiceMappingSupport.vatRateFromPercent(new BigDecimal("23"));
-        assertThat(AllegroInvoiceMappingSupport.meritCompatibleNet(new BigDecimal("60.00"), rate))
-                .isEqualByComparingTo(new BigDecimal("48.78"));
-        assertThat(AllegroInvoiceMappingSupport.meritGrossFromNet(new BigDecimal("48.78"), rate))
-                .isEqualByComparingTo(new BigDecimal("60.00"));
+        BigDecimal totalAmount = AllegroInvoiceMappingSupport.toNet(new BigDecimal("60.00"), rate);
+        BigDecimal meritGross = AllegroInvoiceMappingSupport.meritGrossFromNet(totalAmount, rate);
+
+        assertThat(totalAmount).isEqualByComparingTo(new BigDecimal("48.78"));
+        assertThat(meritGross).isEqualByComparingTo(new BigDecimal("60.00"));
+        assertThat(AllegroInvoiceMappingSupport.roundingAmount(new BigDecimal("60.00"), meritGross)).isNull();
     }
 
     @Test

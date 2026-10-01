@@ -61,41 +61,8 @@ public final class AllegroInvoiceMappingSupport {
     }
 
     /**
-     * Netto pod model Merit: VAT = round(netto × stawka, 2), brutto = netto + VAT.
-     * Start: round(G/(1+r), 2); jeśli Merit brutto ≠ G, spróbuj netto − 0,01 (bliższy / nie zawyżać).
+     * Brutto modelu Merit: netto + round(netto × stawka, 2).
      */
-    public static BigDecimal meritCompatibleNet(BigDecimal targetGross, BigDecimal vatRate) {
-        if (targetGross == null || vatRate == null) {
-            return BigDecimal.ZERO.setScale(2, RoundingMode.HALF_UP);
-        }
-        BigDecimal gross = targetGross.setScale(2, RoundingMode.HALF_UP);
-        BigDecimal n = toNet(gross, vatRate, 2);
-        BigDecimal meritGross = meritGrossFromNet(n, vatRate);
-        if (meritGross.compareTo(gross) == 0) {
-            return n;
-        }
-        BigDecimal n2 = n.subtract(new BigDecimal("0.01")).setScale(2, RoundingMode.HALF_UP);
-        if (n2.compareTo(BigDecimal.ZERO) <= 0) {
-            return n;
-        }
-        BigDecimal meritGross2 = meritGrossFromNet(n2, vatRate);
-        int diff1 = meritGross.subtract(gross).abs().compareTo(meritGross2.subtract(gross).abs());
-        if (diff1 < 0) {
-            return n;
-        }
-        if (diff1 > 0) {
-            return n2;
-        }
-        // remis: preferuj wariant z brutto ≤ cel (nie zawyżać)
-        if (meritGross2.compareTo(gross) <= 0) {
-            return n2;
-        }
-        if (meritGross.compareTo(gross) <= 0) {
-            return n;
-        }
-        return n2;
-    }
-
     public static BigDecimal meritGrossFromNet(BigDecimal net, BigDecimal vatRate) {
         if (net == null || vatRate == null) {
             return BigDecimal.ZERO.setScale(2, RoundingMode.HALF_UP);
@@ -103,6 +70,21 @@ public final class AllegroInvoiceMappingSupport {
         BigDecimal n = net.setScale(2, RoundingMode.HALF_UP);
         BigDecimal vat = n.multiply(vatRate).setScale(2, RoundingMode.HALF_UP);
         return n.add(vat);
+    }
+
+    /**
+     * RoundingAmount = targetGross − meritGross; 0 → null (nie wysyłać).
+     */
+    public static BigDecimal roundingAmount(BigDecimal targetGross, BigDecimal meritGross) {
+        if (targetGross == null || meritGross == null) {
+            return null;
+        }
+        BigDecimal rounding = targetGross.setScale(2, RoundingMode.HALF_UP)
+                .subtract(meritGross.setScale(2, RoundingMode.HALF_UP));
+        if (rounding.compareTo(BigDecimal.ZERO) == 0) {
+            return null;
+        }
+        return rounding;
     }
 
     public static BigDecimal lineNetFromUnitNet(BigDecimal unitNet, int quantity) {

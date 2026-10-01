@@ -281,6 +281,7 @@ class InvoicesServiceTest {
         assertThat(meritRequest.taxAmount().getFirst().taxId()).isEqualTo("665f01a4-357a-4a6b-a565-2f17e6e1da13");
         assertThat(meritRequest.taxAmount().getFirst().amount()).isNull();
         assertThat(meritRequest.totalAmount()).isEqualByComparingTo("100.00");
+        assertThat(meritRequest.roundingAmount()).isNull();
     }
 
     @Test
@@ -318,6 +319,7 @@ class InvoicesServiceTest {
                 "Komentarz górny",
                 "Komentarz dolny",
                 new BigDecimal("100.00"),
+                null,
                 List.of(new CreateInvoiceLineRequest(
                         "USLUGA",
                         "Usługa",
