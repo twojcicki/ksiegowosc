@@ -140,9 +140,9 @@ public class AllegroToMeritInvoiceBuilder {
         BigDecimal roundingAmount = resolveRoundingAmount(form, grossByTaxId, taxById, linesGross, totalAmount);
 
         BuyerBilling billing = billingMapper.toBuyerBilling(form);
-        String headerComment = resolveHeaderComment(
+        String footerComment = resolveHeaderComment(
                 context.accountName(), context.sellerLogin(), form.id(), billing.login());
-        if (headerComment == null) {
+        if (footerComment == null) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Brak danych Allegro do komentarza faktury.");
         }
 
@@ -157,8 +157,8 @@ public class AllegroToMeritInvoiceBuilder {
                 null,
                 context.transactionDate(),
                 currency,
-                headerComment,
                 null,
+                footerComment,
                 totalAmount,
                 roundingAmount,
                 lines,

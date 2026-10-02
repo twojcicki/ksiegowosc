@@ -17,7 +17,7 @@ public record CreateInvoiceRequest(
         LocalDate dueDate,
         LocalDate transactionDate,
         @NotBlank String currencyCode,
-        @NotBlank String headerComment,
+        String headerComment,
         String footerComment,
         @NotNull BigDecimal totalAmount,
         BigDecimal roundingAmount,

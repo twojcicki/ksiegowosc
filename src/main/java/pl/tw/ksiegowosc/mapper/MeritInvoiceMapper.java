@@ -29,7 +29,7 @@ public interface MeritInvoiceMapper {
     @Mapping(target = "dueDate", source = "dueDate", qualifiedByName = "toMeritDate")
     @Mapping(target = "invoiceRow", source = "lines")
     @Mapping(target = "taxAmount", source = "taxAmounts")
-    @Mapping(target = "hComment", source = "headerComment")
+    @Mapping(target = "hComment", source = "headerComment", qualifiedByName = "blankToNull")
     @Mapping(target = "fComment", source = "footerComment", qualifiedByName = "blankToNull")
     MeritCreateInvoiceRequest toMeritRequest(CreateInvoiceRequest request);
 

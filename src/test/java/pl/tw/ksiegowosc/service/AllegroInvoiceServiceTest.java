@@ -125,8 +125,8 @@ class AllegroInvoiceServiceTest {
         assertThat(request.lines().getFirst().itemType()).isEqualTo(1);
         assertThat(request.lines().getFirst().uomName()).isEqualTo("szt.");
         assertThat(request.lines().getFirst().taxId()).isEqualTo("tax-23");
-        assertThat(request.headerComment()).isEqualTo("Sklep, elfabric_pl, ID transakcji: order-1 / buyer1");
-        assertThat(request.footerComment()).isNull();
+        assertThat(request.headerComment()).isNull();
+        assertThat(request.footerComment()).isEqualTo("Sklep, elfabric_pl, ID transakcji: order-1 / buyer1");
         assertThat(request.taxAmounts()).hasSize(1);
         assertThat(request.taxAmounts().getFirst().taxId()).isEqualTo("tax-23");
         assertThat(request.totalAmount()).isEqualByComparingTo(new BigDecimal("48.78"));
@@ -425,7 +425,9 @@ class AllegroInvoiceServiceTest {
         ArgumentCaptor<CreateInvoiceRequest> requestCaptor = ArgumentCaptor.forClass(CreateInvoiceRequest.class);
         verify(invoicesService).createInvoice(requestCaptor.capture());
         assertThat(requestCaptor.getValue().customerId()).isEqualTo("cust-priv");
-        assertThat(requestCaptor.getValue().footerComment()).isNull();
+        assertThat(requestCaptor.getValue().footerComment())
+                .isEqualTo("Sklep, elfabric_pl, ID transakcji: order-1 / buyer1");
+        assertThat(requestCaptor.getValue().headerComment()).isNull();
     }
 
     @Test

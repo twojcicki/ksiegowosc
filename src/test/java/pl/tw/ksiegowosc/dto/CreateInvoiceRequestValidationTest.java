@@ -32,7 +32,7 @@ class CreateInvoiceRequestValidationTest {
     }
 
     @Test
-    void shouldRejectBlankHeaderComment() {
+    void shouldAcceptNullHeaderComment() {
         CreateInvoiceRequest request = new CreateInvoiceRequest(
                 "665f01a4-357a-4a6b-a565-2f17e6e1da13",
                 "FV/2026/01/01",
@@ -40,7 +40,7 @@ class CreateInvoiceRequestValidationTest {
                 LocalDate.of(2026, 1, 15),
                 null,
                 "PLN",
-                " ",
+                null,
                 "Komentarz dolny",
                 new BigDecimal("100.00"),
                 null,
@@ -50,7 +50,7 @@ class CreateInvoiceRequestValidationTest {
 
         Set<ConstraintViolation<CreateInvoiceRequest>> violations = validator.validate(request);
 
-        assertThat(violations).anyMatch(v -> "headerComment".equals(v.getPropertyPath().toString()));
+        assertThat(violations).isEmpty();
     }
 
     @Test

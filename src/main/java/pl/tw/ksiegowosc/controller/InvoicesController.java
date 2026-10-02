@@ -53,7 +53,7 @@ public class InvoicesController {
     @Operation(
             summary = "Utwórz fakturę sprzedaży",
             description = "Tworzy fakturę sprzedaży w Merit Aktiva dla istniejącego klienta. "
-                    + "Wymagany jest m.in. komentarz górny (HComment).")
+                    + "Komentarz górny (HComment) i dolny (FComment) są opcjonalne.")
     public CreateInvoiceResponse createInvoice(@Valid @RequestBody CreateInvoiceRequest request) {
         return invoicesService.createInvoice(request);
     }
