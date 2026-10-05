@@ -77,6 +77,7 @@ class AllegroInvoiceServiceTest {
         taxesService = mock(TaxesService.class);
         unitsService = mock(UnitsService.class);
         soldInvoiceRepository = mock(AllegroSoldInvoiceRepository.class);
+        AllegroTrialInvoiceService trialInvoiceService = mock(AllegroTrialInvoiceService.class);
         Clock clock = Clock.fixed(Instant.parse("2026-09-06T12:00:00Z"), ZoneOffset.UTC);
         when(taxesService.listTaxes()).thenReturn(MapperFixtures.sampleTaxes());
         when(unitsService.requireDefaultUnit()).thenReturn(new MeritUnitDto("SZT", "szt."));
@@ -95,6 +96,7 @@ class AllegroInvoiceServiceTest {
                 taxesService,
                 unitsService,
                 soldInvoiceRepository,
+                trialInvoiceService,
                 MapperFixtures.billingMapper(),
                 MapperFixtures.invoiceMapper(),
                 MapperFixtures.meritInvoiceMapper(),

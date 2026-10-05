@@ -1,5 +1,6 @@
 package pl.tw.ksiegowosc.ui;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 
@@ -9,6 +10,9 @@ import com.vaadin.flow.component.UI;
 import com.vaadin.flow.component.applayout.DrawerToggle;
 import com.vaadin.flow.component.button.Button;
 import com.vaadin.flow.component.button.ButtonVariant;
+import com.vaadin.flow.component.checkbox.Checkbox;
+import com.vaadin.flow.component.combobox.ComboBox;
+import com.vaadin.flow.component.datepicker.DatePicker;
 import com.vaadin.flow.component.dialog.Dialog;
 import com.vaadin.flow.component.formlayout.FormLayout;
 import com.vaadin.flow.component.grid.Grid;
@@ -22,6 +26,9 @@ import com.vaadin.flow.component.notification.NotificationVariant;
 import com.vaadin.flow.component.orderedlayout.FlexComponent;
 import com.vaadin.flow.component.orderedlayout.HorizontalLayout;
 import com.vaadin.flow.component.orderedlayout.VerticalLayout;
+import com.vaadin.flow.component.radiobutton.RadioButtonGroup;
+import com.vaadin.flow.component.tabs.Tab;
+import com.vaadin.flow.component.tabs.Tabs;
 import com.vaadin.flow.component.textfield.PasswordField;
 import com.vaadin.flow.component.textfield.TextField;
 import com.vaadin.flow.router.BeforeEnterEvent;
@@ -33,9 +40,11 @@ import com.vaadin.flow.router.Route;
 import jakarta.annotation.security.PermitAll;
 import pl.tw.ksiegowosc.dto.AllegroAccountDto;
 import pl.tw.ksiegowosc.dto.UserApiSettingsDto;
+import pl.tw.ksiegowosc.dto.UserInvoiceScheduleDto;
 import pl.tw.ksiegowosc.service.AllegroAccountService;
 import pl.tw.ksiegowosc.service.AllegroAuthService;
 import pl.tw.ksiegowosc.service.CurrentUserApiCredentialsService;
+import pl.tw.ksiegowosc.service.UserInvoiceScheduleService;
 import pl.tw.ksiegowosc.ui.component.View;
 import pl.tw.ksiegowosc.ui.component.ViewHeader;
 import pl.tw.ksiegowosc.ui.util.Aura;
@@ -49,6 +58,7 @@ public class ApiSettingsView extends View implements BeforeEnterObserver {
     private final CurrentUserApiCredentialsService credentialsService;
     private final AllegroAccountService allegroAccountService;
     private final AllegroAuthService allegroAuthService;
+    private final UserInvoiceScheduleService scheduleService;
 
     private final TextField meritApiId = new TextField("Merit Api Id");
     private final PasswordField meritApiKey = new PasswordField("Merit Api Key");
@@ -62,19 +72,38 @@ public class ApiSettingsView extends View implements BeforeEnterObserver {
     private final TextField allegroUserAgent = new TextField("User-Agent");
     private final Grid<AllegroAccountDto> allegroAccountsGrid = new Grid<>(AllegroAccountDto.class, false);
 
+    private final Checkbox scheduleEnabled = new Checkbox("Włącz harmonogram");
+    private final ComboBox<Integer> scheduleInterval = new ComboBox<>("Co ile minut");
+    private final DatePicker scheduleFromDate = new DatePicker("Wystawiaj od");
+    private final RadioButtonGroup<Boolean> scheduleLiveMode = new RadioButtonGroup<>();
+
+    private final Tab meritTab = new Tab("Merit");
+    private final Tab allegroTab = new Tab("Allegro");
+    private final Tab scheduleTab = new Tab("Harmonogram");
+    private final Tabs tabs = new Tabs(meritTab, allegroTab, scheduleTab);
+
+    private VerticalLayout meritPanel;
+    private VerticalLayout allegroPanel;
+    private VerticalLayout schedulePanel;
+
     public ApiSettingsView(
             CurrentUserApiCredentialsService credentialsService,
             AllegroAccountService allegroAccountService,
-            AllegroAuthService allegroAuthService) {
+            AllegroAuthService allegroAuthService,
+            UserInvoiceScheduleService scheduleService) {
         this.credentialsService = credentialsService;
         this.allegroAccountService = allegroAccountService;
         this.allegroAuthService = allegroAuthService;
+        this.scheduleService = scheduleService;
 
         addClassNames(Aura.SURFACE_SOLID, "api-settings-view");
         configureAllegroGrid();
+        configureScheduleFields();
         add(createHeader(), createContent());
         loadSettings();
         loadAllegroAccounts();
+        loadScheduleSettings();
+        showSelectedTab(meritTab);
     }
 
     @Override
@@ -85,6 +114,8 @@ public class ApiSettingsView extends View implements BeforeEnterObserver {
             Notification notification = Notification.show(
                     oauthError.get(), 12_000, Notification.Position.MIDDLE);
             notification.addThemeVariants(NotificationVariant.ERROR);
+            tabs.setSelectedTab(allegroTab);
+            showSelectedTab(allegroTab);
             event.forwardTo(ApiSettingsView.class);
         }
     }
@@ -96,6 +127,22 @@ public class ApiSettingsView extends View implements BeforeEnterObserver {
     }
 
     private VerticalLayout createContent() {
+        meritPanel = createMeritPanel();
+        allegroPanel = createAllegroPanel();
+        schedulePanel = createSchedulePanel();
+
+        tabs.setWidthFull();
+        tabs.addSelectedChangeListener(event -> showSelectedTab(event.getSelectedTab()));
+
+        VerticalLayout content = new VerticalLayout(tabs, meritPanel, allegroPanel, schedulePanel);
+        content.setPadding(true);
+        content.setSpacing(true);
+        content.setMaxWidth("900px");
+        content.setWidthFull();
+        return content;
+    }
+
+    private VerticalLayout createMeritPanel() {
         meritApiId.setWidthFull();
         meritApiKey.setWidthFull();
         meritApiKey.setHelperText("Pozostaw puste, aby nie zmieniać zapisanego klucza.");
@@ -105,15 +152,18 @@ public class ApiSettingsView extends View implements BeforeEnterObserver {
 
         FormLayout meritForm = new FormLayout(meritApiId, meritApiKey);
         meritForm.setResponsiveSteps(new FormLayout.ResponsiveStep("0", 1));
-        VerticalLayout meritSection = new VerticalLayout(
+        VerticalLayout panel = new VerticalLayout(
                 new H3("Merit Aktiva"),
                 new Paragraph("Klucze API z Ustawienia → Ustawienia API w Merit."),
                 meritForm,
                 saveMerit);
-        meritSection.setPadding(false);
-        meritSection.setSpacing(true);
-        meritSection.setWidthFull();
+        panel.setPadding(false);
+        panel.setSpacing(true);
+        panel.setWidthFull();
+        return panel;
+    }
 
+    private VerticalLayout createAllegroPanel() {
         allegroName.setWidthFull();
         allegroClientId.setWidthFull();
         allegroClientSecret.setWidthFull();
@@ -122,7 +172,8 @@ public class ApiSettingsView extends View implements BeforeEnterObserver {
         allegroInvoicePrefix.setHelperText("Numer faktury: prefiks/kolejny/MM/rrrr, np. FS/5/09/2026");
         allegroPaymentMethod.setWidthFull();
         allegroPaymentMethod.setMaxLength(100);
-        allegroPaymentMethod.setHelperText("Wartość PaymentMethod w Merit, np. przelew / PayU — używana przy opłaconych zamówieniach.");
+        allegroPaymentMethod.setHelperText(
+                "Wartość PaymentMethod w Merit, np. przelew / PayU — używana przy opłaconych zamówieniach.");
         allegroApiBaseUrl.setWidthFull();
         allegroApiBaseUrl.setValue(AllegroAccountService.DEFAULT_API_BASE_URL);
         allegroApiBaseUrl.setHelperText(
@@ -158,23 +209,70 @@ public class ApiSettingsView extends View implements BeforeEnterObserver {
                 allegroAuthUrl,
                 allegroUserAgent);
         allegroForm.setResponsiveSteps(new FormLayout.ResponsiveStep("0", 1));
-        VerticalLayout allegroSection = new VerticalLayout(
+        VerticalLayout panel = new VerticalLayout(
                 new H3("Allegro"),
                 new Paragraph(
-                        "Dodaj aplikacje Allegro (Client ID/Secret, URL-e, User-Agent, prefiks i metoda płatności Merit). Połącz każde konto osobno."),
+                        "Dodaj aplikacje Allegro (Client ID/Secret, URL-e, User-Agent, prefiks i metoda płatności Merit). "
+                                + "Połącz każde konto osobno."),
                 allegroForm,
                 addAllegro,
                 redirectUriHint,
                 allegroAccountsGrid);
-        allegroSection.setPadding(false);
-        allegroSection.setSpacing(true);
-        allegroSection.setWidthFull();
+        panel.setPadding(false);
+        panel.setSpacing(true);
+        panel.setWidthFull();
+        return panel;
+    }
 
-        VerticalLayout content = new VerticalLayout(meritSection, allegroSection);
-        content.setPadding(true);
-        content.setSpacing(true);
-        content.setMaxWidth("900px");
-        return content;
+    private VerticalLayout createSchedulePanel() {
+        Button saveSchedule = new Button("Zapisz harmonogram", event -> saveSchedule());
+        saveSchedule.addThemeVariants(ButtonVariant.LUMO_PRIMARY);
+
+        FormLayout form = new FormLayout(
+                scheduleEnabled,
+                scheduleInterval,
+                scheduleFromDate,
+                scheduleLiveMode);
+        form.setResponsiveSteps(new FormLayout.ResponsiveStep("0", 1));
+
+        VerticalLayout panel = new VerticalLayout(
+                new H3("Harmonogram wystawiania"),
+                new Paragraph(
+                        "Cykliczne wystawianie faktur Allegro → Merit. Domyślnie wyłączony; tryb próbny zapisuje tylko payload JSON."),
+                form,
+                saveSchedule);
+        panel.setPadding(false);
+        panel.setSpacing(true);
+        panel.setWidthFull();
+        return panel;
+    }
+
+    private void configureScheduleFields() {
+        List<Integer> minutes = new ArrayList<>(60);
+        for (int i = 1; i <= 60; i++) {
+            minutes.add(i);
+        }
+        scheduleInterval.setItems(minutes);
+        scheduleInterval.setItemLabelGenerator(value -> value + " min");
+        scheduleInterval.setWidthFull();
+        scheduleInterval.setValue(UserInvoiceScheduleService.DEFAULT_INTERVAL_MINUTES);
+
+        scheduleFromDate.setWidthFull();
+        scheduleFromDate.setLocale(java.util.Locale.forLanguageTag("pl-PL"));
+
+        scheduleLiveMode.setLabel("Tryb wystawiania");
+        scheduleLiveMode.setItems(false, true);
+        scheduleLiveMode.setItemLabelGenerator(live -> live ? "Faktury rzeczywiste" : "Faktury próbne");
+        scheduleLiveMode.setValue(false);
+        scheduleLiveMode.setWidthFull();
+
+        scheduleEnabled.setValue(false);
+    }
+
+    private void showSelectedTab(Tab selected) {
+        meritPanel.setVisible(selected == meritTab);
+        allegroPanel.setVisible(selected == allegroTab);
+        schedulePanel.setVisible(selected == scheduleTab);
     }
 
     private void configureAllegroGrid() {
@@ -234,6 +332,14 @@ public class ApiSettingsView extends View implements BeforeEnterObserver {
         allegroAccountsGrid.setItems(accounts);
     }
 
+    private void loadScheduleSettings() {
+        UserInvoiceScheduleDto settings = scheduleService.getSettings();
+        scheduleEnabled.setValue(settings.enabled());
+        scheduleInterval.setValue(settings.intervalMinutes());
+        scheduleFromDate.setValue(settings.invoicesFromDate());
+        scheduleLiveMode.setValue(settings.liveMode());
+    }
+
     private void saveMerit() {
         try {
             credentialsService.saveMeritCredentials(meritApiId.getValue(), meritApiKey.getValue());
@@ -243,6 +349,25 @@ public class ApiSettingsView extends View implements BeforeEnterObserver {
             Notifications.show(reason(ex), NotificationVariant.ERROR);
         } catch (RuntimeException ex) {
             Notifications.show("Nie udało się zapisać ustawień Merit.", NotificationVariant.ERROR);
+        }
+    }
+
+    private void saveSchedule() {
+        try {
+            Boolean liveMode = scheduleLiveMode.getValue();
+            scheduleService.saveSettings(
+                    Boolean.TRUE.equals(scheduleEnabled.getValue()),
+                    scheduleInterval.getValue() == null
+                            ? UserInvoiceScheduleService.DEFAULT_INTERVAL_MINUTES
+                            : scheduleInterval.getValue(),
+                    scheduleFromDate.getValue(),
+                    Boolean.TRUE.equals(liveMode));
+            Notifications.show("Zapisano harmonogram.", NotificationVariant.SUCCESS);
+            loadScheduleSettings();
+        } catch (ResponseStatusException ex) {
+            Notifications.show(reason(ex), NotificationVariant.ERROR);
+        } catch (RuntimeException ex) {
+            Notifications.show("Nie udało się zapisać harmonogramu.", NotificationVariant.ERROR);
         }
     }
 

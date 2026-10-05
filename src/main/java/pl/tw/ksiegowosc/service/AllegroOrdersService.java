@@ -57,32 +57,59 @@ public class AllegroOrdersService {
             int offset,
             int limit) {
         validateDateRange(from, to);
+        Instant boughtAtFrom = from.atStartOfDay(ZONE).toInstant();
+        Instant boughtAtTo = to.plusDays(1).atStartOfDay(ZONE).toInstant().minusMillis(1);
+        return getSoldItems(boughtAtFrom, boughtAtTo, offset, limit, false);
+    }
+
+    /**
+     * Sold items from {@code from} with no upper boughtAt bound. Pages through Allegro API.
+     */
+    public AllegroSoldItemsResult getSoldItemsFrom(LocalDate from) {
+        if (from == null) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Podaj datę początkową (from).");
+        }
+        Instant boughtAtFrom = from.atStartOfDay(ZONE).toInstant();
+        return getSoldItems(boughtAtFrom, null, 0, 100, true);
+    }
+
+    private AllegroSoldItemsResult getSoldItems(
+            Instant boughtAtFrom,
+            Instant boughtAtTo,
+            int offset,
+            int limit,
+            boolean pageAll) {
         List<AllegroAccount> accounts = accountService.listConnectedAccounts();
         if (accounts.isEmpty()) {
             return new AllegroSoldItemsResult(List.of(), List.of());
         }
-
-        Instant boughtAtFrom = from.atStartOfDay(ZONE).toInstant();
-        Instant boughtAtTo = to.plusDays(1).atStartOfDay(ZONE).toInstant().minusMillis(1);
 
         List<AllegroSoldItemDto> orders = new ArrayList<>();
         List<String> warnings = new ArrayList<>();
         for (AllegroAccount account : accounts) {
             try {
                 String token = authService.getValidAccessTokenForAccount(account);
-                AllegroCheckoutFormsResponse response = allegroApiClient.getCheckoutForms(
-                        account.getApiBaseUrl(),
-                        token,
-                        account.getUserAgent(),
-                        offset,
-                        limit,
-                        boughtAtFrom,
-                        boughtAtTo);
-                if (response == null || response.checkoutForms() == null) {
-                    continue;
-                }
-                for (AllegroCheckoutForm form : response.checkoutForms()) {
-                    orders.add(soldItemMapper.toDto(form, account.getId(), account.getName(), null));
+                int pageOffset = Math.max(0, offset);
+                int pageLimit = Math.min(Math.max(limit, 1), 100);
+                while (true) {
+                    AllegroCheckoutFormsResponse response = allegroApiClient.getCheckoutForms(
+                            account.getApiBaseUrl(),
+                            token,
+                            account.getUserAgent(),
+                            pageOffset,
+                            pageLimit,
+                            boughtAtFrom,
+                            boughtAtTo);
+                    if (response == null || response.checkoutForms() == null || response.checkoutForms().isEmpty()) {
+                        break;
+                    }
+                    for (AllegroCheckoutForm form : response.checkoutForms()) {
+                        orders.add(soldItemMapper.toDto(form, account.getId(), account.getName(), null));
+                    }
+                    if (!pageAll || response.checkoutForms().size() < pageLimit) {
+                        break;
+                    }
+                    pageOffset += pageLimit;
                 }
             } catch (RuntimeException ex) {
                 if (isForbidden(ex)) {

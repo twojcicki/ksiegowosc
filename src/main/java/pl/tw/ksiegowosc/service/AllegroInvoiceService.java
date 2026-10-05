@@ -33,12 +33,12 @@ import pl.tw.ksiegowosc.dto.allegro.AllegroCheckoutForm;
 import pl.tw.ksiegowosc.dto.allegro.AllegroMe;
 import pl.tw.ksiegowosc.entity.AllegroAccount;
 import pl.tw.ksiegowosc.entity.AllegroSoldInvoice;
+import pl.tw.ksiegowosc.entity.AllegroTrialInvoice;
 import pl.tw.ksiegowosc.mapper.AllegroBillingMapper;
 import pl.tw.ksiegowosc.mapper.AllegroInvoiceMapper;
 import pl.tw.ksiegowosc.mapper.AllegroInvoiceMappingContext;
 import pl.tw.ksiegowosc.mapper.AllegroInvoicePreviewAssembler;
 import pl.tw.ksiegowosc.mapper.AllegroSoldInvoiceMapper;
-import pl.tw.ksiegowosc.mapper.AllegroToMeritInvoiceBuilder;
 import pl.tw.ksiegowosc.mapper.MeritInvoiceMapper;
 import pl.tw.ksiegowosc.repository.AllegroSoldInvoiceRepository;
 
@@ -57,6 +57,7 @@ public class AllegroInvoiceService {
     private final TaxesService taxesService;
     private final UnitsService unitsService;
     private final AllegroSoldInvoiceRepository soldInvoiceRepository;
+    private final AllegroTrialInvoiceService trialInvoiceService;
     private final AllegroBillingMapper billingMapper;
     private final AllegroInvoiceMapper invoiceMapper;
     private final MeritInvoiceMapper meritInvoiceMapper;
@@ -72,6 +73,7 @@ public class AllegroInvoiceService {
             TaxesService taxesService,
             UnitsService unitsService,
             AllegroSoldInvoiceRepository soldInvoiceRepository,
+            AllegroTrialInvoiceService trialInvoiceService,
             AllegroBillingMapper billingMapper,
             AllegroInvoiceMapper invoiceMapper,
             MeritInvoiceMapper meritInvoiceMapper,
@@ -85,6 +87,7 @@ public class AllegroInvoiceService {
         this.taxesService = taxesService;
         this.unitsService = unitsService;
         this.soldInvoiceRepository = soldInvoiceRepository;
+        this.trialInvoiceService = trialInvoiceService;
         this.billingMapper = billingMapper;
         this.invoiceMapper = invoiceMapper;
         this.meritInvoiceMapper = meritInvoiceMapper;
@@ -104,6 +107,43 @@ public class AllegroInvoiceService {
         soldInvoiceRepository.save(entity);
 
         return new IssueAllegroInvoiceResponse(prepared.request().invoiceNo(), created.invoiceId());
+    }
+
+    /**
+     * Builds Merit payload without sendinvoice / create customer and stores it as a trial invoice.
+     */
+    @Transactional
+    public AllegroTrialInvoice issueTrialInvoice(Long userId, Long accountId, String orderId) {
+        PreparedAllegroInvoice prepared = prepareInvoice(accountId, orderId, false);
+        MeritCreateInvoiceRequest meritRequest = meritInvoiceMapper.toMeritRequest(prepared.request());
+        String payloadJson;
+        try {
+            payloadJson = OBJECT_MAPPER.writerWithDefaultPrettyPrinter().writeValueAsString(meritRequest);
+        } catch (JsonProcessingException ex) {
+            throw new ResponseStatusException(
+                    HttpStatus.INTERNAL_SERVER_ERROR,
+                    "Nie udało się zserializować payloadu faktury próbnej.",
+                    ex);
+        }
+        return trialInvoiceService.save(userId, accountId, prepared.orderId(), payloadJson);
+    }
+
+    @Transactional
+    public void recordIssueError(String orderId, String errorMessage) {
+        if (orderId == null || orderId.isBlank()) {
+            return;
+        }
+        String trimmed = orderId.trim();
+        AllegroSoldInvoice entity = soldInvoiceRepository.findById(trimmed).orElseGet(AllegroSoldInvoice::new);
+        if (entity.getOrderId() == null) {
+            entity.setOrderId(trimmed);
+            entity.setCreatedAt(Instant.now(clock));
+        }
+        entity.setIssueError(errorMessage == null || errorMessage.isBlank()
+                ? "Nie udało się wystawić faktury."
+                : errorMessage.trim());
+        entity.setIssueErrorAt(Instant.now(clock));
+        soldInvoiceRepository.save(entity);
     }
 
     public AllegroInvoicePreviewDto previewInvoice(Long accountId, String orderId) {

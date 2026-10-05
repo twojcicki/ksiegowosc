@@ -30,6 +30,7 @@ import com.vaadin.flow.component.orderedlayout.HorizontalLayout;
 import com.vaadin.flow.component.orderedlayout.VerticalLayout;
 import com.vaadin.flow.component.tabs.Tab;
 import com.vaadin.flow.component.tabs.Tabs;
+import com.vaadin.flow.component.textfield.TextArea;
 import com.vaadin.flow.router.PageTitle;
 import com.vaadin.flow.router.Route;
 
@@ -41,6 +42,7 @@ import pl.tw.ksiegowosc.dto.AllegroInvoicePreviewRow;
 import pl.tw.ksiegowosc.dto.AllegroOfferDto;
 import pl.tw.ksiegowosc.dto.AllegroSoldItemDto;
 import pl.tw.ksiegowosc.dto.AllegroSoldLineDto;
+import pl.tw.ksiegowosc.dto.AllegroTrialInvoiceDto;
 import pl.tw.ksiegowosc.dto.IssueAllegroInvoiceResponse;
 import pl.tw.ksiegowosc.mapper.AllegroMeritInvoiceMappings;
 import pl.tw.ksiegowosc.mapper.MeritFieldRule;
@@ -48,6 +50,7 @@ import pl.tw.ksiegowosc.service.AllegroAuthService;
 import pl.tw.ksiegowosc.service.AllegroInvoiceService;
 import pl.tw.ksiegowosc.service.AllegroOffersService;
 import pl.tw.ksiegowosc.service.AllegroOrdersService;
+import pl.tw.ksiegowosc.service.AllegroTrialInvoiceService;
 import pl.tw.ksiegowosc.ui.component.View;
 import pl.tw.ksiegowosc.ui.component.ViewHeader;
 import pl.tw.ksiegowosc.ui.util.Aura;
@@ -65,12 +68,14 @@ public class AllegroView extends View {
     private final AllegroOffersService offersService;
     private final AllegroOrdersService ordersService;
     private final AllegroInvoiceService invoiceService;
+    private final AllegroTrialInvoiceService trialInvoiceService;
     private final NumberFormat amountFormat;
 
     private final Div connectBanner = new Div();
     private final VerticalLayout contentLayout = new VerticalLayout();
     private final Grid<AllegroOfferDto> offersGrid = new Grid<>(AllegroOfferDto.class, false);
     private final Grid<AllegroSoldItemDto> soldGrid = new Grid<>(AllegroSoldItemDto.class, false);
+    private final Grid<AllegroTrialInvoiceDto> trialGrid = new Grid<>(AllegroTrialInvoiceDto.class, false);
     private final Grid<MeritFieldRule> rulesGrid = new Grid<>(MeritFieldRule.class, false);
     private final Grid<AllegroInvoicePreviewRow> previewGrid = new Grid<>(AllegroInvoicePreviewRow.class, false);
     private final DatePicker soldFromPicker = new DatePicker("Od");
@@ -79,14 +84,16 @@ public class AllegroView extends View {
 
     private final Tab offersTab = new Tab("Oferty");
     private final Tab soldTab = new Tab("Sprzedane");
+    private final Tab trialTab = new Tab("Faktury próbne");
     private final Tab mappingTab = new Tab("Mapowanie");
-    private final Tabs tabs = new Tabs(offersTab, soldTab, mappingTab);
+    private final Tabs tabs = new Tabs(offersTab, soldTab, trialTab, mappingTab);
     private final Tab mappingRulesTab = new Tab("Reguły");
     private final Tab mappingPreviewTab = new Tab("Podgląd");
     private final Tabs mappingTabs = new Tabs(mappingRulesTab, mappingPreviewTab);
 
     private VerticalLayout offersPanel;
     private VerticalLayout soldPanel;
+    private VerticalLayout trialPanel;
     private VerticalLayout mappingPanel;
     private VerticalLayout mappingRulesPanel;
     private VerticalLayout mappingPreviewPanel;
@@ -96,11 +103,13 @@ public class AllegroView extends View {
             AllegroAuthService authService,
             AllegroOffersService offersService,
             AllegroOrdersService ordersService,
-            AllegroInvoiceService invoiceService) {
+            AllegroInvoiceService invoiceService,
+            AllegroTrialInvoiceService trialInvoiceService) {
         this.authService = authService;
         this.offersService = offersService;
         this.ordersService = ordersService;
         this.invoiceService = invoiceService;
+        this.trialInvoiceService = trialInvoiceService;
         this.amountFormat = NumberFormat.getNumberInstance(PL);
         this.amountFormat.setMinimumFractionDigits(2);
         this.amountFormat.setMaximumFractionDigits(2);
@@ -108,6 +117,7 @@ public class AllegroView extends View {
         addClassNames(Aura.SURFACE_SOLID, "allegro-view");
         configureOffersGrid();
         configureSoldGrid();
+        configureTrialGrid();
         configureRulesGrid();
         configurePreviewGrid();
         add(createHeader(), connectBanner, createContent());
@@ -153,6 +163,18 @@ public class AllegroView extends View {
         soldPanel.setFlexGrow(1, soldGrid);
         soldPanel.setVisible(false);
 
+        Button trialRefresh = new Button("Odśwież", e -> loadTrialInvoices());
+        trialRefresh.addThemeVariants(ButtonVariant.PRIMARY);
+        HorizontalLayout trialToolbar = new HorizontalLayout(trialRefresh);
+        trialToolbar.addClassName("filters");
+        trialToolbar.setWidthFull();
+        trialPanel = new VerticalLayout(trialToolbar, trialGrid);
+        trialPanel.setPadding(false);
+        trialPanel.setSpacing(false);
+        trialPanel.setSizeFull();
+        trialPanel.setFlexGrow(1, trialGrid);
+        trialPanel.setVisible(false);
+
         mappingPanel = createMappingPanel();
         mappingPanel.setVisible(false);
 
@@ -161,9 +183,10 @@ public class AllegroView extends View {
         contentLayout.setPadding(false);
         contentLayout.setSpacing(false);
         contentLayout.setSizeFull();
-        contentLayout.add(tabs, offersPanel, soldPanel, mappingPanel);
+        contentLayout.add(tabs, offersPanel, soldPanel, trialPanel, mappingPanel);
         contentLayout.setFlexGrow(1, offersPanel);
         contentLayout.setFlexGrow(1, soldPanel);
+        contentLayout.setFlexGrow(1, trialPanel);
         contentLayout.setFlexGrow(1, mappingPanel);
         return contentLayout;
     }
@@ -231,11 +254,14 @@ public class AllegroView extends View {
     private void showSelectedTab(Tab selected) {
         offersPanel.setVisible(selected == offersTab);
         soldPanel.setVisible(selected == soldTab);
+        trialPanel.setVisible(selected == trialTab);
         mappingPanel.setVisible(selected == mappingTab);
         if (selected == offersTab) {
             loadOffers();
         } else if (selected == soldTab) {
             loadSoldItems();
+        } else if (selected == trialTab) {
+            loadTrialInvoices();
         } else if (selected == mappingTab) {
             showMappingSubTab(mappingTabs.getSelectedTab());
         }
@@ -286,6 +312,35 @@ public class AllegroView extends View {
                 .setAutoWidth(true)
                 .setFlexGrow(0);
         soldGrid.setSizeFull();
+    }
+
+    private void configureTrialGrid() {
+        trialGrid.addThemeVariants(GridVariant.NO_BORDER);
+        trialGrid.addColumn(item -> formatInstant(item.createdAt()))
+                .setHeader("Data wystawienia")
+                .setAutoWidth(true)
+                .setSortable(true);
+        trialGrid.addColumn(AllegroTrialInvoiceDto::orderId)
+                .setHeader("ID transakcji")
+                .setAutoWidth(true)
+                .setSortable(true);
+        trialGrid.addColumn(item -> item.accountId() == null ? "—" : String.valueOf(item.accountId()))
+                .setHeader("Konto")
+                .setAutoWidth(true)
+                .setSortable(true);
+        trialGrid.addColumn(item -> item.invoiceNo() == null || item.invoiceNo().isBlank() ? "—" : item.invoiceNo())
+                .setHeader("Nr faktury")
+                .setAutoWidth(true)
+                .setSortable(true);
+        trialGrid.addComponentColumn(item -> {
+                    Button preview = new Button("JSON", e -> openTrialPayloadDialog(item));
+                    preview.addThemeVariants(ButtonVariant.LUMO_SMALL, ButtonVariant.LUMO_TERTIARY);
+                    return preview;
+                })
+                .setHeader("Payload")
+                .setAutoWidth(true)
+                .setFlexGrow(0);
+        trialGrid.setSizeFull();
     }
 
     private void configureRulesGrid() {
@@ -497,6 +552,31 @@ public class AllegroView extends View {
         } catch (RuntimeException ex) {
             showError("Nie udało się pobrać sprzedanych zamówień.");
         }
+    }
+
+    private void loadTrialInvoices() {
+        try {
+            trialGrid.setItems(trialInvoiceService.listForCurrentUser());
+        } catch (ResponseStatusException ex) {
+            showError(reason(ex));
+        } catch (RuntimeException ex) {
+            showError("Nie udało się pobrać faktur próbnych.");
+        }
+    }
+
+    private void openTrialPayloadDialog(AllegroTrialInvoiceDto item) {
+        TextArea json = new TextArea("Payload Merit");
+        json.setWidthFull();
+        json.setHeight("420px");
+        json.setReadOnly(true);
+        json.setValue(item.payloadJson() == null ? "" : item.payloadJson());
+
+        Dialog dialog = new Dialog();
+        dialog.setHeaderTitle("Faktura próbna — " + item.orderId());
+        dialog.setWidth("720px");
+        dialog.add(json);
+        dialog.getFooter().add(new Button("Zamknij", e -> dialog.close()));
+        dialog.open();
     }
 
     private void refreshPreviewOrderChoices() {

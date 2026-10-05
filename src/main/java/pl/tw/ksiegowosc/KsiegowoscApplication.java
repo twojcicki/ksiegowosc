@@ -2,6 +2,7 @@ package pl.tw.ksiegowosc;
 
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
+import org.springframework.scheduling.annotation.EnableScheduling;
 
 import com.vaadin.flow.component.dependency.StyleSheet;
 import com.vaadin.flow.component.page.AppShellConfigurator;
@@ -10,6 +11,7 @@ import com.vaadin.flow.server.AppShellSettings;
 import com.vaadin.flow.theme.aura.Aura;
 
 @SpringBootApplication
+@EnableScheduling
 @PageTitle("Księgowość")
 @StyleSheet(Aura.STYLESHEET)
 @StyleSheet("styles.css")
