@@ -21,19 +21,18 @@ import pl.tw.ksiegowosc.repository.AllegroTrialInvoiceRepository;
 @Service
 public class AllegroTrialInvoiceService {
 
+    private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
+
     private final AllegroTrialInvoiceRepository trialInvoiceRepository;
     private final CurrentUserApiCredentialsService credentialsService;
-    private final ObjectMapper objectMapper;
     private final Clock clock;
 
     public AllegroTrialInvoiceService(
             AllegroTrialInvoiceRepository trialInvoiceRepository,
             CurrentUserApiCredentialsService credentialsService,
-            ObjectMapper objectMapper,
             Clock clock) {
         this.trialInvoiceRepository = trialInvoiceRepository;
         this.credentialsService = credentialsService;
-        this.objectMapper = objectMapper;
         this.clock = clock;
     }
 
@@ -92,9 +91,9 @@ public class AllegroTrialInvoiceService {
                 extractInvoiceNo(entity.getPayloadJson()));
     }
 
-    private String extractInvoiceNo(String payloadJson) {
+    private static String extractInvoiceNo(String payloadJson) {
         try {
-            JsonNode root = objectMapper.readTree(payloadJson);
+            JsonNode root = OBJECT_MAPPER.readTree(payloadJson);
             return Optional.ofNullable(root.get("InvoiceNo"))
                     .map(JsonNode::asText)
                     .filter(value -> value != null && !value.isBlank())
