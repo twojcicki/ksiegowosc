@@ -192,7 +192,7 @@ public class AllegroInvoiceService {
         LocalDate transactionDate = boughtAt == null
                 ? LocalDate.now(clock.withZone(ZONE))
                 : boughtAt.atZone(ZONE).toLocalDate();
-        LocalDate docDate = transactionDate;
+        LocalDate docDate = LocalDate.now(clock.withZone(ZONE));
 
         String uomName = unitsService.requireDefaultUnit().name();
         if (uomName == null || uomName.isBlank()) {

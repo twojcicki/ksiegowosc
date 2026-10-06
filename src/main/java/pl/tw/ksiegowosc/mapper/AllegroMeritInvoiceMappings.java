@@ -37,7 +37,7 @@ public final class AllegroMeritInvoiceMappings {
             rule(MeritFieldSection.HEADER, "AccountingDoc",
                     "stała 1 (faktura sprzedaży)"),
             rule(MeritFieldSection.HEADER, "DocDate",
-                    "to samo co TransactionDate"),
+                    "dziś (Europe/Warsaw)"),
             rule(MeritFieldSection.HEADER, "TransactionDate",
                     "najwcześniejszy lineItems[].boughtAt (Europe/Warsaw); inaczej dziś"),
             rule(MeritFieldSection.HEADER, "DueDate",
@@ -59,7 +59,7 @@ public final class AllegroMeritInvoiceMappings {
             rule(MeritFieldSection.HEADER, "Payment.PaidAmount",
                     "payment.paidAmount.amount gdy opłacone; inaczej pominięte"),
             rule(MeritFieldSection.HEADER, "Payment.PaymDate",
-                    "zawsze payment.finishedAt (yyyyMMddHHmmss Europe/Warsaw); bez finishedAt — bez Payment"),
+                    "to samo co DocDate (yyyyMMdd000000)"),
 
             // LINE (InvoiceRow + Item) — towary, dostawa, dopłaty, usługi dodatkowe
             rule(MeritFieldSection.LINE, "InvoiceRow[].Item.Code",
@@ -81,7 +81,7 @@ public final class AllegroMeritInvoiceMappings {
             rule(MeritFieldSection.TAX, "TaxAmount[].TaxId",
                     "TaxId z pozycji po zgrupowaniu"),
             rule(MeritFieldSection.TAX, "TaxAmount[].Amount",
-                    "nie wysyłane; Merit liczy VAT z netto pozycji")
+                    "suma VAT pozycji po TaxId: lineGross − round(lineNet, 2)")
     );
 
     private AllegroMeritInvoiceMappings() {

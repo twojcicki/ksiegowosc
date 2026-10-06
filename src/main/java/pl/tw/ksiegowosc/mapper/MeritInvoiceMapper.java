@@ -45,9 +45,7 @@ public interface MeritInvoiceMapper {
     @Mapping(target = "uomName", source = "uomName")
     MeritCreateInvoiceItem toItem(CreateInvoiceLineRequest line);
 
-    // TaxAmount[].Amount nie wysyłamy — Merit liczy VAT z netto.
-    // @Mapping(target = "amount", source = "amount")
-    @Mapping(target = "amount", ignore = true)
+    @Mapping(target = "amount", source = "amount")
     MeritCreateInvoiceTaxAmount toTaxAmount(CreateInvoiceTaxAmountRequest tax);
 
     MeritCreateInvoicePayment toPayment(CreateInvoicePaymentRequest payment);

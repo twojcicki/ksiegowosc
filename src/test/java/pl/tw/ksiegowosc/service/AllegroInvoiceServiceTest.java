@@ -134,7 +134,7 @@ class AllegroInvoiceServiceTest {
         assertThat(request.totalAmount()).isEqualByComparingTo(new BigDecimal("48.78"));
         assertThat(request.roundingAmount()).isNull();
         assertThat(request.payment()).isNull();
-        assertThat(request.docDate()).isEqualTo(java.time.LocalDate.of(2026, 1, 10));
+        assertThat(request.docDate()).isEqualTo(java.time.LocalDate.of(2026, 9, 6));
         assertThat(request.transactionDate()).isEqualTo(java.time.LocalDate.of(2026, 1, 10));
         assertThat(request.dueDate()).isNull();
 
@@ -144,7 +144,7 @@ class AllegroInvoiceServiceTest {
         assertThat(entityCaptor.getValue().getInvoiceNo()).isEqualTo("FS/1/01/2026");
         verify(customersService).createCustomer(any());
         verify(taxesService).listTaxes();
-        verify(accountService).allocateInvoiceNo(9L, java.time.LocalDate.of(2026, 1, 10));
+        verify(accountService).allocateInvoiceNo(9L, java.time.LocalDate.of(2026, 9, 6));
     }
 
     @Test
@@ -334,7 +334,7 @@ class AllegroInvoiceServiceTest {
         assertThat(request.payment()).isNotNull();
         assertThat(request.payment().paymentMethod()).isEqualTo("przelew");
         assertThat(request.payment().paidAmount()).isEqualByComparingTo(new BigDecimal("60.00"));
-        assertThat(request.payment().paymDate()).isEqualTo("20260110090000");
+        assertThat(request.payment().paymDate()).isEqualTo("20260906000000");
     }
 
     @Test

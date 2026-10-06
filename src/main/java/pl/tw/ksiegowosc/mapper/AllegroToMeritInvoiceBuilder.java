@@ -3,7 +3,7 @@ package pl.tw.ksiegowosc.mapper;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.Instant;
-import java.time.ZoneId;
+import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
@@ -182,20 +182,18 @@ public class AllegroToMeritInvoiceBuilder {
         if (paidAmount == null || paidAmount.compareTo(BigDecimal.ZERO) <= 0) {
             return null;
         }
-        String paymDate = formatPaymentDate(form.payment().finishedAt());
+        String paymDate = formatPaymentDate(context == null ? null : context.docDate());
         if (paymDate == null) {
             return null;
         }
         return new CreateInvoicePaymentRequest(method.trim(), paidAmount, paymDate);
     }
 
-    private static String formatPaymentDate(Instant finishedAt) {
-        if (finishedAt == null) {
+    private static String formatPaymentDate(LocalDate docDate) {
+        if (docDate == null) {
             return null;
         }
-        return DateTimeFormatter.ofPattern("yyyyMMddHHmmss")
-                .withZone(ZoneId.of("Europe/Warsaw"))
-                .format(finishedAt);
+        return docDate.format(DateTimeFormatter.BASIC_ISO_DATE) + "000000";
     }
 
     private BuiltLine buildServiceLine(
