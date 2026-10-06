@@ -7,7 +7,6 @@ import org.springframework.validation.annotation.Validated;
 @Validated
 @ConfigurationProperties(prefix = "clients.merit")
 public record MeritApiProperties(
-        @NotBlank String baseUrl,
-        @NotBlank String v2BaseUrl
+        @NotBlank String baseUrl
 ) {
 }

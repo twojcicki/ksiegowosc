@@ -39,8 +39,7 @@ set ALLEGRO_SCOPES=
 ```yaml
 clients:
   merit:
-    base-url: https://program.360ksiegowosc.pl/api/v1
-    v2-base-url: https://program.360ksiegowosc.pl/api/v2
+    base-url: https://program.360ksiegowosc.pl/api/v2
   allegro:
     redirect-uri: ${ALLEGRO_REDIRECT_URI:}
     scopes: ${ALLEGRO_SCOPES:allegro:api:sale:offers:read allegro:api:orders:read}
@@ -118,7 +117,7 @@ Pobiera faktury sprzedaży z podanego zakresu według daty dokumentu. Parametry 
 curl "http://localhost:8080/api/invoices?from=2026-01-01&to=2026-01-31"
 ```
 
-Wywołanie idzie do `POST https://program.360ksiegowosc.pl/api/v1/getinvoices`
+Wywołanie idzie do `POST https://program.360ksiegowosc.pl/api/v2/getinvoices`
 z `PeriodStart` i `PeriodEnd` w formacie `yyyyMMdd` oraz `DateType: 0`.
 
 Tworzenie faktury sprzedaży dla istniejącego klienta (GUID). Wymagane m.in. pozycje, VAT, komentarz górny i dolny:
@@ -129,7 +128,7 @@ curl -X POST "http://localhost:8080/api/invoices" ^
   -d "{\"customerId\":\"665f01a4-357a-4a6b-a565-2f17e6e1da13\",\"invoiceNo\":\"FV/2026/01/01\",\"docDate\":\"2026-01-01\",\"dueDate\":\"2026-01-15\",\"currencyCode\":\"PLN\",\"headerComment\":\"Komentarz gorny\",\"footerComment\":\"Komentarz dolny\",\"totalAmount\":100.00,\"lines\":[{\"itemCode\":\"USLUGA\",\"description\":\"Usluga\",\"itemType\":2,\"quantity\":1,\"price\":100.00,\"taxId\":\"665f01a4-357a-4a6b-a565-2f17e6e1da13\"}],\"taxAmounts\":[{\"taxId\":\"665f01a4-357a-4a6b-a565-2f17e6e1da13\",\"amount\":23.00}]}"
 ```
 
-Wywołanie idzie do `POST https://program.360ksiegowosc.pl/api/v1/sendinvoice`
+Wywołanie idzie do `POST https://program.360ksiegowosc.pl/api/v2/sendinvoice`
 z m.in. `Customer.Id`, `AccountingDoc: 1`, `HComment`, `FComment`.
 
 Lista klientów z Merit. Opcjonalny parametr `name` filtruje po nazwie (dopasowanie częściowe):
@@ -138,7 +137,7 @@ Lista klientów z Merit. Opcjonalny parametr `name` filtruje po nazwie (dopasowa
 curl "http://localhost:8080/api/customers?name=Firma"
 ```
 
-Wywołanie idzie do `POST https://program.360ksiegowosc.pl/api/v1/getcustomers`
+Wywołanie idzie do `POST https://program.360ksiegowosc.pl/api/v2/getcustomers`
 z body `{}` albo `{ "Name": "..." }`.
 
 Lista stawek VAT z Merit (używane przy wystawianiu faktur; przy Allegro dopasowanie do `lineItems[].tax.rate`, fallback 23%):
@@ -147,7 +146,7 @@ Lista stawek VAT z Merit (używane przy wystawianiu faktur; przy Allegro dopasow
 curl "http://localhost:8080/api/taxes"
 ```
 
-Wywołanie idzie do `POST https://program.360ksiegowosc.pl/api/v1/gettaxes`
+Wywołanie idzie do `POST https://program.360ksiegowosc.pl/api/v2/gettaxes`
 z body `{}`.
 
 Lista jednostek miary z Merit (wymagane dla pozycji magazynowych):
@@ -156,7 +155,7 @@ Lista jednostek miary z Merit (wymagane dla pozycji magazynowych):
 curl "http://localhost:8080/api/units"
 ```
 
-Wywołanie idzie do `POST https://program.360ksiegowosc.pl/api/v1/getunits`
+Wywołanie idzie do `POST https://program.360ksiegowosc.pl/api/v2/getunits`
 z body `{}`.
 
 Szczegóły pojedynczej faktury (`SIHId` z listy). Opcjonalny parametr `addAttachment=true` dołącza PDF w base64:
@@ -165,7 +164,7 @@ Szczegóły pojedynczej faktury (`SIHId` z listy). Opcjonalny parametr `addAttac
 curl "http://localhost:8080/api/invoices/5f91033c-9d0f-416e-a079-d3c892b8c317"
 ```
 
-Wywołanie idzie do `POST https://program.360ksiegowosc.pl/api/v1/getinvoice`
+Wywołanie idzie do `POST https://program.360ksiegowosc.pl/api/v2/getinvoice`
 z `Id` oraz `AddAttachment`.
 
 Wysyłka faktury e-mailem na adres klienta zapisany w Merit. Opcjonalny parametr `delivNote=true` wysyła dokument bez cen:
@@ -175,6 +174,7 @@ curl -X POST "http://localhost:8080/api/invoices/5f91033c-9d0f-416e-a079-d3c892b
 ```
 
 Wywołanie idzie do `POST https://program.360ksiegowosc.pl/api/v2/sendinvoicebyemail`
+
 z `Id` oraz `DelivNote`.
 
 Wystawienie faktury w Merit dla zamówienia Allegro (wszystkie pozycje, klient find-or-create po NIP):
