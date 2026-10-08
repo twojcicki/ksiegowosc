@@ -173,9 +173,9 @@ public class CreateInvoiceDialog extends Dialog {
         footerComment.setHelperText("Opcjonalny");
 
         totalAmount.setReadOnly(true);
-        totalAmount.setHelperText("Suma kwot netto pozycji");
+        totalAmount.setHelperText("Suma netto pozycji (TotalAmount → Merit)");
         totalTaxAmount.setReadOnly(true);
-        totalTaxAmount.setHelperText("Suma VAT z pozycji");
+        totalTaxAmount.setHelperText("Tylko podgląd — VAT Amount nie jest wysyłany do Merit");
 
         headerComment.setWidthFull();
         footerComment.setWidthFull();
@@ -195,13 +195,18 @@ public class CreateInvoiceDialog extends Dialog {
                 .setAutoWidth(true)
                 .setFlexGrow(0);
         linesGrid
-                .addColumn(line -> formatAmount(line.getPrice()))
-                .setHeader("Cena")
+                .addColumn(line -> formatAmount(line.getLineGross()))
+                .setHeader("Brutto")
                 .setAutoWidth(true)
                 .setFlexGrow(0);
         linesGrid
                 .addColumn(line -> formatAmount(line.getLineNet()))
                 .setHeader("Netto")
+                .setAutoWidth(true)
+                .setFlexGrow(0);
+        linesGrid
+                .addColumn(line -> formatAmount(line.getPrice()))
+                .setHeader("Price")
                 .setAutoWidth(true)
                 .setFlexGrow(0);
         linesGrid.addColumn(InvoiceLineDraft::taxLabel).setHeader("VAT").setAutoWidth(true).setFlexGrow(0);
@@ -353,11 +358,12 @@ public class CreateInvoiceDialog extends Dialog {
                 showError("Pozycje faktury są niekompletne.");
                 return null;
             }
-            totalNet = totalNet.add(line.getLineNet());
+            totalNet = totalNet.add(line.getLineNet().setScale(2, java.math.RoundingMode.HALF_UP));
             vatByTaxId.merge(line.taxId().trim(), line.getTaxAmount(), BigDecimal::add);
             lineRequests.add(line.toRequest());
         }
 
+        // Amount w DTO tylko lokalnie; MeritInvoiceMapper nie wysyła TaxAmount.Amount. RoundingAmount = null.
         List<CreateInvoiceTaxAmountRequest> taxAmounts = vatByTaxId.entrySet().stream()
                 .map(entry -> new CreateInvoiceTaxAmountRequest(entry.getKey(), entry.getValue()))
                 .toList();

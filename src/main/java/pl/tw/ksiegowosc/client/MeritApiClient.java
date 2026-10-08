@@ -7,6 +7,8 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.http.MediaType;
@@ -34,6 +36,7 @@ import pl.tw.ksiegowosc.dto.SendInvoiceEmailRequest;
 @Component
 public class MeritApiClient {
 
+    private static final Logger log = LoggerFactory.getLogger(MeritApiClient.class);
     private static final DateTimeFormatter PERIOD_FORMAT = DateTimeFormatter.BASIC_ISO_DATE;
     private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
     private static final ParameterizedTypeReference<List<SalesInvoiceDto>> INVOICES_RESPONSE =
@@ -93,6 +96,11 @@ public class MeritApiClient {
     }
 
     public MeritCreateInvoiceResponse createInvoice(MeritCreateInvoiceRequest request) {
+        try {
+            log.info("Merit sendinvoice request JSON: {}", OBJECT_MAPPER.writeValueAsString(request));
+        } catch (JsonProcessingException ex) {
+            log.warn("Merit sendinvoice: nie udało się zserializować requestu do JSON", ex);
+        }
         return meritRestClient.post()
                 .uri("/sendinvoice")
                 .contentType(MediaType.APPLICATION_JSON)
