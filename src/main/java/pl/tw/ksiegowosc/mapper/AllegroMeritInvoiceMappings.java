@@ -49,7 +49,7 @@ public final class AllegroMeritInvoiceMappings {
             rule(MeritFieldSection.HEADER, "TotalAmount",
                     "round(G/(1+VAT), 2); G = paidAmount/totalToPay"),
             rule(MeritFieldSection.HEADER, "RoundingAmount",
-                    "nie wysyłane"),
+                    "G − (TotalAmount + round(TotalAmount×VAT)); 0 pomijane; może być ujemne"),
             rule(MeritFieldSection.HEADER, "HComment",
                     "nie ustawiane"),
             rule(MeritFieldSection.HEADER, "FComment",
@@ -73,7 +73,7 @@ public final class AllegroMeritInvoiceMappings {
             rule(MeritFieldSection.LINE, "InvoiceRow[].Quantity",
                     "towar/usługa: quantity; dostawa/dopłata: 1"),
             rule(MeritFieldSection.LINE, "InvoiceRow[].Price",
-                    "lineNet (2 dp) pod round(lineNet×VAT)=brutto−toNet(brutto); Price=lineNet/qty (7 dp)"),
+                    "netto/szt. = brutto/szt. Allegro / (1+VAT), 7 dp; lineNet = Price×qty (7 dp)"),
             rule(MeritFieldSection.LINE, "InvoiceRow[].TaxId",
                     "towar: lineItems[].tax.rate; dostawa/dopłaty/usługi: fallback 23%"),
 

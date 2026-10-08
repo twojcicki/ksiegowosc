@@ -53,28 +53,20 @@ class AllegroInvoiceMappingSupportTest {
     }
 
     @Test
-    void shouldPickMeritCompatibleLineNetForFiveTimesUnitGross() {
+    void shouldConvertUnitGrossToUnitNetAndLineNetAtSevenScale() {
         BigDecimal rate = AllegroInvoiceMappingSupport.vatRateFromPercent(new BigDecimal("23"));
         BigDecimal unitGross = new BigDecimal("224.10");
+        BigDecimal unitNet = AllegroInvoiceMappingSupport.toNet(
+                unitGross, rate, AllegroInvoiceMappingSupport.UNIT_NET_SCALE);
+        BigDecimal lineNet = AllegroInvoiceMappingSupport.lineNetFromUnitNet(unitNet, 5);
+        BigDecimal totalAmount = lineNet.setScale(2, java.math.RoundingMode.HALF_UP);
         BigDecimal lineGross = unitGross.multiply(BigDecimal.valueOf(5)).setScale(2, java.math.RoundingMode.HALF_UP);
-        BigDecimal lineNet = AllegroInvoiceMappingSupport.meritCompatibleLineNet(lineGross, rate);
-        BigDecimal unitNet = AllegroInvoiceMappingSupport.unitNetFromLineNet(lineNet, 5);
-        BigDecimal lineVat = AllegroInvoiceMappingSupport.meritVatFromNet(lineNet, rate);
+        BigDecimal lineVat = lineGross.subtract(lineNet.setScale(2, java.math.RoundingMode.HALF_UP));
 
-        assertThat(lineGross).isEqualByComparingTo(new BigDecimal("1120.50"));
-        assertThat(lineNet).isEqualByComparingTo(new BigDecimal("910.97"));
-        assertThat(unitNet).isEqualByComparingTo(new BigDecimal("182.1940000"));
+        assertThat(unitNet).isEqualByComparingTo(new BigDecimal("182.1951220"));
+        assertThat(lineNet).isEqualByComparingTo(new BigDecimal("910.9756100"));
+        assertThat(totalAmount).isEqualByComparingTo(new BigDecimal("910.98"));
         assertThat(lineVat).isEqualByComparingTo(new BigDecimal("209.52"));
-    }
-
-    @Test
-    void shouldKeepClassicNetWhenMeritVatAlreadyMatchesAllegro() {
-        BigDecimal rate = AllegroInvoiceMappingSupport.vatRateFromPercent(new BigDecimal("23"));
-        BigDecimal lineNet = AllegroInvoiceMappingSupport.meritCompatibleLineNet(new BigDecimal("60.00"), rate);
-
-        assertThat(lineNet).isEqualByComparingTo(new BigDecimal("48.78"));
-        assertThat(AllegroInvoiceMappingSupport.meritVatFromNet(lineNet, rate))
-                .isEqualByComparingTo(new BigDecimal("11.22"));
     }
 
     @Test
