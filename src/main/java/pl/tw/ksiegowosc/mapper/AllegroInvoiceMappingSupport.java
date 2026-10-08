@@ -60,6 +60,48 @@ public final class AllegroInvoiceMappingSupport {
         return gross.divide(divisor, scale, RoundingMode.HALF_UP);
     }
 
+    private static final BigDecimal ONE_GROSZ = new BigDecimal("0.01");
+    private static final int MERIT_NET_SEARCH_STEPS = 5;
+
+    /**
+     * Netto pozycji (2 dp) tak, by Merit {@code round(lineNet × stawka)} =
+     * Allegro {@code lineGross − toNet(lineGross)}.
+     */
+    public static BigDecimal meritCompatibleLineNet(BigDecimal lineGross, BigDecimal vatRate) {
+        if (lineGross == null || vatRate == null) {
+            return BigDecimal.ZERO.setScale(2, RoundingMode.HALF_UP);
+        }
+        BigDecimal gross = lineGross.setScale(2, RoundingMode.HALF_UP);
+        BigDecimal classicNet = toNet(gross, vatRate, 2);
+        BigDecimal targetVat = gross.subtract(classicNet);
+        for (int step = 0; step <= MERIT_NET_SEARCH_STEPS; step++) {
+            if (step == 0) {
+                if (meritVatFromNet(classicNet, vatRate).compareTo(targetVat) == 0) {
+                    return classicNet;
+                }
+                continue;
+            }
+            BigDecimal down = classicNet.subtract(ONE_GROSZ.multiply(BigDecimal.valueOf(step)));
+            if (meritVatFromNet(down, vatRate).compareTo(targetVat) == 0) {
+                return down;
+            }
+            BigDecimal up = classicNet.add(ONE_GROSZ.multiply(BigDecimal.valueOf(step)));
+            if (meritVatFromNet(up, vatRate).compareTo(targetVat) == 0) {
+                return up;
+            }
+        }
+        return classicNet;
+    }
+
+    public static BigDecimal meritVatFromNet(BigDecimal net, BigDecimal vatRate) {
+        if (net == null || vatRate == null) {
+            return BigDecimal.ZERO.setScale(2, RoundingMode.HALF_UP);
+        }
+        return net.setScale(2, RoundingMode.HALF_UP)
+                .multiply(vatRate)
+                .setScale(2, RoundingMode.HALF_UP);
+    }
+
     /**
      * Brutto modelu Merit: netto + round(netto × stawka, 2).
      */

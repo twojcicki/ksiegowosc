@@ -202,7 +202,7 @@ class MeritApiClientTest {
                         "665f01a4-357a-4a6b-a565-2f17e6e1da13")),
                 List.of(new MeritCreateInvoiceTaxAmount(
                         "665f01a4-357a-4a6b-a565-2f17e6e1da13",
-                        new BigDecimal("23.00"))),
+                        null)),
                 new BigDecimal("100.00"),
                 null,
                 "Komentarz gorny",
@@ -228,8 +228,7 @@ class MeritApiClientTest {
                             "TaxId": "665f01a4-357a-4a6b-a565-2f17e6e1da13"
                           }],
                           "TaxAmount": [{
-                            "TaxId": "665f01a4-357a-4a6b-a565-2f17e6e1da13",
-                            "Amount": 23.00
+                            "TaxId": "665f01a4-357a-4a6b-a565-2f17e6e1da13"
                           }],
                           "TotalAmount": 100.00,
                           "HComment": "Komentarz gorny",

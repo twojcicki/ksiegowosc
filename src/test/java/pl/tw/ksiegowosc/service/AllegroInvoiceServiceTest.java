@@ -121,7 +121,7 @@ class AllegroInvoiceServiceTest {
         CreateInvoiceRequest request = requestCaptor.getValue();
         assertThat(request.customerId()).isEqualTo("cust-1");
         assertThat(request.lines()).hasSize(2);
-        assertThat(request.lines().getFirst().price()).isEqualByComparingTo(new BigDecimal("20.3252033"));
+        assertThat(request.lines().getFirst().price()).isEqualByComparingTo(new BigDecimal("20.3200000"));
         assertThat(request.lines().getFirst().itemCode()).isEqualTo("SKU-BOOK");
         assertThat(request.lines().getFirst().description()).isEqualTo("Książka");
         assertThat(request.lines().getFirst().itemType()).isEqualTo(1);
@@ -306,7 +306,7 @@ class AllegroInvoiceServiceTest {
         assertThat(request.lines().get(2).itemCode()).isEqualTo("Dostawa");
         assertThat(request.lines().get(2).description()).isEqualTo("Paczkomat");
         assertThat(request.lines().get(2).itemType()).isEqualTo(2);
-        assertThat(request.lines().get(2).price()).isEqualByComparingTo(new BigDecimal("8.1300813"));
+        assertThat(request.lines().get(2).price()).isEqualByComparingTo(new BigDecimal("8.1300000"));
         assertThat(request.lines().get(2).taxId()).isEqualTo("tax-23");
         assertThat(request.totalAmount()).isEqualByComparingTo(new BigDecimal("56.91"));
     }
@@ -374,12 +374,12 @@ class AllegroInvoiceServiceTest {
         CreateInvoiceRequest request = requestCaptor.getValue();
         assertThat(request.totalAmount()).isEqualByComparingTo(new BigDecimal("56.92"));
         assertThat(request.roundingAmount()).isNull();
-        // Price bez korekty do TotalAmount: 10.00 / 1.23
-        assertThat(request.lines().get(2).price()).isEqualByComparingTo(new BigDecimal("8.1300813"));
+        // Price z meritCompatibleLineNet(10.00): classic już OK → 8.13
+        assertThat(request.lines().get(2).price()).isEqualByComparingTo(new BigDecimal("8.1300000"));
     }
 
     @Test
-    void shouldSetNegativeRoundingAmountWhenMeritGrossExceedsPaidGross() {
+    void shouldOmitRoundingAmountWhenPaidGrossIs1120_50() {
         when(soldInvoiceRepository.findById("order-1")).thenReturn(java.util.Optional.empty());
         AllegroCheckoutSummary summary = new AllegroCheckoutSummary(new AllegroPrice("1120.50", "PLN"));
         when(allegroApiClient.getCheckoutForm("https://api.allegro.pl", "token", "ua", "order-1"))
@@ -404,7 +404,7 @@ class AllegroInvoiceServiceTest {
         verify(invoicesService).createInvoice(requestCaptor.capture());
         CreateInvoiceRequest request = requestCaptor.getValue();
         assertThat(request.totalAmount()).isEqualByComparingTo(new BigDecimal("910.98"));
-        assertThat(request.roundingAmount()).isEqualByComparingTo(new BigDecimal("-0.01"));
+        assertThat(request.roundingAmount()).isNull();
     }
 
     @Test
