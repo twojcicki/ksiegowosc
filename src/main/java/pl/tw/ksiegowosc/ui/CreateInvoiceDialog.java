@@ -14,6 +14,7 @@ import org.springframework.web.server.ResponseStatusException;
 
 import com.vaadin.flow.component.button.Button;
 import com.vaadin.flow.component.button.ButtonVariant;
+import com.vaadin.flow.component.combobox.ComboBox;
 import com.vaadin.flow.component.datepicker.DatePicker;
 import com.vaadin.flow.component.dialog.Dialog;
 import com.vaadin.flow.component.formlayout.FormLayout;
@@ -36,8 +37,10 @@ import pl.tw.ksiegowosc.dto.CreateInvoiceLineRequest;
 import pl.tw.ksiegowosc.dto.CreateInvoiceRequest;
 import pl.tw.ksiegowosc.dto.CreateInvoiceResponse;
 import pl.tw.ksiegowosc.dto.CreateInvoiceTaxAmountRequest;
+import pl.tw.ksiegowosc.dto.CustomerDto;
 import pl.tw.ksiegowosc.dto.MeritTaxDto;
 import pl.tw.ksiegowosc.dto.MeritUnitDto;
+import pl.tw.ksiegowosc.service.CustomersService;
 import pl.tw.ksiegowosc.service.InvoicesService;
 import pl.tw.ksiegowosc.service.TaxesService;
 import pl.tw.ksiegowosc.service.UnitsService;
@@ -48,12 +51,13 @@ public class CreateInvoiceDialog extends Dialog {
     private static final Locale PL = Locale.forLanguageTag("pl-PL");
 
     private final InvoicesService invoicesService;
+    private final CustomersService customersService;
     private final TaxesService taxesService;
     private final UnitsService unitsService;
     private final Runnable onSuccess;
     private final NumberFormat amountFormat;
 
-    private final TextField customerId = new TextField("Klient (customerId)");
+    private final ComboBox<CustomerDto> customer = new ComboBox<>("Klient");
     private final TextField invoiceNo = new TextField("Numer faktury");
     private final DatePicker docDate = new DatePicker("Data dokumentu");
     private final DatePicker dueDate = new DatePicker("Termin płatności");
@@ -75,10 +79,12 @@ public class CreateInvoiceDialog extends Dialog {
 
     public CreateInvoiceDialog(
             InvoicesService invoicesService,
+            CustomersService customersService,
             TaxesService taxesService,
             UnitsService unitsService,
             Runnable onSuccess) {
         this.invoicesService = invoicesService;
+        this.customersService = customersService;
         this.taxesService = taxesService;
         this.unitsService = unitsService;
         this.onSuccess = onSuccess;
@@ -93,12 +99,13 @@ public class CreateInvoiceDialog extends Dialog {
         setCloseOnOutsideClick(false);
 
         configureFields();
+        loadCustomers();
         loadTaxes();
         loadUnits();
         configureLinesGrid();
 
         FormLayout headerForm = new FormLayout(
-                customerId,
+                customer,
                 invoiceNo,
                 docDate,
                 dueDate,
@@ -151,8 +158,11 @@ public class CreateInvoiceDialog extends Dialog {
         dueDate.setValue(today.plusDays(14));
         currencyCode.setValue("PLN");
 
-        customerId.setValue("6fb6b812-08ed-4bed-5e80-08def950532f");
-        customerId.setRequiredIndicatorVisible(true);
+        customer.setRequiredIndicatorVisible(true);
+        customer.setClearButtonVisible(true);
+        customer.setAllowCustomValue(false);
+        customer.setItemLabelGenerator(this::formatCustomer);
+        customer.setWidthFull();
         invoiceNo.setRequiredIndicatorVisible(true);
         invoiceNo.setMaxLength(35);
         docDate.setRequiredIndicatorVisible(true);
@@ -258,6 +268,16 @@ public class CreateInvoiceDialog extends Dialog {
         }
     }
 
+    private void loadCustomers() {
+        try {
+            List<CustomerDto> customers = customersService.getCustomers(null);
+            customer.setItems(customers == null ? List.of() : customers);
+        } catch (RuntimeException ex) {
+            customer.setItems(List.of());
+            showError("Nie udało się pobrać klientów z Merit.");
+        }
+    }
+
     private void loadUnits() {
         try {
             units = unitsService.listUnits();
@@ -304,7 +324,9 @@ public class CreateInvoiceDialog extends Dialog {
     }
 
     private CreateInvoiceRequest buildRequest() {
-        if (isBlank(customerId.getValue())
+        CustomerDto selectedCustomer = customer.getValue();
+        if (selectedCustomer == null
+                || isBlank(selectedCustomer.customerId())
                 || isBlank(invoiceNo.getValue())
                 || docDate.getValue() == null
                 || dueDate.getValue() == null
@@ -341,7 +363,7 @@ public class CreateInvoiceDialog extends Dialog {
                 .toList();
 
         return new CreateInvoiceRequest(
-                customerId.getValue().trim(),
+                selectedCustomer.customerId().trim(),
                 invoiceNo.getValue().trim(),
                 docDate.getValue(),
                 dueDate.getValue(),
@@ -354,6 +376,16 @@ public class CreateInvoiceDialog extends Dialog {
                 lineRequests,
                 taxAmounts,
                 null);
+    }
+
+    private String formatCustomer(CustomerDto value) {
+        if (value == null) {
+            return "";
+        }
+        if (value.name() != null && !value.name().isBlank()) {
+            return value.name().trim();
+        }
+        return value.customerId() == null ? "" : value.customerId().trim();
     }
 
     private String formatAmount(BigDecimal value) {

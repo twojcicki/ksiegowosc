@@ -35,6 +35,7 @@ import pl.tw.ksiegowosc.dto.SalesInvoiceDetailsDto;
 import pl.tw.ksiegowosc.dto.SalesInvoiceDto;
 import pl.tw.ksiegowosc.dto.SalesInvoiceHeaderDto;
 import pl.tw.ksiegowosc.dto.SalesInvoiceLineDto;
+import pl.tw.ksiegowosc.service.CustomersService;
 import pl.tw.ksiegowosc.service.InvoicesService;
 import pl.tw.ksiegowosc.service.TaxesService;
 import pl.tw.ksiegowosc.service.UnitsService;
@@ -54,6 +55,7 @@ public class InvoiceListView extends View {
     private static final DateTimeFormatter EMAIL_SENT_FORMAT = DateTimeFormatter.ofPattern("dd.MM.yyyy HH:mm", PL);
 
     private final InvoicesService invoicesService;
+    private final CustomersService customersService;
     private final TaxesService taxesService;
     private final UnitsService unitsService;
     private final DatePicker fromPicker = new DatePicker("Od");
@@ -62,8 +64,12 @@ public class InvoiceListView extends View {
     private final NumberFormat amountFormat;
 
     public InvoiceListView(
-            InvoicesService invoicesService, TaxesService taxesService, UnitsService unitsService) {
+            InvoicesService invoicesService,
+            CustomersService customersService,
+            TaxesService taxesService,
+            UnitsService unitsService) {
         this.invoicesService = invoicesService;
+        this.customersService = customersService;
         this.taxesService = taxesService;
         this.unitsService = unitsService;
         this.amountFormat = NumberFormat.getNumberInstance(PL);
@@ -153,8 +159,8 @@ public class InvoiceListView extends View {
     }
 
     private void openCreateInvoiceDialog() {
-        CreateInvoiceDialog dialog =
-                new CreateInvoiceDialog(invoicesService, taxesService, unitsService, this::loadInvoices);
+        CreateInvoiceDialog dialog = new CreateInvoiceDialog(
+                invoicesService, customersService, taxesService, unitsService, this::loadInvoices);
         dialog.open();
     }
 
