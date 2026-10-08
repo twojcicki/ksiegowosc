@@ -54,13 +54,13 @@ class MeritLoggingInterceptorTest {
         ClientHttpRequestExecution execution = mock(ClientHttpRequestExecution.class);
         when(execution.execute(any(), eq(requestBody))).thenReturn(response);
 
-        interceptor.intercept(request(HttpMethod.POST, "/api/v2/sendinvoice"), requestBody, execution);
+        interceptor.intercept(request(HttpMethod.POST, "/api/v1/sendinvoice"), requestBody, execution);
 
         List<ILoggingEvent> events = appender.list;
         assertThat(events).hasSize(1);
         assertThat(events.getFirst().getLevel()).isEqualTo(Level.INFO);
         String message = events.getFirst().getFormattedMessage();
-        assertThat(message).contains("Merit API POST /api/v2/sendinvoice -> 200");
+        assertThat(message).contains("Merit API POST /api/v1/sendinvoice -> 200");
         assertThat(message).contains("req=" + requestBody.length + "b");
         assertThat(message).doesNotContain("Jan Kowalski");
         assertThat(message).doesNotContain("errorBody=");
@@ -75,7 +75,7 @@ class MeritLoggingInterceptorTest {
         ClientHttpRequestExecution execution = mock(ClientHttpRequestExecution.class);
         when(execution.execute(any(), eq(requestBody))).thenReturn(response);
 
-        interceptor.intercept(request(HttpMethod.POST, "/api/v2/sendinvoice"), requestBody, execution);
+        interceptor.intercept(request(HttpMethod.POST, "/api/v1/sendinvoice"), requestBody, execution);
 
         List<ILoggingEvent> events = appender.list;
         assertThat(events).hasSize(1);
@@ -95,7 +95,7 @@ class MeritLoggingInterceptorTest {
         when(execution.execute(any(), eq(requestBody))).thenReturn(response);
 
         interceptor.intercept(
-                request(HttpMethod.GET, "/api/v2/getinvoices?apiId=secret&signature=sig123&foo=1"),
+                request(HttpMethod.GET, "/api/v1/getinvoices?apiId=secret&signature=sig123&foo=1"),
                 requestBody,
                 execution);
 

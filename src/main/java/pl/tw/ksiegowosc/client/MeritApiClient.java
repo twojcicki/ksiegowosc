@@ -47,9 +47,13 @@ public class MeritApiClient {
             };
 
     private final RestClient meritRestClient;
+    private final RestClient meritV2RestClient;
 
-    public MeritApiClient(@Qualifier("meritRestClient") RestClient meritRestClient) {
+    public MeritApiClient(
+            @Qualifier("meritRestClient") RestClient meritRestClient,
+            @Qualifier("meritV2RestClient") RestClient meritV2RestClient) {
         this.meritRestClient = meritRestClient;
+        this.meritV2RestClient = meritV2RestClient;
     }
 
     public List<SalesInvoiceDto> getInvoices(LocalDate from, LocalDate to) {
@@ -80,7 +84,7 @@ public class MeritApiClient {
     public String sendInvoiceByEmail(String id, boolean delivNote) {
         SendInvoiceEmailRequest request = new SendInvoiceEmailRequest(id, delivNote);
 
-        return meritRestClient.post()
+        return meritV2RestClient.post()
                 .uri("/sendinvoicebyemail")
                 .contentType(MediaType.APPLICATION_JSON)
                 .body(request)
@@ -115,7 +119,7 @@ public class MeritApiClient {
     }
 
     public MeritCreateCustomerResponse createCustomer(MeritCreateCustomerRequest request) {
-        return meritRestClient.post()
+        return meritV2RestClient.post()
                 .uri("/sendcustomer")
                 .contentType(MediaType.APPLICATION_JSON)
                 .body(request)

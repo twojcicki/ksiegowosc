@@ -41,7 +41,9 @@ class MeritApiClientTest {
     @Test
     void shouldFetchInvoicesForGivenPeriod() {
         Clock clock = Clock.fixed(Instant.parse("2026-08-18T10:00:00Z"), ZoneOffset.UTC);
-        MeritApiProperties properties = new MeritApiProperties("https://program.360ksiegowosc.pl/api/v2");
+        MeritApiProperties properties = new MeritApiProperties(
+                "https://program.360ksiegowosc.pl/api/v1",
+                "https://program.360ksiegowosc.pl/api/v2");
         MeritAuthInterceptor interceptor = new MeritAuthInterceptor(
                 () -> new MeritCredentials("test-api-id", "test-api-key"), clock);
 
@@ -49,12 +51,12 @@ class MeritApiClientTest {
                 .baseUrl(properties.baseUrl())
                 .requestInterceptor(interceptor);
         MockRestServiceServer server = MockRestServiceServer.bindTo(builder).build();
-        MeritApiClient client = new MeritApiClient(builder.build());
+        MeritApiClient client = new MeritApiClient(builder.build(), RestClient.builder().build());
 
         String expectedBody = "{\"PeriodStart\":\"20260801\",\"PeriodEnd\":\"20260817\",\"DateType\":0}";
         String expectedSignature = interceptor.sign("20260818100000", expectedBody);
 
-        server.expect(requestTo(startsWith("https://program.360ksiegowosc.pl/api/v2/getinvoices")))
+        server.expect(requestTo(startsWith("https://program.360ksiegowosc.pl/api/v1/getinvoices")))
                 .andExpect(method(HttpMethod.POST))
                 .andExpect(queryParam("apiId", "test-api-id"))
                 .andExpect(queryParam("timestamp", "20260818100000"))
@@ -95,7 +97,9 @@ class MeritApiClientTest {
     @Test
     void shouldFetchInvoiceDetails() {
         Clock clock = Clock.fixed(Instant.parse("2026-08-18T10:00:00Z"), ZoneOffset.UTC);
-        MeritApiProperties properties = new MeritApiProperties("https://program.360ksiegowosc.pl/api/v2");
+        MeritApiProperties properties = new MeritApiProperties(
+                "https://program.360ksiegowosc.pl/api/v1",
+                "https://program.360ksiegowosc.pl/api/v2");
         MeritAuthInterceptor interceptor = new MeritAuthInterceptor(
                 () -> new MeritCredentials("test-api-id", "test-api-key"), clock);
 
@@ -103,13 +107,13 @@ class MeritApiClientTest {
                 .baseUrl(properties.baseUrl())
                 .requestInterceptor(interceptor);
         MockRestServiceServer server = MockRestServiceServer.bindTo(builder).build();
-        MeritApiClient client = new MeritApiClient(builder.build());
+        MeritApiClient client = new MeritApiClient(builder.build(), RestClient.builder().build());
 
         String invoiceId = "5f91033c-9d0f-416e-a079-d3c892b8c317";
         String expectedBody = "{\"Id\":\"" + invoiceId + "\",\"AddAttachment\":false}";
         String expectedSignature = interceptor.sign("20260818100000", expectedBody);
 
-        server.expect(requestTo(startsWith("https://program.360ksiegowosc.pl/api/v2/getinvoice")))
+        server.expect(requestTo(startsWith("https://program.360ksiegowosc.pl/api/v1/getinvoice")))
                 .andExpect(method(HttpMethod.POST))
                 .andExpect(queryParam("apiId", "test-api-id"))
                 .andExpect(queryParam("timestamp", "20260818100000"))
@@ -146,15 +150,17 @@ class MeritApiClientTest {
     @Test
     void shouldSendInvoiceByEmail() {
         Clock clock = Clock.fixed(Instant.parse("2026-08-18T10:00:00Z"), ZoneOffset.UTC);
-        MeritApiProperties properties = new MeritApiProperties("https://program.360ksiegowosc.pl/api/v2");
+        MeritApiProperties properties = new MeritApiProperties(
+                "https://program.360ksiegowosc.pl/api/v1",
+                "https://program.360ksiegowosc.pl/api/v2");
         MeritAuthInterceptor interceptor = new MeritAuthInterceptor(
                 () -> new MeritCredentials("test-api-id", "test-api-key"), clock);
 
         RestClient.Builder builder = RestClient.builder()
-                .baseUrl(properties.baseUrl())
+                .baseUrl(properties.v2BaseUrl())
                 .requestInterceptor(interceptor);
         MockRestServiceServer server = MockRestServiceServer.bindTo(builder).build();
-        MeritApiClient client = new MeritApiClient(builder.build());
+        MeritApiClient client = new MeritApiClient(RestClient.builder().build(), builder.build());
 
         String invoiceId = "5f91033c-9d0f-416e-a079-d3c892b8c317";
         String expectedBody = "{\"Id\":\"" + invoiceId + "\",\"DelivNote\":false}";
@@ -177,7 +183,9 @@ class MeritApiClientTest {
     @Test
     void shouldCreateInvoice() {
         Clock clock = Clock.fixed(Instant.parse("2026-08-18T10:00:00Z"), ZoneOffset.UTC);
-        MeritApiProperties properties = new MeritApiProperties("https://program.360ksiegowosc.pl/api/v2");
+        MeritApiProperties properties = new MeritApiProperties(
+                "https://program.360ksiegowosc.pl/api/v1",
+                "https://program.360ksiegowosc.pl/api/v2");
         MeritAuthInterceptor interceptor = new MeritAuthInterceptor(
                 () -> new MeritCredentials("test-api-id", "test-api-key"), clock);
 
@@ -185,7 +193,7 @@ class MeritApiClientTest {
                 .baseUrl(properties.baseUrl())
                 .requestInterceptor(interceptor);
         MockRestServiceServer server = MockRestServiceServer.bindTo(builder).build();
-        MeritApiClient client = new MeritApiClient(builder.build());
+        MeritApiClient client = new MeritApiClient(builder.build(), RestClient.builder().build());
 
         MeritCreateInvoiceRequest request = new MeritCreateInvoiceRequest(
                 new MeritCreateInvoiceCustomer("665f01a4-357a-4a6b-a565-2f17e6e1da13"),
@@ -202,14 +210,14 @@ class MeritApiClientTest {
                         "665f01a4-357a-4a6b-a565-2f17e6e1da13")),
                 List.of(new MeritCreateInvoiceTaxAmount(
                         "665f01a4-357a-4a6b-a565-2f17e6e1da13",
-                        null)),
+                        new BigDecimal("23.00"))),
                 new BigDecimal("100.00"),
                 null,
                 "Komentarz gorny",
                 "Komentarz dolny",
                 null);
 
-        server.expect(requestTo(startsWith("https://program.360ksiegowosc.pl/api/v2/sendinvoice")))
+        server.expect(requestTo(startsWith("https://program.360ksiegowosc.pl/api/v1/sendinvoice")))
                 .andExpect(method(HttpMethod.POST))
                 .andExpect(queryParam("apiId", "test-api-id"))
                 .andExpect(queryParam("timestamp", "20260818100000"))
@@ -228,7 +236,8 @@ class MeritApiClientTest {
                             "TaxId": "665f01a4-357a-4a6b-a565-2f17e6e1da13"
                           }],
                           "TaxAmount": [{
-                            "TaxId": "665f01a4-357a-4a6b-a565-2f17e6e1da13"
+                            "TaxId": "665f01a4-357a-4a6b-a565-2f17e6e1da13",
+                            "Amount": 23.00
                           }],
                           "TotalAmount": 100.00,
                           "HComment": "Komentarz gorny",
@@ -252,7 +261,9 @@ class MeritApiClientTest {
     @Test
     void shouldFetchCustomersAsList() {
         Clock clock = Clock.fixed(Instant.parse("2026-08-18T10:00:00Z"), ZoneOffset.UTC);
-        MeritApiProperties properties = new MeritApiProperties("https://program.360ksiegowosc.pl/api/v2");
+        MeritApiProperties properties = new MeritApiProperties(
+                "https://program.360ksiegowosc.pl/api/v1",
+                "https://program.360ksiegowosc.pl/api/v2");
         MeritAuthInterceptor interceptor = new MeritAuthInterceptor(
                 () -> new MeritCredentials("test-api-id", "test-api-key"), clock);
 
@@ -260,9 +271,9 @@ class MeritApiClientTest {
                 .baseUrl(properties.baseUrl())
                 .requestInterceptor(interceptor);
         MockRestServiceServer server = MockRestServiceServer.bindTo(builder).build();
-        MeritApiClient client = new MeritApiClient(builder.build());
+        MeritApiClient client = new MeritApiClient(builder.build(), RestClient.builder().build());
 
-        server.expect(requestTo(startsWith("https://program.360ksiegowosc.pl/api/v2/getcustomers")))
+        server.expect(requestTo(startsWith("https://program.360ksiegowosc.pl/api/v1/getcustomers")))
                 .andExpect(method(HttpMethod.POST))
                 .andExpect(content().json("{\"Name\":\"Firma\"}"))
                 .andRespond(withSuccess("""
@@ -292,7 +303,9 @@ class MeritApiClientTest {
     @Test
     void shouldWrapSingleCustomerObjectAsList() {
         Clock clock = Clock.fixed(Instant.parse("2026-08-18T10:00:00Z"), ZoneOffset.UTC);
-        MeritApiProperties properties = new MeritApiProperties("https://program.360ksiegowosc.pl/api/v2");
+        MeritApiProperties properties = new MeritApiProperties(
+                "https://program.360ksiegowosc.pl/api/v1",
+                "https://program.360ksiegowosc.pl/api/v2");
         MeritAuthInterceptor interceptor = new MeritAuthInterceptor(
                 () -> new MeritCredentials("test-api-id", "test-api-key"), clock);
 
@@ -300,9 +313,9 @@ class MeritApiClientTest {
                 .baseUrl(properties.baseUrl())
                 .requestInterceptor(interceptor);
         MockRestServiceServer server = MockRestServiceServer.bindTo(builder).build();
-        MeritApiClient client = new MeritApiClient(builder.build());
+        MeritApiClient client = new MeritApiClient(builder.build(), RestClient.builder().build());
 
-        server.expect(requestTo(startsWith("https://program.360ksiegowosc.pl/api/v2/getcustomers")))
+        server.expect(requestTo(startsWith("https://program.360ksiegowosc.pl/api/v1/getcustomers")))
                 .andExpect(method(HttpMethod.POST))
                 .andExpect(content().json("{}"))
                 .andRespond(withSuccess("""
@@ -324,7 +337,9 @@ class MeritApiClientTest {
     @Test
     void shouldFetchCustomersByVatRegNo() {
         Clock clock = Clock.fixed(Instant.parse("2026-08-18T10:00:00Z"), ZoneOffset.UTC);
-        MeritApiProperties properties = new MeritApiProperties("https://program.360ksiegowosc.pl/api/v2");
+        MeritApiProperties properties = new MeritApiProperties(
+                "https://program.360ksiegowosc.pl/api/v1",
+                "https://program.360ksiegowosc.pl/api/v2");
         MeritAuthInterceptor interceptor = new MeritAuthInterceptor(
                 () -> new MeritCredentials("test-api-id", "test-api-key"), clock);
 
@@ -332,9 +347,9 @@ class MeritApiClientTest {
                 .baseUrl(properties.baseUrl())
                 .requestInterceptor(interceptor);
         MockRestServiceServer server = MockRestServiceServer.bindTo(builder).build();
-        MeritApiClient client = new MeritApiClient(builder.build());
+        MeritApiClient client = new MeritApiClient(builder.build(), RestClient.builder().build());
 
-        server.expect(requestTo(startsWith("https://program.360ksiegowosc.pl/api/v2/getcustomers")))
+        server.expect(requestTo(startsWith("https://program.360ksiegowosc.pl/api/v1/getcustomers")))
                 .andExpect(method(HttpMethod.POST))
                 .andExpect(content().json("{\"VatRegNo\":\"5252674798\"}"))
                 .andRespond(withSuccess("""
@@ -355,15 +370,17 @@ class MeritApiClientTest {
     @Test
     void shouldCreateCustomer() {
         Clock clock = Clock.fixed(Instant.parse("2026-08-18T10:00:00Z"), ZoneOffset.UTC);
-        MeritApiProperties properties = new MeritApiProperties("https://program.360ksiegowosc.pl/api/v2");
+        MeritApiProperties properties = new MeritApiProperties(
+                "https://program.360ksiegowosc.pl/api/v1",
+                "https://program.360ksiegowosc.pl/api/v2");
         MeritAuthInterceptor interceptor = new MeritAuthInterceptor(
                 () -> new MeritCredentials("test-api-id", "test-api-key"), clock);
 
-        RestClient.Builder builder = RestClient.builder()
-                .baseUrl(properties.baseUrl())
+        RestClient.Builder v2Builder = RestClient.builder()
+                .baseUrl(properties.v2BaseUrl())
                 .requestInterceptor(interceptor);
-        MockRestServiceServer server = MockRestServiceServer.bindTo(builder).build();
-        MeritApiClient client = new MeritApiClient(builder.build());
+        MockRestServiceServer server = MockRestServiceServer.bindTo(v2Builder).build();
+        MeritApiClient client = new MeritApiClient(RestClient.builder().build(), v2Builder.build());
 
         pl.tw.ksiegowosc.dto.MeritCreateCustomerRequest request =
                 new pl.tw.ksiegowosc.dto.MeritCreateCustomerRequest(
@@ -410,7 +427,9 @@ class MeritApiClientTest {
     @Test
     void shouldFetchTaxes() {
         Clock clock = Clock.fixed(Instant.parse("2026-08-18T10:00:00Z"), ZoneOffset.UTC);
-        MeritApiProperties properties = new MeritApiProperties("https://program.360ksiegowosc.pl/api/v2");
+        MeritApiProperties properties = new MeritApiProperties(
+                "https://program.360ksiegowosc.pl/api/v1",
+                "https://program.360ksiegowosc.pl/api/v2");
         MeritAuthInterceptor interceptor = new MeritAuthInterceptor(
                 () -> new MeritCredentials("test-api-id", "test-api-key"), clock);
 
@@ -418,12 +437,12 @@ class MeritApiClientTest {
                 .baseUrl(properties.baseUrl())
                 .requestInterceptor(interceptor);
         MockRestServiceServer server = MockRestServiceServer.bindTo(builder).build();
-        MeritApiClient client = new MeritApiClient(builder.build());
+        MeritApiClient client = new MeritApiClient(builder.build(), RestClient.builder().build());
 
         String expectedBody = "{}";
         String expectedSignature = interceptor.sign("20260818100000", expectedBody);
 
-        server.expect(requestTo(startsWith("https://program.360ksiegowosc.pl/api/v2/gettaxes")))
+        server.expect(requestTo(startsWith("https://program.360ksiegowosc.pl/api/v1/gettaxes")))
                 .andExpect(method(HttpMethod.POST))
                 .andExpect(queryParam("apiId", "test-api-id"))
                 .andExpect(queryParam("timestamp", "20260818100000"))
@@ -458,7 +477,9 @@ class MeritApiClientTest {
     @Test
     void shouldFetchUnits() {
         Clock clock = Clock.fixed(Instant.parse("2026-08-18T10:00:00Z"), ZoneOffset.UTC);
-        MeritApiProperties properties = new MeritApiProperties("https://program.360ksiegowosc.pl/api/v2");
+        MeritApiProperties properties = new MeritApiProperties(
+                "https://program.360ksiegowosc.pl/api/v1",
+                "https://program.360ksiegowosc.pl/api/v2");
         MeritAuthInterceptor interceptor = new MeritAuthInterceptor(
                 () -> new MeritCredentials("test-api-id", "test-api-key"), clock);
 
@@ -466,12 +487,12 @@ class MeritApiClientTest {
                 .baseUrl(properties.baseUrl())
                 .requestInterceptor(interceptor);
         MockRestServiceServer server = MockRestServiceServer.bindTo(builder).build();
-        MeritApiClient client = new MeritApiClient(builder.build());
+        MeritApiClient client = new MeritApiClient(builder.build(), RestClient.builder().build());
 
         String expectedBody = "{}";
         String expectedSignature = interceptor.sign("20260818100000", expectedBody);
 
-        server.expect(requestTo(startsWith("https://program.360ksiegowosc.pl/api/v2/getunits")))
+        server.expect(requestTo(startsWith("https://program.360ksiegowosc.pl/api/v1/getunits")))
                 .andExpect(method(HttpMethod.POST))
                 .andExpect(queryParam("apiId", "test-api-id"))
                 .andExpect(queryParam("timestamp", "20260818100000"))

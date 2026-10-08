@@ -27,7 +27,8 @@ app:
 
 clients:
   merit:
-    base-url: https://program.360ksiegowosc.pl/api/v2
+    base-url: https://program.360ksiegowosc.pl/api/v1
+    v2-base-url: https://program.360ksiegowosc.pl/api/v2
   allegro:
     # Empty = auto from request host (e.g. https://…onrender.com/api/allegro/auth/callback)
     redirect-uri: ${ALLEGRO_REDIRECT_URI:}
