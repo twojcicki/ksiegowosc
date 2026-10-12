@@ -4,10 +4,10 @@ import java.math.BigDecimal;
 import java.text.NumberFormat;
 import java.time.LocalDate;
 import java.util.ArrayList;
-import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
-import java.util.Map;
+import java.util.Set;
 
 import org.springframework.web.client.RestClientResponseException;
 import org.springframework.web.server.ResponseStatusException;
@@ -146,8 +146,6 @@ public class CreateInvoiceDialog extends Dialog {
         footer.setJustifyContentMode(FlexComponent.JustifyContentMode.END);
         footer.setWidthFull();
         getFooter().add(footer);
-
-        refreshTotals();
     }
 
     private void configureFields() {
@@ -175,8 +173,8 @@ public class CreateInvoiceDialog extends Dialog {
         totalAmount.setRequiredIndicatorVisible(true);
         totalAmount.setMin(0);
         totalAmount.setHelperText("Wysyłane do Merit jako TotalAmount");
-        totalTaxAmount.setReadOnly(true);
-        totalTaxAmount.setHelperText("Tylko podgląd — VAT Amount nie jest wysyłany do Merit");
+        totalTaxAmount.setMin(0);
+        totalTaxAmount.setHelperText("Opcjonalne — TaxAmount.Amount → Merit; puste = nie wysyłaj");
 
         headerComment.setWidthFull();
         footerComment.setWidthFull();
@@ -233,7 +231,6 @@ public class CreateInvoiceDialog extends Dialog {
                         lines.add(draft);
                     }
                     linesProvider.refreshAll();
-                    refreshTotals();
                 });
         dialog.open();
     }
@@ -241,21 +238,6 @@ public class CreateInvoiceDialog extends Dialog {
     private void removeLine(InvoiceLineDraft line) {
         lines.remove(line);
         linesProvider.refreshAll();
-        refreshTotals();
-    }
-
-    private void refreshTotals() {
-        BigDecimal vatSum = BigDecimal.ZERO;
-        for (InvoiceLineDraft line : lines) {
-            if (line.getTaxAmount() != null) {
-                vatSum = vatSum.add(line.getTaxAmount());
-            }
-        }
-        if (lines.isEmpty()) {
-            totalTaxAmount.clear();
-        } else {
-            totalTaxAmount.setValue(vatSum.doubleValue());
-        }
     }
 
     private void loadCustomers() {
@@ -332,7 +314,10 @@ public class CreateInvoiceDialog extends Dialog {
         }
 
         BigDecimal totalNet = BigDecimal.valueOf(totalAmount.getValue());
-        Map<String, BigDecimal> vatByTaxId = new LinkedHashMap<>();
+        BigDecimal enteredVat = totalTaxAmount.getValue() == null
+                ? null
+                : BigDecimal.valueOf(totalTaxAmount.getValue());
+        Set<String> taxIds = new LinkedHashSet<>();
         List<CreateInvoiceLineRequest> lineRequests = new ArrayList<>();
 
         for (InvoiceLineDraft line : lines) {
@@ -342,23 +327,21 @@ public class CreateInvoiceDialog extends Dialog {
                 showError("Pozycje faktury są niekompletne.");
                 return null;
             }
-            BigDecimal lineVat = line.getTaxAmount();
-            if (lineVat == null) {
-                lineVat = InvoiceLineDraft.vatFromPrice(
-                        line.getPrice(), line.getQuantity(), line.getTax() == null ? null : line.getTax().taxPct());
-            }
-            if (lineVat != null) {
-                vatByTaxId.merge(line.taxId().trim(), lineVat, BigDecimal::add);
-            } else {
-                vatByTaxId.putIfAbsent(line.taxId().trim(), BigDecimal.ZERO.setScale(2));
-            }
+            taxIds.add(line.taxId().trim());
             lineRequests.add(line.toRequest());
         }
 
-        // Amount w DTO tylko lokalnie; MeritInvoiceMapper nie wysyła TaxAmount.Amount. RoundingAmount = null.
-        List<CreateInvoiceTaxAmountRequest> taxAmounts = vatByTaxId.entrySet().stream()
-                .map(entry -> new CreateInvoiceTaxAmountRequest(entry.getKey(), entry.getValue()))
-                .toList();
+        // Amount tylko gdy użytkownik wpisał Sumę VAT (null → pole Amount nie idzie do Merit).
+        List<CreateInvoiceTaxAmountRequest> taxAmounts = new ArrayList<>();
+        boolean amountAssigned = false;
+        for (String taxId : taxIds) {
+            BigDecimal amount = null;
+            if (enteredVat != null && !amountAssigned) {
+                amount = enteredVat;
+                amountAssigned = true;
+            }
+            taxAmounts.add(new CreateInvoiceTaxAmountRequest(taxId, amount));
+        }
 
         return new CreateInvoiceRequest(
                 selectedCustomer.customerId().trim(),

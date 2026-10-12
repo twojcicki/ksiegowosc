@@ -146,8 +146,9 @@ public class AllegroToMeritInvoiceBuilder {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Brak danych Allegro do komentarza faktury.");
         }
 
-        List<CreateInvoiceTaxAmountRequest> taxAmounts = vatByTaxId.entrySet().stream()
-                .map(entry -> new CreateInvoiceTaxAmountRequest(entry.getKey(), entry.getValue()))
+        // Amount nie wysyłane — Merit liczy VAT z Price; null → JsonInclude pomija pole.
+        List<CreateInvoiceTaxAmountRequest> taxAmounts = vatByTaxId.keySet().stream()
+                .map(taxId -> new CreateInvoiceTaxAmountRequest(taxId, null))
                 .toList();
 
         return new CreateInvoiceRequest(
