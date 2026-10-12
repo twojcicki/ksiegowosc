@@ -65,7 +65,6 @@ public class CreateInvoiceDialog extends Dialog {
     private final TextArea headerComment = new TextArea("Komentarz górny");
     private final TextArea footerComment = new TextArea("Komentarz dolny");
     private final NumberField totalAmount = new NumberField("Kwota netto");
-    private final NumberField totalTaxAmount = new NumberField("Suma VAT");
 
     private final List<InvoiceLineDraft> lines = new ArrayList<>();
     private final ListDataProvider<InvoiceLineDraft> linesProvider = new ListDataProvider<>(lines);
@@ -111,7 +110,6 @@ public class CreateInvoiceDialog extends Dialog {
                 dueDate,
                 currencyCode,
                 totalAmount,
-                totalTaxAmount,
                 headerComment,
                 footerComment);
         headerForm.setResponsiveSteps(
@@ -173,8 +171,6 @@ public class CreateInvoiceDialog extends Dialog {
         totalAmount.setRequiredIndicatorVisible(true);
         totalAmount.setMin(0);
         totalAmount.setHelperText("Wysyłane do Merit jako TotalAmount");
-        totalTaxAmount.setMin(0);
-        totalTaxAmount.setHelperText("Opcjonalne — TaxAmount.Amount → Merit; puste = nie wysyłaj");
 
         headerComment.setWidthFull();
         footerComment.setWidthFull();
@@ -314,9 +310,6 @@ public class CreateInvoiceDialog extends Dialog {
         }
 
         BigDecimal totalNet = BigDecimal.valueOf(totalAmount.getValue());
-        BigDecimal enteredVat = totalTaxAmount.getValue() == null
-                ? null
-                : BigDecimal.valueOf(totalTaxAmount.getValue());
         Set<String> taxIds = new LinkedHashSet<>();
         List<CreateInvoiceLineRequest> lineRequests = new ArrayList<>();
 
@@ -331,17 +324,10 @@ public class CreateInvoiceDialog extends Dialog {
             lineRequests.add(line.toRequest());
         }
 
-        // Amount tylko gdy użytkownik wpisał Sumę VAT (null → pole Amount nie idzie do Merit).
-        List<CreateInvoiceTaxAmountRequest> taxAmounts = new ArrayList<>();
-        boolean amountAssigned = false;
-        for (String taxId : taxIds) {
-            BigDecimal amount = null;
-            if (enteredVat != null && !amountAssigned) {
-                amount = enteredVat;
-                amountAssigned = true;
-            }
-            taxAmounts.add(new CreateInvoiceTaxAmountRequest(taxId, amount));
-        }
+        // TaxId wymagane; Amount = null → nie wysyłane do Merit.
+        List<CreateInvoiceTaxAmountRequest> taxAmounts = taxIds.stream()
+                .map(taxId -> new CreateInvoiceTaxAmountRequest(taxId, null))
+                .toList();
 
         return new CreateInvoiceRequest(
                 selectedCustomer.customerId().trim(),
