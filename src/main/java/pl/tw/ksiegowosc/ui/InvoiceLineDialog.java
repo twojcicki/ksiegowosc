@@ -20,7 +20,6 @@ import com.vaadin.flow.component.textfield.TextField;
 import pl.tw.ksiegowosc.dto.MeritTaxDto;
 import pl.tw.ksiegowosc.dto.MeritUnitDto;
 import pl.tw.ksiegowosc.service.TaxesService;
-import pl.tw.ksiegowosc.ui.InvoiceLineDraft.DerivedAmounts;
 
 public class InvoiceLineDialog extends Dialog {
 
@@ -34,10 +33,8 @@ public class InvoiceLineDialog extends Dialog {
     private final TextField description = new TextField("Opis");
     private final Select<Integer> itemType = new Select<>();
     private final ComboBox<MeritUnitDto> uom = new ComboBox<>("Jednostka miary");
-    private final NumberField lineGross = new NumberField("Kwota brutto pozycji");
     private final NumberField quantity = new NumberField("Ilość");
-    private final NumberField lineNet = new NumberField("Kwota netto pozycji");
-    private final NumberField price = new NumberField("Cena netto (Price)");
+    private final NumberField price = new NumberField("Cena netto");
     private final ComboBox<MeritTaxDto> taxRate = new ComboBox<>("Stawka VAT");
     private final NumberField taxAmount = new NumberField("Kwota VAT");
 
@@ -65,7 +62,7 @@ public class InvoiceLineDialog extends Dialog {
         }
 
         FormLayout form = new FormLayout(
-                itemCode, description, itemType, uom, lineGross, quantity, lineNet, price, taxRate, taxAmount);
+                itemCode, description, itemType, uom, quantity, price, taxRate, taxAmount);
         form.setResponsiveSteps(
                 new FormLayout.ResponsiveStep("0", 1),
                 new FormLayout.ResponsiveStep("480px", 2));
@@ -109,19 +106,13 @@ public class InvoiceLineDialog extends Dialog {
         }
         updateUomRequirement();
 
-        lineGross.setRequiredIndicatorVisible(true);
-        lineGross.setMin(0);
-        lineGross.setHelperText("Całkowita kwota brutto pozycji");
-
         quantity.setRequiredIndicatorVisible(true);
         quantity.setValue(1.0);
         quantity.setMin(0.000001);
 
-        lineNet.setReadOnly(true);
-        lineNet.setHelperText("Wyliczana: brutto / (1+VAT), jak Allegro→Merit");
-
-        price.setReadOnly(true);
-        price.setHelperText("Wysyłane do Merit jako Price (7 dp)");
+        price.setRequiredIndicatorVisible(true);
+        price.setMin(0);
+        price.setHelperText("Wysyłane do Merit jako Price");
 
         taxRate.setItems(this.taxes);
         taxRate.setRequiredIndicatorVisible(true);
@@ -140,10 +131,10 @@ public class InvoiceLineDialog extends Dialog {
         taxAmount.setReadOnly(true);
         taxAmount.setHelperText("Tylko podgląd — nie wysyłane do Merit");
 
-        lineGross.addValueChangeListener(e -> recalculateDerivedAmounts());
-        quantity.addValueChangeListener(e -> recalculateDerivedAmounts());
-        taxRate.addValueChangeListener(e -> recalculateDerivedAmounts());
-        recalculateDerivedAmounts();
+        price.addValueChangeListener(e -> recalculateVatPreview());
+        quantity.addValueChangeListener(e -> recalculateVatPreview());
+        taxRate.addValueChangeListener(e -> recalculateVatPreview());
+        recalculateVatPreview();
     }
 
     private void populate(InvoiceLineDraft draft) {
@@ -155,17 +146,17 @@ public class InvoiceLineDialog extends Dialog {
         if (draft.getUom() != null) {
             uom.setValue(draft.getUom());
         }
-        if (draft.getLineGross() != null) {
-            lineGross.setValue(draft.getLineGross().doubleValue());
-        }
         if (draft.getQuantity() != null) {
             quantity.setValue(draft.getQuantity().doubleValue());
+        }
+        if (draft.getPrice() != null) {
+            price.setValue(draft.getPrice().doubleValue());
         }
         if (draft.getTax() != null) {
             taxRate.setValue(draft.getTax());
         }
         updateUomRequirement();
-        recalculateDerivedAmounts();
+        recalculateVatPreview();
     }
 
     private void updateUomRequirement() {
@@ -173,33 +164,27 @@ public class InvoiceLineDialog extends Dialog {
         uom.setRequiredIndicatorVisible(stockItem);
     }
 
-    private void recalculateDerivedAmounts() {
-        Double grossValue = lineGross.getValue();
+    private void recalculateVatPreview() {
+        Double priceValue = price.getValue();
         Double qtyValue = quantity.getValue();
         MeritTaxDto tax = taxRate.getValue();
 
-        if (grossValue == null
+        if (priceValue == null
                 || qtyValue == null
                 || qtyValue <= 0
                 || tax == null
                 || tax.taxPct() == null) {
-            lineNet.clear();
-            price.clear();
             taxAmount.clear();
             return;
         }
 
-        DerivedAmounts derived = InvoiceLineDraft.deriveFromGross(
-                BigDecimal.valueOf(grossValue), BigDecimal.valueOf(qtyValue), tax.taxPct());
-        if (derived == null) {
-            lineNet.clear();
-            price.clear();
+        BigDecimal vat = InvoiceLineDraft.vatFromPrice(
+                BigDecimal.valueOf(priceValue), BigDecimal.valueOf(qtyValue), tax.taxPct());
+        if (vat == null) {
             taxAmount.clear();
             return;
         }
-        lineNet.setValue(derived.lineNet().doubleValue());
-        price.setValue(derived.unitNet().doubleValue());
-        taxAmount.setValue(derived.lineVat().doubleValue());
+        taxAmount.setValue(vat.doubleValue());
     }
 
     private void save() {
@@ -208,35 +193,25 @@ public class InvoiceLineDialog extends Dialog {
                 || itemType.getValue() == null
                 || (Integer.valueOf(1).equals(itemType.getValue())
                         && (uom.getValue() == null || isBlank(uom.getValue().name())))
-                || lineGross.getValue() == null
                 || quantity.getValue() == null
                 || price.getValue() == null
-                || lineNet.getValue() == null
                 || taxRate.getValue() == null
-                || isBlank(taxRate.getValue().id())
-                || taxAmount.getValue() == null) {
+                || isBlank(taxRate.getValue().id())) {
             showError("Uzupełnij wszystkie wymagane pola pozycji.");
             return;
         }
 
-        DerivedAmounts derived = InvoiceLineDraft.deriveFromGross(
-                BigDecimal.valueOf(lineGross.getValue()),
-                BigDecimal.valueOf(quantity.getValue()),
-                taxRate.getValue().taxPct());
-        if (derived == null) {
-            showError("Nie udało się wyliczyć netto pozycji.");
-            return;
-        }
+        BigDecimal unitPrice = BigDecimal.valueOf(price.getValue());
+        BigDecimal qty = BigDecimal.valueOf(quantity.getValue());
+        BigDecimal vat = InvoiceLineDraft.vatFromPrice(unitPrice, qty, taxRate.getValue().taxPct());
 
         InvoiceLineDraft draft = editing == null ? new InvoiceLineDraft() : editing;
         draft.setItemCode(itemCode.getValue().trim());
         draft.setDescription(description.getValue().trim());
         draft.setItemType(itemType.getValue());
-        draft.setQuantity(BigDecimal.valueOf(quantity.getValue()));
-        draft.setLineGross(BigDecimal.valueOf(lineGross.getValue()));
-        draft.setPrice(derived.unitNet());
-        draft.setLineNet(derived.lineNet());
-        draft.setTaxAmount(derived.lineVat());
+        draft.setQuantity(qty);
+        draft.setPrice(unitPrice);
+        draft.setTaxAmount(vat);
         draft.setTax(taxRate.getValue());
         draft.setUom(uom.getValue());
 

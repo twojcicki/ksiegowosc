@@ -172,8 +172,9 @@ public class CreateInvoiceDialog extends Dialog {
         footerComment.setRequiredIndicatorVisible(false);
         footerComment.setHelperText("Opcjonalny");
 
-        totalAmount.setReadOnly(true);
-        totalAmount.setHelperText("Suma netto pozycji (TotalAmount → Merit)");
+        totalAmount.setRequiredIndicatorVisible(true);
+        totalAmount.setMin(0);
+        totalAmount.setHelperText("Wysyłane do Merit jako TotalAmount");
         totalTaxAmount.setReadOnly(true);
         totalTaxAmount.setHelperText("Tylko podgląd — VAT Amount nie jest wysyłany do Merit");
 
@@ -195,18 +196,8 @@ public class CreateInvoiceDialog extends Dialog {
                 .setAutoWidth(true)
                 .setFlexGrow(0);
         linesGrid
-                .addColumn(line -> formatAmount(line.getLineGross()))
-                .setHeader("Brutto")
-                .setAutoWidth(true)
-                .setFlexGrow(0);
-        linesGrid
-                .addColumn(line -> formatAmount(line.getLineNet()))
-                .setHeader("Netto")
-                .setAutoWidth(true)
-                .setFlexGrow(0);
-        linesGrid
                 .addColumn(line -> formatAmount(line.getPrice()))
-                .setHeader("Price")
+                .setHeader("Cena netto")
                 .setAutoWidth(true)
                 .setFlexGrow(0);
         linesGrid.addColumn(InvoiceLineDraft::taxLabel).setHeader("VAT").setAutoWidth(true).setFlexGrow(0);
@@ -254,21 +245,15 @@ public class CreateInvoiceDialog extends Dialog {
     }
 
     private void refreshTotals() {
-        BigDecimal netSum = BigDecimal.ZERO;
         BigDecimal vatSum = BigDecimal.ZERO;
         for (InvoiceLineDraft line : lines) {
-            if (line.getLineNet() != null) {
-                netSum = netSum.add(line.getLineNet());
-            }
             if (line.getTaxAmount() != null) {
                 vatSum = vatSum.add(line.getTaxAmount());
             }
         }
         if (lines.isEmpty()) {
-            totalAmount.clear();
             totalTaxAmount.clear();
         } else {
-            totalAmount.setValue(netSum.doubleValue());
             totalTaxAmount.setValue(vatSum.doubleValue());
         }
     }
@@ -336,7 +321,8 @@ public class CreateInvoiceDialog extends Dialog {
                 || docDate.getValue() == null
                 || dueDate.getValue() == null
                 || isBlank(currencyCode.getValue())
-                || isBlank(headerComment.getValue())) {
+                || isBlank(headerComment.getValue())
+                || totalAmount.getValue() == null) {
             showError("Uzupełnij wszystkie wymagane pola.");
             return null;
         }
@@ -345,21 +331,27 @@ public class CreateInvoiceDialog extends Dialog {
             return null;
         }
 
-        BigDecimal totalNet = BigDecimal.ZERO;
+        BigDecimal totalNet = BigDecimal.valueOf(totalAmount.getValue());
         Map<String, BigDecimal> vatByTaxId = new LinkedHashMap<>();
         List<CreateInvoiceLineRequest> lineRequests = new ArrayList<>();
 
         for (InvoiceLineDraft line : lines) {
-            if (line.getLineNet() == null
-                    || line.getTaxAmount() == null
-                    || isBlank(line.taxId())
+            if (isBlank(line.taxId())
                     || line.getQuantity() == null
                     || line.getPrice() == null) {
                 showError("Pozycje faktury są niekompletne.");
                 return null;
             }
-            totalNet = totalNet.add(line.getLineNet().setScale(2, java.math.RoundingMode.HALF_UP));
-            vatByTaxId.merge(line.taxId().trim(), line.getTaxAmount(), BigDecimal::add);
+            BigDecimal lineVat = line.getTaxAmount();
+            if (lineVat == null) {
+                lineVat = InvoiceLineDraft.vatFromPrice(
+                        line.getPrice(), line.getQuantity(), line.getTax() == null ? null : line.getTax().taxPct());
+            }
+            if (lineVat != null) {
+                vatByTaxId.merge(line.taxId().trim(), lineVat, BigDecimal::add);
+            } else {
+                vatByTaxId.putIfAbsent(line.taxId().trim(), BigDecimal.ZERO.setScale(2));
+            }
             lineRequests.add(line.toRequest());
         }
 
