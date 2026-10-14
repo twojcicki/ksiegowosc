@@ -145,6 +145,7 @@ class AllegroOrdersServiceTest {
         AllegroSoldInvoice saved = new AllegroSoldInvoice();
         saved.setOrderId("order-1");
         saved.setInvoiceNo("order1/01/2026");
+        saved.setPayloadJson("{\n  \"InvoiceNo\" : \"order1/01/2026\"\n}");
         when(soldInvoiceRepository.findByOrderIdIn(any())).thenReturn(List.of(saved));
         when(allegroApiClient.getCheckoutForms(
                         eq("https://api.allegro.pl"),
@@ -179,6 +180,7 @@ class AllegroOrdersServiceTest {
         var result = ordersService.getSoldItems(LocalDate.of(2026, 1, 1), LocalDate.of(2026, 1, 31), 0, 100);
 
         assertThat(result.items().getFirst().invoiceNo()).isEqualTo("order1/01/2026");
+        assertThat(result.items().getFirst().payloadJson()).contains("\"InvoiceNo\"");
     }
 
     @Test

@@ -129,6 +129,7 @@ class AllegroInvoiceAutoIssueServiceTest {
                 "BOUGHT",
                 "NEW",
                 invoiceNo,
+                null,
                 null);
     }
 }

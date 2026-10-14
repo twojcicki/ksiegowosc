@@ -61,6 +61,7 @@ public interface AllegroSoldItemMapper {
                 form.status(),
                 fulfillment == null ? null : fulfillment.status(),
                 invoiceNo,
+                null,
                 null);
     }
 
@@ -80,7 +81,8 @@ public interface AllegroSoldItemMapper {
                 order.orderStatus(),
                 order.fulfillmentStatus(),
                 invoiceNo,
-                order.issueError());
+                order.issueError(),
+                order.payloadJson());
     }
 
     default AllegroSoldItemDto withIssueError(AllegroSoldItemDto order, String issueError) {
@@ -99,7 +101,28 @@ public interface AllegroSoldItemMapper {
                 order.orderStatus(),
                 order.fulfillmentStatus(),
                 order.invoiceNo(),
-                issueError);
+                issueError,
+                order.payloadJson());
+    }
+
+    default AllegroSoldItemDto withPayloadJson(AllegroSoldItemDto order, String payloadJson) {
+        return new AllegroSoldItemDto(
+                order.accountId(),
+                order.accountName(),
+                order.orderId(),
+                order.name(),
+                order.itemCount(),
+                order.quantityTotal(),
+                order.lines(),
+                order.totalGross(),
+                order.currency(),
+                order.boughtAt(),
+                order.buyerLogin(),
+                order.orderStatus(),
+                order.fulfillmentStatus(),
+                order.invoiceNo(),
+                order.issueError(),
+                payloadJson);
     }
 
     private static List<AllegroSoldLineDto> toLines(AllegroCheckoutForm form) {

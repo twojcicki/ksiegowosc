@@ -98,12 +98,15 @@ public class AllegroInvoiceService {
     @Transactional
     public IssueAllegroInvoiceResponse issueInvoice(Long accountId, String orderId) {
         PreparedAllegroInvoice prepared = prepareInvoice(accountId, orderId, true);
+        MeritCreateInvoiceRequest meritRequest = meritInvoiceMapper.toMeritRequest(prepared.request());
+        String payloadJson = serializeMeritPayload(meritRequest);
         CreateInvoiceResponse created = invoicesService.createInvoice(prepared.request());
 
         AllegroSoldInvoice entity = soldInvoiceMapper.toEntity(
                 prepared.orderId(), prepared.request().invoiceNo(), created.invoiceId(), Instant.now(clock));
         entity.setIssueError(null);
         entity.setIssueErrorAt(null);
+        entity.setPayloadJson(payloadJson);
         soldInvoiceRepository.save(entity);
 
         return new IssueAllegroInvoiceResponse(prepared.request().invoiceNo(), created.invoiceId());
@@ -116,16 +119,19 @@ public class AllegroInvoiceService {
     public AllegroTrialInvoice issueTrialInvoice(Long userId, Long accountId, String orderId) {
         PreparedAllegroInvoice prepared = prepareInvoice(accountId, orderId, false);
         MeritCreateInvoiceRequest meritRequest = meritInvoiceMapper.toMeritRequest(prepared.request());
-        String payloadJson;
+        String payloadJson = serializeMeritPayload(meritRequest);
+        return trialInvoiceService.save(userId, accountId, prepared.orderId(), payloadJson);
+    }
+
+    private static String serializeMeritPayload(MeritCreateInvoiceRequest meritRequest) {
         try {
-            payloadJson = OBJECT_MAPPER.writerWithDefaultPrettyPrinter().writeValueAsString(meritRequest);
+            return OBJECT_MAPPER.writerWithDefaultPrettyPrinter().writeValueAsString(meritRequest);
         } catch (JsonProcessingException ex) {
             throw new ResponseStatusException(
                     HttpStatus.INTERNAL_SERVER_ERROR,
-                    "Nie udało się zserializować payloadu faktury próbnej.",
+                    "Nie udało się zserializować payloadu faktury Merit.",
                     ex);
         }
-        return trialInvoiceService.save(userId, accountId, prepared.orderId(), payloadJson);
     }
 
     @Transactional

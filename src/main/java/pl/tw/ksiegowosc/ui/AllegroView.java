@@ -381,6 +381,11 @@ public class AllegroView extends View {
         preview.addClickListener(event -> openMappingPreview(item));
 
         HorizontalLayout actions = new HorizontalLayout(issue, details, preview);
+        if (item.payloadJson() != null && !item.payloadJson().isBlank()) {
+            Button json = new Button("JSON", e -> openSoldPayloadDialog(item));
+            json.addThemeVariants(ButtonVariant.LUMO_SMALL, ButtonVariant.LUMO_TERTIARY);
+            actions.add(json);
+        }
         actions.setSpacing(true);
         actions.setPadding(false);
         return actions;
@@ -565,14 +570,22 @@ public class AllegroView extends View {
     }
 
     private void openTrialPayloadDialog(AllegroTrialInvoiceDto item) {
+        openPayloadDialog("Faktura próbna — " + item.orderId(), item.payloadJson());
+    }
+
+    private void openSoldPayloadDialog(AllegroSoldItemDto item) {
+        openPayloadDialog("Faktura — " + item.orderId(), item.payloadJson());
+    }
+
+    private void openPayloadDialog(String title, String payloadJson) {
         TextArea json = new TextArea("Payload Merit");
         json.setWidthFull();
         json.setHeight("420px");
         json.setReadOnly(true);
-        json.setValue(item.payloadJson() == null ? "" : item.payloadJson());
+        json.setValue(payloadJson == null ? "" : payloadJson);
 
         Dialog dialog = new Dialog();
-        dialog.setHeaderTitle("Faktura próbna — " + item.orderId());
+        dialog.setHeaderTitle(title);
         dialog.setWidth("720px");
         dialog.add(json);
         dialog.getFooter().add(new Button("Zamknij", e -> dialog.close()));

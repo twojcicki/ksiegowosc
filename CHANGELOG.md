@@ -6,6 +6,7 @@ Format oparty na [Keep a Changelog](https://keepachangelog.com/pl/1.1.0/).
 
 ### Added
 
+- Live wystawianie faktur Allegro: zapis payloadu Merit (`payload_json` w `allegro_sold_invoice`) i podgląd JSON w tabeli sprzedanych.
 - Płatność na fakturze Allegro→Merit: `Payment` z `paidAmount`/`finishedAt` zamówienia oraz `PaymentMethod` z pola konta Allegro.
 - Faktura Allegro dla osoby bez NIP (`invoice.required`): `NotTDCustomer=true`, Name = `naturalPerson` (imię+nazwisko); adres wyłącznie z `invoice.address`.
 - Opcjonalne pominięcie OAuth `scope`: puste `ALLEGRO_SCOPES` / `clients.allegro.scopes` — Allegro używa scope’ów zadeklarowanych w aplikacji.
