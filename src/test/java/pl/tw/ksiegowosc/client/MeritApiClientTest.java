@@ -181,6 +181,39 @@ class MeritApiClientTest {
     }
 
     @Test
+    void shouldDeleteInvoice() {
+        Clock clock = Clock.fixed(Instant.parse("2026-08-18T10:00:00Z"), ZoneOffset.UTC);
+        MeritApiProperties properties = new MeritApiProperties(
+                "https://program.360ksiegowosc.pl/api/v1",
+                "https://program.360ksiegowosc.pl/api/v2");
+        MeritAuthInterceptor interceptor = new MeritAuthInterceptor(
+                () -> new MeritCredentials("test-api-id", "test-api-key"), clock);
+
+        RestClient.Builder builder = RestClient.builder()
+                .baseUrl(properties.v2BaseUrl())
+                .requestInterceptor(interceptor);
+        MockRestServiceServer server = MockRestServiceServer.bindTo(builder).build();
+        MeritApiClient client = new MeritApiClient(RestClient.builder().build(), builder.build());
+
+        String invoiceId = "5f91033c-9d0f-416e-a079-d3c892b8c317";
+        String expectedBody = "{}";
+        String expectedSignature = interceptor.sign("20260818100000", expectedBody);
+
+        server.expect(requestTo(startsWith(
+                        "https://program.360ksiegowosc.pl/api/v2/deleteinvoice/" + invoiceId)))
+                .andExpect(method(HttpMethod.POST))
+                .andExpect(queryParam("apiId", "test-api-id"))
+                .andExpect(queryParam("timestamp", "20260818100000"))
+                .andExpect(queryParam("signature", URLEncoder.encode(expectedSignature, StandardCharsets.UTF_8)))
+                .andExpect(content().json(expectedBody, true))
+                .andRespond(withSuccess());
+
+        client.deleteInvoice(invoiceId);
+
+        server.verify();
+    }
+
+    @Test
     void shouldCreateInvoice() {
         Clock clock = Clock.fixed(Instant.parse("2026-08-18T10:00:00Z"), ZoneOffset.UTC);
         MeritApiProperties properties = new MeritApiProperties(

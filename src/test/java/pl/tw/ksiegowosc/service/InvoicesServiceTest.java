@@ -3,6 +3,7 @@ package pl.tw.ksiegowosc.service;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -252,6 +253,48 @@ class InvoicesServiceTest {
                             .isEqualTo("E-mail nadawcy nie został wpisany w ustawieniach faktury sprzedaży.");
                 });
         verify(invoiceEmailStatusRepository, never()).save(any());
+    }
+
+    @Test
+    void shouldDeleteInvoice() {
+        String invoiceId = "5f91033c-9d0f-416e-a079-d3c892b8c317";
+
+        invoicesService.deleteInvoice(invoiceId);
+
+        verify(meritApiClient).deleteInvoice(invoiceId);
+    }
+
+    @Test
+    void shouldRejectBlankInvoiceIdOnDelete() {
+        assertThatThrownBy(() -> invoicesService.deleteInvoice("  "))
+                .isInstanceOf(ResponseStatusException.class)
+                .satisfies(ex -> {
+                    ResponseStatusException statusEx = (ResponseStatusException) ex;
+                    assertThat(statusEx.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+                    assertThat(statusEx.getReason()).isEqualTo("Podaj identyfikator faktury.");
+                });
+        verify(meritApiClient, never()).deleteInvoice(any());
+    }
+
+    @Test
+    void shouldReturnMeritMessageWhenDeleteIsRejected() {
+        String meritBody = "{\"Message\":\"Invoice cannot be deleted.\"}";
+        doThrow(HttpClientErrorException.create(
+                        HttpStatus.BAD_REQUEST,
+                        "Bad Request",
+                        HttpHeaders.EMPTY,
+                        meritBody.getBytes(StandardCharsets.UTF_8),
+                        StandardCharsets.UTF_8))
+                .when(meritApiClient)
+                .deleteInvoice("id");
+
+        assertThatThrownBy(() -> invoicesService.deleteInvoice("id"))
+                .isInstanceOf(ResponseStatusException.class)
+                .satisfies(ex -> {
+                    ResponseStatusException statusEx = (ResponseStatusException) ex;
+                    assertThat(statusEx.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+                    assertThat(statusEx.getReason()).isEqualTo("Invoice cannot be deleted.");
+                });
     }
 
     @Test

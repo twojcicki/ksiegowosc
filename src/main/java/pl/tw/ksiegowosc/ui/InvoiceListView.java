@@ -152,7 +152,12 @@ public class InvoiceListView extends View {
             email.setEnabled(invoice.sihId() != null && !invoice.sihId().isBlank());
             email.addClickListener(e -> confirmSendEmail(invoice, email));
 
-            return new HorizontalLayout(details, email);
+            Button delete = new Button("Usuń");
+            delete.addThemeVariants(ButtonVariant.LUMO_SMALL, ButtonVariant.LUMO_ERROR, ButtonVariant.LUMO_TERTIARY);
+            delete.setEnabled(invoice.sihId() != null && !invoice.sihId().isBlank());
+            delete.addClickListener(e -> confirmDeleteInvoice(invoice, delete));
+
+            return new HorizontalLayout(details, email, delete);
         }).setHeader("Akcje").setAutoWidth(true).setFlexGrow(0).setFrozenToEnd(true);
         grid.setSizeFull();
         return grid;
@@ -257,6 +262,45 @@ public class InvoiceListView extends View {
             sendInvoiceByEmail(invoice, emailButton);
         });
         dialog.open();
+    }
+
+    private void confirmDeleteInvoice(SalesInvoiceDto invoice, Button deleteButton) {
+        String invoiceNo = invoice.invoiceNo() == null || invoice.invoiceNo().isBlank()
+                ? invoice.sihId()
+                : invoice.invoiceNo();
+
+        ConfirmDialog dialog = new ConfirmDialog();
+        dialog.setHeader("Usuń fakturę");
+        dialog.setText("Czy na pewno chcesz usunąć fakturę o numerze " + invoiceNo + "?");
+        dialog.setCancelable(true);
+        dialog.setCancelText("Nie");
+        dialog.setConfirmText("Tak");
+        dialog.setConfirmButtonTheme("error primary");
+        dialog.addConfirmListener(event -> {
+            dialog.close();
+            deleteInvoice(invoice, deleteButton);
+        });
+        dialog.open();
+    }
+
+    private void deleteInvoice(SalesInvoiceDto invoice, Button deleteButton) {
+        deleteButton.setEnabled(false);
+        String invoiceNo = invoice.invoiceNo() == null || invoice.invoiceNo().isBlank()
+                ? invoice.sihId()
+                : invoice.invoiceNo();
+        try {
+            invoicesService.deleteInvoice(invoice.sihId());
+            Notifications.show("Usunięto fakturę " + invoiceNo + ".", NotificationVariant.SUCCESS);
+            loadInvoices();
+        } catch (ResponseStatusException ex) {
+            showError(reason(ex));
+        } catch (RestClientResponseException ex) {
+            showError(MeritErrorMessages.from(ex));
+        } catch (RuntimeException ex) {
+            showError("Nie udało się usunąć faktury " + invoiceNo + ".");
+        } finally {
+            deleteButton.setEnabled(true);
+        }
     }
 
     private void sendInvoiceByEmail(SalesInvoiceDto invoice, Button emailButton) {

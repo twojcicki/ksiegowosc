@@ -134,6 +134,20 @@ public class InvoicesService {
         throw new ResponseStatusException(HttpStatus.BAD_GATEWAY, message);
     }
 
+    public void deleteInvoice(String id) {
+        if (id == null || id.isBlank()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Podaj identyfikator faktury.");
+        }
+        try {
+            meritApiClient.deleteInvoice(id.trim());
+        } catch (RestClientResponseException ex) {
+            HttpStatusCode status = ex.getStatusCode().is4xxClientError()
+                    ? ex.getStatusCode()
+                    : HttpStatus.BAD_GATEWAY;
+            throw new ResponseStatusException(status, MeritErrorMessages.from(ex), ex);
+        }
+    }
+
     private List<SalesInvoiceDto> enrichWithEmailStatus(List<SalesInvoiceDto> invoices) {
         if (invoices == null || invoices.isEmpty()) {
             return invoices == null ? List.of() : invoices;

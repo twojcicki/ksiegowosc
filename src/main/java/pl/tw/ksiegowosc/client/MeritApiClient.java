@@ -95,6 +95,15 @@ public class MeritApiClient {
                 .body(String.class);
     }
 
+    public void deleteInvoice(String id) {
+        meritV2RestClient.post()
+                .uri("/deleteinvoice/{id}", id)
+                .contentType(MediaType.APPLICATION_JSON)
+                .body(Map.of())
+                .retrieve()
+                .toBodilessEntity();
+    }
+
     public MeritCreateInvoiceResponse createInvoice(MeritCreateInvoiceRequest request) {
         try {
             log.info("Merit sendinvoice request JSON: {}", OBJECT_MAPPER.writeValueAsString(request));

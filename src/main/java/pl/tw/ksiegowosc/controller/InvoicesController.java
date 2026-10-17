@@ -4,6 +4,7 @@ import java.time.LocalDate;
 import java.util.List;
 
 import org.springframework.http.HttpStatus;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -82,5 +83,16 @@ public class InvoicesController {
             @Parameter(description = "true = dokument bez cen (WZ)")
             @RequestParam(defaultValue = "false") boolean delivNote) {
         return invoicesService.sendInvoiceByEmail(id, delivNote);
+    }
+
+    @DeleteMapping("/{id}")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    @Operation(
+            summary = "Usuń fakturę",
+            description = "Usuwa fakturę sprzedaży w Merit Aktiva. Identyfikator to SIHId z listy faktur.")
+    public void deleteInvoice(
+            @Parameter(description = "SIHId faktury", required = true)
+            @PathVariable String id) {
+        invoicesService.deleteInvoice(id);
     }
 }
