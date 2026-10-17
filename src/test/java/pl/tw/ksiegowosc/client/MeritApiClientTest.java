@@ -214,6 +214,76 @@ class MeritApiClientTest {
     }
 
     @Test
+    void shouldDeletePayment() {
+        Clock clock = Clock.fixed(Instant.parse("2026-08-18T10:00:00Z"), ZoneOffset.UTC);
+        MeritApiProperties properties = new MeritApiProperties(
+                "https://program.360ksiegowosc.pl/api/v1",
+                "https://program.360ksiegowosc.pl/api/v2");
+        MeritAuthInterceptor interceptor = new MeritAuthInterceptor(
+                () -> new MeritCredentials("test-api-id", "test-api-key"), clock);
+
+        RestClient.Builder builder = RestClient.builder()
+                .baseUrl(properties.v2BaseUrl())
+                .requestInterceptor(interceptor);
+        MockRestServiceServer server = MockRestServiceServer.bindTo(builder).build();
+        MeritApiClient client = new MeritApiClient(RestClient.builder().build(), builder.build());
+
+        String paymentId = "19f35e5d-a84e-4636-a09b-08df295bfb17";
+        String expectedBody = "{}";
+        String expectedSignature = interceptor.sign("20260818100000", expectedBody);
+
+        server.expect(requestTo(startsWith(
+                        "https://program.360ksiegowosc.pl/api/v2/deletepayment/" + paymentId)))
+                .andExpect(method(HttpMethod.POST))
+                .andExpect(queryParam("apiId", "test-api-id"))
+                .andExpect(queryParam("timestamp", "20260818100000"))
+                .andExpect(queryParam("signature", URLEncoder.encode(expectedSignature, StandardCharsets.UTF_8)))
+                .andExpect(content().json(expectedBody, true))
+                .andRespond(withSuccess());
+
+        client.deletePayment(paymentId);
+
+        server.verify();
+    }
+
+    @Test
+    void shouldGetPayments() {
+        Clock clock = Clock.fixed(Instant.parse("2026-08-18T10:00:00Z"), ZoneOffset.UTC);
+        MeritApiProperties properties = new MeritApiProperties(
+                "https://program.360ksiegowosc.pl/api/v1",
+                "https://program.360ksiegowosc.pl/api/v2");
+        MeritAuthInterceptor interceptor = new MeritAuthInterceptor(
+                () -> new MeritCredentials("test-api-id", "test-api-key"), clock);
+
+        RestClient.Builder builder = RestClient.builder()
+                .baseUrl(properties.v2BaseUrl())
+                .requestInterceptor(interceptor);
+        MockRestServiceServer server = MockRestServiceServer.bindTo(builder).build();
+        MeritApiClient client = new MeritApiClient(RestClient.builder().build(), builder.build());
+
+        String expectedBody = "{\"PeriodStart\":\"20261001\",\"PeriodEnd\":\"20261031\",\"DateType\":0}";
+        String expectedSignature = interceptor.sign("20260818100000", expectedBody);
+
+        server.expect(requestTo(startsWith("https://program.360ksiegowosc.pl/api/v2/getpayments")))
+                .andExpect(method(HttpMethod.POST))
+                .andExpect(queryParam("apiId", "test-api-id"))
+                .andExpect(queryParam("timestamp", "20260818100000"))
+                .andExpect(queryParam("signature", URLEncoder.encode(expectedSignature, StandardCharsets.UTF_8)))
+                .andExpect(content().json(expectedBody, true))
+                .andRespond(withSuccess(
+                        "[{\"PIHId\":\"pay-1\",\"DocumentNo\":\"WP/1\",\"DocumentDate\":\"20261015\","
+                                + "\"PaymAPIDetails\":{\"PaymId\":\"pay-1\",\"DocNo\":\"FV/1\",\"DocId\":\"inv-1\"}}]",
+                        MediaType.APPLICATION_JSON));
+
+        var payments = client.getPayments(LocalDate.of(2026, 10, 1), LocalDate.of(2026, 10, 31));
+
+        assertThat(payments).hasSize(1);
+        assertThat(payments.getFirst().documentNo()).isEqualTo("WP/1");
+        assertThat(payments.getFirst().paymApiDetails().paymId()).isEqualTo("pay-1");
+        server.verify();
+    }
+
+    @Test
     void shouldCreateInvoice() {
         Clock clock = Clock.fixed(Instant.parse("2026-08-18T10:00:00Z"), ZoneOffset.UTC);
         MeritApiProperties properties = new MeritApiProperties(

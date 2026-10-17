@@ -7,6 +7,7 @@ Format oparty na [Keep a Changelog](https://keepachangelog.com/pl/1.1.0/).
 ### Added
 
 - Usuwanie faktury Merit z listy (przycisk Usuń + potwierdzenie Tak/Nie) oraz `DELETE /api/invoices/{id}` → Merit v2 `deleteinvoice/{id}`.
+- Przy usuwaniu faktury Merit: najpierw `getinvoice` + `deletepayment` dla powiązanych płatności, potem `deleteinvoice`; komunikat z numerami płatności i faktury.
 - Live wystawianie faktur Allegro: zapis payloadu Merit (`payload_json` w `allegro_sold_invoice`) i podgląd JSON w tabeli sprzedanych.
 - Płatność na fakturze Allegro→Merit: `Payment` z `paidAmount`/`finishedAt` zamówienia oraz `PaymentMethod` z pola konta Allegro.
 - Faktura Allegro dla osoby bez NIP (`invoice.required`): `NotTDCustomer=true`, Name = `naturalPerson` (imię+nazwisko); adres wyłącznie z `invoice.address`.

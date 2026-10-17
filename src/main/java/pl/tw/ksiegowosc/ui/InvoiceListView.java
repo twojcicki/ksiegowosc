@@ -289,8 +289,18 @@ public class InvoiceListView extends View {
                 ? invoice.sihId()
                 : invoice.invoiceNo();
         try {
-            invoicesService.deleteInvoice(invoice.sihId());
-            Notifications.show("Usunięto fakturę " + invoiceNo + ".", NotificationVariant.SUCCESS);
+            var result = invoicesService.deleteInvoice(invoice.sihId());
+            String deletedInvoiceNo = result.invoiceNo() == null || result.invoiceNo().isBlank()
+                    ? invoiceNo
+                    : result.invoiceNo();
+            if (result.paymentDocumentNos() != null && !result.paymentDocumentNos().isEmpty()) {
+                Notifications.show(
+                        "Usunięto płatności " + String.join(", ", result.paymentDocumentNos())
+                                + " oraz fakturę " + deletedInvoiceNo + ".",
+                        NotificationVariant.SUCCESS);
+            } else {
+                Notifications.show("Usunięto fakturę " + deletedInvoiceNo + ".", NotificationVariant.SUCCESS);
+            }
             loadInvoices();
         } catch (ResponseStatusException ex) {
             showError(reason(ex));

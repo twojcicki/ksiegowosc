@@ -23,8 +23,11 @@ public final class MeritErrorMessages {
             if (parsed.message() != null && !parsed.message().isBlank()) {
                 return parsed.message();
             }
+            if (parsed.detail() != null && !parsed.detail().isBlank()) {
+                return parsed.detail();
+            }
         } catch (Exception ignored) {
-            // body is not JSON with Message
+            // body is not JSON with Message/detail
         }
         return body.trim();
     }

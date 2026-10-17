@@ -5,6 +5,8 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 
 @JsonIgnoreProperties(ignoreUnknown = true)
 public record MeritErrorResponse(
-        @JsonProperty("Message") String message
+        @JsonProperty("Message") String message,
+        @JsonProperty("detail") String detail,
+        @JsonProperty("code") String code
 ) {
 }

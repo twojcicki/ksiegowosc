@@ -26,6 +26,21 @@ class MeritErrorMessagesTest {
     }
 
     @Test
+    void shouldReadDetailFieldWhenMessageMissing() {
+        HttpClientErrorException ex = HttpClientErrorException.create(
+                HttpStatus.BAD_REQUEST,
+                "Bad Request",
+                HttpHeaders.EMPTY,
+                ("{\"detail\":\"Opłaconej faktury nie można usunąć. Najpierw usuń płatność\","
+                        + "\"code\":\"err-sinvapidelpaid\"}")
+                        .getBytes(StandardCharsets.UTF_8),
+                StandardCharsets.UTF_8);
+
+        assertThat(MeritErrorMessages.from(ex))
+                .isEqualTo("Opłaconej faktury nie można usunąć. Najpierw usuń płatność");
+    }
+
+    @Test
     void shouldDetectCustomerExistsError() {
         HttpClientErrorException ex = HttpClientErrorException.create(
                 HttpStatus.BAD_REQUEST,
