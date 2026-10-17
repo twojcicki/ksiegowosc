@@ -28,6 +28,7 @@ import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.server.ResponseStatusException;
 
 import pl.tw.ksiegowosc.client.MeritApiClient;
+import pl.tw.ksiegowosc.dto.BulkDeleteInvoiceResult;
 import pl.tw.ksiegowosc.dto.CreateInvoiceLineRequest;
 import pl.tw.ksiegowosc.dto.CreateInvoiceRequest;
 import pl.tw.ksiegowosc.dto.CreateInvoiceResponse;
@@ -356,6 +357,46 @@ class InvoicesServiceTest {
                     assertThat(statusEx.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
                     assertThat(statusEx.getReason()).isEqualTo("Invoice cannot be deleted.");
                 });
+    }
+
+    @Test
+    void shouldDeleteInvoicesInOrderAndContinueOnError() {
+        when(meritApiClient.getInvoiceDetails("a", false)).thenReturn(details("a", "FV/A", List.of()));
+        when(meritApiClient.getInvoiceDetails("b", false)).thenReturn(details("b", "FV/B", List.of()));
+        when(meritApiClient.getInvoiceDetails("c", false)).thenReturn(details("c", "FV/C", List.of()));
+        doThrow(HttpClientErrorException.create(
+                        HttpStatus.BAD_REQUEST,
+                        "Bad Request",
+                        HttpHeaders.EMPTY,
+                        "{\"Message\":\"blocked\"}".getBytes(StandardCharsets.UTF_8),
+                        StandardCharsets.UTF_8))
+                .when(meritApiClient)
+                .deleteInvoice("b");
+
+        BulkDeleteInvoiceResult result = invoicesService.deleteInvoices(List.of("a", "b", "c"));
+
+        assertThat(result.successes()).extracting(DeleteInvoiceResult::invoiceNo).containsExactly("FV/A", "FV/C");
+        assertThat(result.failures()).hasSize(1);
+        assertThat(result.failures().getFirst().id()).isEqualTo("b");
+        assertThat(result.failures().getFirst().message()).isEqualTo("blocked");
+        InOrder order = inOrder(meritApiClient);
+        order.verify(meritApiClient).getInvoiceDetails("a", false);
+        order.verify(meritApiClient).deleteInvoice("a");
+        order.verify(meritApiClient).getInvoiceDetails("b", false);
+        order.verify(meritApiClient).deleteInvoice("b");
+        order.verify(meritApiClient).getInvoiceDetails("c", false);
+        order.verify(meritApiClient).deleteInvoice("c");
+    }
+
+    @Test
+    void shouldRejectEmptyBulkDelete() {
+        assertThatThrownBy(() -> invoicesService.deleteInvoices(List.of()))
+                .isInstanceOf(ResponseStatusException.class)
+                .satisfies(ex -> {
+                    ResponseStatusException statusEx = (ResponseStatusException) ex;
+                    assertThat(statusEx.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+                });
+        verify(meritApiClient, never()).deleteInvoice(any());
     }
 
     private static SalesInvoiceDetailsDto details(

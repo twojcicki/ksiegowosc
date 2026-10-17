@@ -22,6 +22,8 @@ import org.springframework.web.server.ResponseStatusException;
 
 import pl.tw.ksiegowosc.client.MeritApiClient;
 import pl.tw.ksiegowosc.client.MeritErrorMessages;
+import pl.tw.ksiegowosc.dto.BulkDeleteInvoiceFailure;
+import pl.tw.ksiegowosc.dto.BulkDeleteInvoiceResult;
 import pl.tw.ksiegowosc.dto.CreateInvoiceRequest;
 import pl.tw.ksiegowosc.dto.CreateInvoiceResponse;
 import pl.tw.ksiegowosc.dto.DeleteInvoiceResult;
@@ -145,6 +147,40 @@ public class InvoicesService {
                 ? "Nie udało się wysłać faktury e-mailem."
                 : result.trim();
         throw new ResponseStatusException(HttpStatus.BAD_GATEWAY, message);
+    }
+
+    public BulkDeleteInvoiceResult deleteInvoices(List<String> ids) {
+        if (ids == null || ids.isEmpty()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Podaj co najmniej jedną fakturę do usunięcia.");
+        }
+        List<String> distinctIds = ids.stream()
+                .filter(Objects::nonNull)
+                .map(String::trim)
+                .filter(id -> !id.isBlank())
+                .distinct()
+                .toList();
+        if (distinctIds.isEmpty()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Podaj co najmniej jedną fakturę do usunięcia.");
+        }
+
+        List<DeleteInvoiceResult> successes = new ArrayList<>();
+        List<BulkDeleteInvoiceFailure> failures = new ArrayList<>();
+        for (String id : distinctIds) {
+            try {
+                successes.add(deleteInvoice(id));
+            } catch (ResponseStatusException ex) {
+                String message = ex.getReason() == null || ex.getReason().isBlank()
+                        ? "Nie udało się usunąć faktury."
+                        : ex.getReason();
+                failures.add(new BulkDeleteInvoiceFailure(id, id, message));
+            } catch (RuntimeException ex) {
+                String message = ex.getMessage() == null || ex.getMessage().isBlank()
+                        ? "Nie udało się usunąć faktury."
+                        : ex.getMessage();
+                failures.add(new BulkDeleteInvoiceFailure(id, id, message));
+            }
+        }
+        return new BulkDeleteInvoiceResult(List.copyOf(successes), List.copyOf(failures));
     }
 
     public DeleteInvoiceResult deleteInvoice(String id) {
