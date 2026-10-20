@@ -53,20 +53,11 @@ class AllegroInvoiceMappingSupportTest {
     }
 
     @Test
-    void shouldConvertUnitGrossToUnitNetAndLineNetAtSevenScale() {
-        BigDecimal rate = AllegroInvoiceMappingSupport.vatRateFromPercent(new BigDecimal("23"));
-        BigDecimal unitGross = new BigDecimal("224.10");
-        BigDecimal unitNet = AllegroInvoiceMappingSupport.toNet(
-                unitGross, rate, AllegroInvoiceMappingSupport.UNIT_NET_SCALE);
-        BigDecimal lineNet = AllegroInvoiceMappingSupport.lineNetFromUnitNet(unitNet, 5);
-        BigDecimal totalAmount = lineNet.setScale(2, java.math.RoundingMode.HALF_UP);
-        BigDecimal lineGross = unitGross.multiply(BigDecimal.valueOf(5)).setScale(2, java.math.RoundingMode.HALF_UP);
-        BigDecimal lineVat = lineGross.subtract(lineNet.setScale(2, java.math.RoundingMode.HALF_UP));
-
-        assertThat(unitNet).isEqualByComparingTo(new BigDecimal("182.1951220"));
-        assertThat(lineNet).isEqualByComparingTo(new BigDecimal("910.9756100"));
-        assertThat(totalAmount).isEqualByComparingTo(new BigDecimal("910.98"));
-        assertThat(lineVat).isEqualByComparingTo(new BigDecimal("209.52"));
+    void shouldDeriveUnitNetFromLineNetAtSevenScale() {
+        assertThat(AllegroInvoiceMappingSupport.unitNetFromLineNet(new BigDecimal("910.98"), 5))
+                .isEqualByComparingTo(new BigDecimal("182.1960000"));
+        assertThat(AllegroInvoiceMappingSupport.unitNetFromLineNet(new BigDecimal("10.00"), 3))
+                .isEqualByComparingTo(new BigDecimal("3.3333333"));
     }
 
     @Test

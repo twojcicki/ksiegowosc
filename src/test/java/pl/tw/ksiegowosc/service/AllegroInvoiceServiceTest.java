@@ -121,7 +121,9 @@ class AllegroInvoiceServiceTest {
         CreateInvoiceRequest request = requestCaptor.getValue();
         assertThat(request.customerId()).isEqualTo("cust-1");
         assertThat(request.lines()).hasSize(2);
-        assertThat(request.lines().getFirst().price()).isEqualByComparingTo(new BigDecimal("20.3252033"));
+        // netto pozycji w groszach; brakujący grosz sumy (48,78) trafia na pozycję z większą resztą
+        assertThat(request.lines().getFirst().price()).isEqualByComparingTo(new BigDecimal("20.32"));
+        assertThat(request.lines().get(1).price()).isEqualByComparingTo(new BigDecimal("28.46"));
         assertThat(request.lines().getFirst().itemCode()).isEqualTo("SKU-BOOK");
         assertThat(request.lines().getFirst().description()).isEqualTo("Książka");
         assertThat(request.lines().getFirst().itemType()).isEqualTo(1);
@@ -167,6 +169,11 @@ class AllegroInvoiceServiceTest {
         assertThat(request.taxAmounts())
                 .extracting(t -> t.taxId())
                 .containsExactly("tax-23", "tax-8");
+        // 25,00 @23% -> 20,33 (+ VAT 4,68), 35,00 @8% -> 32,41 (+ VAT 2,59) = 60,01 vs 60,00 z Allegro
+        assertThat(request.lines().getFirst().price()).isEqualByComparingTo(new BigDecimal("20.33"));
+        assertThat(request.lines().get(1).price()).isEqualByComparingTo(new BigDecimal("32.41"));
+        assertThat(request.totalAmount()).isEqualByComparingTo(new BigDecimal("52.74"));
+        assertThat(request.roundingAmount()).isEqualByComparingTo(new BigDecimal("-0.01"));
     }
 
     @Test
@@ -306,9 +313,10 @@ class AllegroInvoiceServiceTest {
         assertThat(request.lines().get(2).itemCode()).isEqualTo("Dostawa");
         assertThat(request.lines().get(2).description()).isEqualTo("Paczkomat");
         assertThat(request.lines().get(2).itemType()).isEqualTo(2);
-        assertThat(request.lines().get(2).price()).isEqualByComparingTo(new BigDecimal("8.1300813"));
+        assertThat(request.lines().get(2).price()).isEqualByComparingTo(new BigDecimal("8.13"));
         assertThat(request.lines().get(2).taxId()).isEqualTo("tax-23");
         assertThat(request.totalAmount()).isEqualByComparingTo(new BigDecimal("56.91"));
+        assertThat(request.roundingAmount()).isNull();
     }
 
     @Test
@@ -338,24 +346,24 @@ class AllegroInvoiceServiceTest {
     }
 
     @Test
-    void shouldUseTotalToPayForTotalAmountEvenWhenLineGrossDiffers() {
+    void shouldRejectInvoiceWhenTotalToPayDiffersFromLinesBeyondRoundingTolerance() {
         when(soldInvoiceRepository.findById("order-1")).thenReturn(java.util.Optional.empty());
         AllegroCheckoutSummary summary = new AllegroCheckoutSummary(new AllegroPrice("99.00", "PLN"));
         when(allegroApiClient.getCheckoutForm("https://api.allegro.pl", "token", "ua", "order-1"))
                 .thenReturn(sampleForm(null, null, null, summary, null));
-        when(customersService.createCustomer(any())).thenReturn(new MeritCreateCustomerResponse("cust-1", "Allegro Sp. z o.o."));
-        when(invoicesService.createInvoice(any())).thenReturn(new CreateInvoiceResponse("merit-inv-1", "cust-1"));
 
-        invoiceService.issueInvoice(9L, "order-1");
+        assertThatThrownBy(() -> invoiceService.issueInvoice(9L, "order-1"))
+                .isInstanceOfSatisfying(ResponseStatusException.class, ex -> {
+                    assertThat(ex.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+                    assertThat(ex.getReason()).contains("różni się od sumy pozycji");
+                });
 
-        ArgumentCaptor<CreateInvoiceRequest> requestCaptor = ArgumentCaptor.forClass(CreateInvoiceRequest.class);
-        verify(invoicesService).createInvoice(requestCaptor.capture());
-        // TotalAmount = 99.00 / 1.23 (nie blokuje przy rozjazdzie z sumą pozycji)
-        assertThat(requestCaptor.getValue().totalAmount()).isEqualByComparingTo(new BigDecimal("80.49"));
+        verify(invoicesService, never()).createInvoice(any());
+        verify(customersService, never()).createCustomer(any());
     }
 
     @Test
-    void shouldKeepSimpleUnitNetPriceWhenTotalToPayDiffersByOneGrosz() {
+    void shouldSetRoundingAmountWhenTotalToPayDiffersByOneGrosz() {
         when(soldInvoiceRepository.findById("order-1")).thenReturn(java.util.Optional.empty());
         AllegroDelivery delivery = new AllegroDelivery(
                 new AllegroPrice("10.00", "PLN"),
@@ -372,29 +380,17 @@ class AllegroInvoiceServiceTest {
         ArgumentCaptor<CreateInvoiceRequest> requestCaptor = ArgumentCaptor.forClass(CreateInvoiceRequest.class);
         verify(invoicesService).createInvoice(requestCaptor.capture());
         CreateInvoiceRequest request = requestCaptor.getValue();
-        assertThat(request.totalAmount()).isEqualByComparingTo(new BigDecimal("56.92"));
-        assertThat(request.roundingAmount()).isNull();
-        // Price bez korekty do TotalAmount: 10.00 / 1.23
-        assertThat(request.lines().get(2).price()).isEqualByComparingTo(new BigDecimal("8.1300813"));
+        // suma wierszy = TotalAmount (Merit to waliduje); 1 gr różnicy do kwoty z Allegro idzie w RoundingAmount
+        assertThat(request.totalAmount()).isEqualByComparingTo(new BigDecimal("56.91"));
+        assertThat(request.roundingAmount()).isEqualByComparingTo(new BigDecimal("0.01"));
+        assertThat(request.lines().get(2).price()).isEqualByComparingTo(new BigDecimal("8.13"));
     }
 
     @Test
     void shouldSetNegativeRoundingAmountWhenMeritGrossExceedsPaidGross() {
         when(soldInvoiceRepository.findById("order-1")).thenReturn(java.util.Optional.empty());
-        AllegroCheckoutSummary summary = new AllegroCheckoutSummary(new AllegroPrice("1120.50", "PLN"));
         when(allegroApiClient.getCheckoutForm("https://api.allegro.pl", "token", "ua", "order-1"))
-                .thenReturn(sampleForm(
-                        null,
-                        null,
-                        null,
-                        summary,
-                        null,
-                        new AllegroPayment(
-                                "pay-1",
-                                "ONLINE",
-                                "PAYU",
-                                Instant.parse("2026-01-10T08:00:00Z"),
-                                new AllegroPrice("1120.50", "PLN"))));
+                .thenReturn(singleLineForm("224.10", 5, null, "1120.50"));
         when(customersService.createCustomer(any())).thenReturn(new MeritCreateCustomerResponse("cust-1", "Allegro Sp. z o.o."));
         when(invoicesService.createInvoice(any())).thenReturn(new CreateInvoiceResponse("merit-inv-1", "cust-1"));
 
@@ -404,7 +400,35 @@ class AllegroInvoiceServiceTest {
         verify(invoicesService).createInvoice(requestCaptor.capture());
         CreateInvoiceRequest request = requestCaptor.getValue();
         assertThat(request.totalAmount()).isEqualByComparingTo(new BigDecimal("910.98"));
+        assertThat(request.lines().getFirst().price()).isEqualByComparingTo(new BigDecimal("182.196"));
+        // Merit: 910,98 + round(910,98 × 23%) = 1120,51, a kupujący zapłacił 1120,50
         assertThat(request.roundingAmount()).isEqualByComparingTo(new BigDecimal("-0.01"));
+    }
+
+    @Test
+    void shouldSplitMissingGroszAcrossLinesSoRowsSumToTotalAmount() {
+        // towar 403,26 + dostawa 10,95 = 414,21 (zamówienie, dla którego Merit zgłaszał rozjazd sum)
+        when(soldInvoiceRepository.findById("order-1")).thenReturn(java.util.Optional.empty());
+        AllegroDelivery delivery = new AllegroDelivery(
+                new AllegroPrice("10.95", "PLN"),
+                new AllegroDeliveryMethod("ship-method-1", "Allegro Paczkomaty InPost"),
+                null);
+        when(allegroApiClient.getCheckoutForm("https://api.allegro.pl", "token", "ua", "order-1"))
+                .thenReturn(singleLineForm("403.26", 1, delivery, "414.21"));
+        when(customersService.createCustomer(any())).thenReturn(new MeritCreateCustomerResponse("cust-1", "Allegro Sp. z o.o."));
+        when(invoicesService.createInvoice(any())).thenReturn(new CreateInvoiceResponse("merit-inv-1", "cust-1"));
+
+        invoiceService.issueInvoice(9L, "order-1");
+
+        ArgumentCaptor<CreateInvoiceRequest> requestCaptor = ArgumentCaptor.forClass(CreateInvoiceRequest.class);
+        verify(invoicesService).createInvoice(requestCaptor.capture());
+        CreateInvoiceRequest request = requestCaptor.getValue();
+        assertThat(request.lines().get(0).price()).isEqualByComparingTo(new BigDecimal("327.86"));
+        assertThat(request.lines().get(1).price()).isEqualByComparingTo(new BigDecimal("8.90"));
+        assertThat(request.totalAmount()).isEqualByComparingTo(new BigDecimal("336.76"));
+        // Merit: 336,76 + round(336,76 × 23%) = 414,21 = kwota z Allegro
+        assertThat(request.roundingAmount()).isNull();
+        assertThat(request.payment().paidAmount()).isEqualByComparingTo(new BigDecimal("414.21"));
     }
 
     @Test
@@ -465,6 +489,38 @@ class AllegroInvoiceServiceTest {
         account.setAuthUrl("https://allegro.pl");
         account.setUserAgent("ua");
         return account;
+    }
+
+    private static AllegroCheckoutForm singleLineForm(
+            String unitPrice, int quantity, AllegroDelivery delivery, String paidGross) {
+        AllegroPrice paid = new AllegroPrice(paidGross, "PLN");
+        return new AllegroCheckoutForm(
+                "order-1",
+                new AllegroBuyer("buyer1", "buyer@example.com", null, null, null),
+                "READY_FOR_PROCESSING",
+                new AllegroFulfillment("SENT"),
+                new AllegroInvoice(
+                        true,
+                        new AllegroInvoiceAddress(
+                                "Fakturowa 1",
+                                "Kraków",
+                                "30-001",
+                                "PL",
+                                null,
+                                new AllegroNaturalPerson("Anna", "Nowak"))),
+                List.of(
+                        new AllegroLineItem(
+                                "line-1",
+                                new AllegroOfferReference("offer-1", "Książka", new AllegroExternalId("SKU-BOOK")),
+                                quantity,
+                                new AllegroPrice(unitPrice, "PLN"),
+                                null,
+                                Instant.parse("2026-01-10T08:00:00Z"),
+                                null)),
+                delivery,
+                new AllegroCheckoutSummary(paid),
+                null,
+                new AllegroPayment("pay-1", "ONLINE", "PAYU", Instant.parse("2026-01-10T08:00:00Z"), paid));
     }
 
     private static AllegroCheckoutForm privatePersonForm() {

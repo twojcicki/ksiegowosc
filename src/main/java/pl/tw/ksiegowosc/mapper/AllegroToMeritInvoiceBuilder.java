@@ -38,6 +38,9 @@ import pl.tw.ksiegowosc.service.TaxesService;
 @Component
 public class AllegroToMeritInvoiceBuilder {
 
+    /** Maks. dopuszczalna korekta RoundingAmount; większa różnica = brutto Allegro nie zgadza się z pozycjami. */
+    static final BigDecimal MAX_ROUNDING_AMOUNT = new BigDecimal("0.05");
+
     private final AllegroBillingMapper billingMapper;
     private final TaxesService taxesService;
 
@@ -124,20 +127,55 @@ public class AllegroToMeritInvoiceBuilder {
         }
 
         BigDecimal linesGross = BigDecimal.ZERO.setScale(2, RoundingMode.HALF_UP);
-        Map<String, BigDecimal> vatByTaxId = new LinkedHashMap<>();
-        Map<String, BigDecimal> grossByTaxId = new LinkedHashMap<>();
+        Map<String, List<Integer>> indexesByTaxId = new LinkedHashMap<>();
         Map<String, MeritTaxDto> taxById = new LinkedHashMap<>();
+        for (int i = 0; i < builtLines.size(); i++) {
+            BuiltLine builtLine = builtLines.get(i);
+            linesGross = linesGross.add(builtLine.lineGross());
+            indexesByTaxId.computeIfAbsent(builtLine.tax().id(), id -> new ArrayList<>()).add(i);
+            taxById.putIfAbsent(builtLine.tax().id(), builtLine.tax());
+        }
+
+        // Netto pozycji (2 dp) per stawka VAT; suma netto grupy = round(suma brutto grupy / (1+VAT), 2).
+        // Merit zaokrągla wiersze do groszy i porównuje ich sumę z TotalAmount.
+        BigDecimal[] lineNets = new BigDecimal[builtLines.size()];
+        BigDecimal totalAmount = BigDecimal.ZERO.setScale(2, RoundingMode.HALF_UP);
+        BigDecimal meritGross = BigDecimal.ZERO.setScale(2, RoundingMode.HALF_UP);
+        for (Map.Entry<String, List<Integer>> group : indexesByTaxId.entrySet()) {
+            BigDecimal rate = AllegroInvoiceMappingSupport.vatRateFromPercent(taxById.get(group.getKey()).taxPct());
+            List<Integer> indexes = group.getValue();
+            List<BigDecimal> grosses = indexes.stream().map(i -> builtLines.get(i).lineGross()).toList();
+            List<BigDecimal> nets = InvoiceNetAllocator.allocateNet(grosses, rate);
+            BigDecimal groupNet = BigDecimal.ZERO.setScale(2, RoundingMode.HALF_UP);
+            for (int k = 0; k < indexes.size(); k++) {
+                lineNets[indexes.get(k)] = nets.get(k);
+                groupNet = groupNet.add(nets.get(k));
+            }
+            totalAmount = totalAmount.add(groupNet);
+            meritGross = meritGross.add(AllegroInvoiceMappingSupport.meritGrossFromNet(groupNet, rate));
+        }
+
+        BigDecimal targetGross = resolveTargetGross(form);
+        if (targetGross == null) {
+            targetGross = linesGross;
+        }
+        BigDecimal roundingAmount = builtLines.isEmpty()
+                ? null
+                : AllegroInvoiceMappingSupport.roundingAmount(targetGross, meritGross);
+        if (roundingAmount != null && roundingAmount.abs().compareTo(MAX_ROUNDING_AMOUNT) > 0) {
+            throw new ResponseStatusException(
+                    HttpStatus.BAD_REQUEST,
+                    "Kwota brutto zamówienia (" + targetGross.toPlainString()
+                            + " zł) różni się od sumy pozycji (" + linesGross.toPlainString()
+                            + " zł) o więcej niż " + MAX_ROUNDING_AMOUNT.toPlainString()
+                            + " zł. Sprawdź rabaty i płatność w Allegro.");
+        }
+
         List<CreateInvoiceLineRequest> lines = new ArrayList<>(builtLines.size());
         String uomName = resolveItemUomName(context);
-        for (BuiltLine builtLine : builtLines) {
-            linesGross = linesGross.add(builtLine.lineGross());
-            vatByTaxId.merge(builtLine.tax().id(), builtLine.lineVat(), BigDecimal::add);
-            grossByTaxId.merge(builtLine.tax().id(), builtLine.lineGross(), BigDecimal::add);
-            taxById.putIfAbsent(builtLine.tax().id(), builtLine.tax());
-            lines.add(builtLine.toRequest(uomName));
+        for (int i = 0; i < builtLines.size(); i++) {
+            lines.add(builtLines.get(i).toRequest(uomName, lineNets[i]));
         }
-        BigDecimal totalAmount = resolveTotalAmount(form, grossByTaxId, taxById, linesGross);
-        BigDecimal roundingAmount = resolveRoundingAmount(form, grossByTaxId, taxById, linesGross, totalAmount);
 
         BuyerBilling billing = billingMapper.toBuyerBilling(form);
         String footerComment = resolveHeaderComment(
@@ -147,7 +185,7 @@ public class AllegroToMeritInvoiceBuilder {
         }
 
         // Amount nie wysyłane — Merit liczy VAT z Price; null → JsonInclude pomija pole.
-        List<CreateInvoiceTaxAmountRequest> taxAmounts = vatByTaxId.keySet().stream()
+        List<CreateInvoiceTaxAmountRequest> taxAmounts = indexesByTaxId.keySet().stream()
                 .map(taxId -> new CreateInvoiceTaxAmountRequest(taxId, null))
                 .toList();
 
@@ -228,69 +266,6 @@ public class AllegroToMeritInvoiceBuilder {
     }
 
     /**
-     * TotalAmount = brutto Allegro / (1+VAT). Jedna stawka: paidAmount/totalToPay.
-     * Wiele stawek: suma toNet(brutto grupy) per TaxId.
-     */
-    static BigDecimal resolveTotalAmount(
-            AllegroCheckoutForm form,
-            Map<String, BigDecimal> grossByTaxId,
-            Map<String, MeritTaxDto> taxById,
-            BigDecimal linesGross) {
-        if (grossByTaxId == null || grossByTaxId.isEmpty()) {
-            return BigDecimal.ZERO.setScale(2, RoundingMode.HALF_UP);
-        }
-        if (grossByTaxId.size() == 1) {
-            MeritTaxDto tax = taxById.values().iterator().next();
-            BigDecimal rate = AllegroInvoiceMappingSupport.vatRateFromPercent(tax.taxPct());
-            BigDecimal brutto = resolveTargetGross(form);
-            if (brutto == null) {
-                brutto = linesGross;
-            }
-            return AllegroInvoiceMappingSupport.toNet(brutto, rate, 2);
-        }
-        BigDecimal total = BigDecimal.ZERO.setScale(2, RoundingMode.HALF_UP);
-        for (Map.Entry<String, BigDecimal> entry : grossByTaxId.entrySet()) {
-            MeritTaxDto tax = taxById.get(entry.getKey());
-            BigDecimal rate = AllegroInvoiceMappingSupport.vatRateFromPercent(tax.taxPct());
-            total = total.add(AllegroInvoiceMappingSupport.toNet(entry.getValue(), rate, 2));
-        }
-        return total;
-    }
-
-    /**
-     * RoundingAmount = G − (TotalAmount + round(TotalAmount×VAT)); 0 → null.
-     */
-    static BigDecimal resolveRoundingAmount(
-            AllegroCheckoutForm form,
-            Map<String, BigDecimal> grossByTaxId,
-            Map<String, MeritTaxDto> taxById,
-            BigDecimal linesGross,
-            BigDecimal totalAmount) {
-        if (grossByTaxId == null || grossByTaxId.isEmpty() || totalAmount == null) {
-            return null;
-        }
-        BigDecimal targetGross = resolveTargetGross(form);
-        if (targetGross == null) {
-            targetGross = linesGross;
-        }
-        BigDecimal meritGross;
-        if (grossByTaxId.size() == 1) {
-            MeritTaxDto tax = taxById.values().iterator().next();
-            BigDecimal rate = AllegroInvoiceMappingSupport.vatRateFromPercent(tax.taxPct());
-            meritGross = AllegroInvoiceMappingSupport.meritGrossFromNet(totalAmount, rate);
-        } else {
-            meritGross = BigDecimal.ZERO.setScale(2, RoundingMode.HALF_UP);
-            for (Map.Entry<String, BigDecimal> entry : grossByTaxId.entrySet()) {
-                MeritTaxDto tax = taxById.get(entry.getKey());
-                BigDecimal rate = AllegroInvoiceMappingSupport.vatRateFromPercent(tax.taxPct());
-                BigDecimal groupNet = AllegroInvoiceMappingSupport.toNet(entry.getValue(), rate, 2);
-                meritGross = meritGross.add(AllegroInvoiceMappingSupport.meritGrossFromNet(groupNet, rate));
-            }
-        }
-        return AllegroInvoiceMappingSupport.roundingAmount(targetGross, meritGross);
-    }
-
-    /**
      * Cel brutto faktury: payment.paidAmount, inaczej summary.totalToPay.
      */
     static BigDecimal resolveTargetGross(AllegroCheckoutForm form) {
@@ -335,15 +310,6 @@ public class AllegroToMeritInvoiceBuilder {
 
     public int resolveQuantity(AllegroLineItem lineItem) {
         return lineItem.quantity() == null ? 1 : lineItem.quantity();
-    }
-
-    public BigDecimal resolveUnitNet(BigDecimal unitGross, BigDecimal vatRate) {
-        return AllegroInvoiceMappingSupport.toNet(
-                unitGross, vatRate, AllegroInvoiceMappingSupport.UNIT_NET_SCALE);
-    }
-
-    public BigDecimal resolveUnitNetFromLine(BigDecimal lineNet, int quantity) {
-        return AllegroInvoiceMappingSupport.unitNetFromLineNet(lineNet, quantity);
     }
 
     public String resolveDeliveryCode(AllegroDeliveryMethod method) {
@@ -497,11 +463,7 @@ public class AllegroToMeritInvoiceBuilder {
             String description,
             int itemType,
             int quantity,
-            BigDecimal unitGross,
             BigDecimal lineGross,
-            BigDecimal lineNet,
-            BigDecimal lineVat,
-            BigDecimal unitNet,
             MeritTaxDto tax) {
 
         static BuiltLine fromUnitGross(
@@ -511,27 +473,22 @@ public class AllegroToMeritInvoiceBuilder {
                 int quantity,
                 BigDecimal unitGross,
                 MeritTaxDto tax) {
-            BigDecimal vatRate = AllegroInvoiceMappingSupport.vatRateFromPercent(tax.taxPct());
-            BigDecimal unitNet = AllegroInvoiceMappingSupport.toNet(
-                    unitGross, vatRate, AllegroInvoiceMappingSupport.UNIT_NET_SCALE);
-            BigDecimal lineNet = AllegroInvoiceMappingSupport.lineNetFromUnitNet(unitNet, quantity);
             BigDecimal lineGross =
                     unitGross.multiply(BigDecimal.valueOf(quantity)).setScale(2, RoundingMode.HALF_UP);
-            BigDecimal lineVat = lineGross.subtract(lineNet.setScale(2, RoundingMode.HALF_UP));
-            return new BuiltLine(
-                    itemCode,
-                    description,
-                    itemType,
-                    quantity,
-                    unitGross,
-                    lineGross,
-                    lineNet,
-                    lineVat,
-                    unitNet,
-                    tax);
+            return new BuiltLine(itemCode, description, itemType, quantity, lineGross, tax);
         }
 
-        CreateInvoiceLineRequest toRequest(String uomName) {
+        /**
+         * Price = netto pozycji / ilość (7 dp), tak by Merit po zaokrągleniu Price × Quantity do groszy
+         * dostał dokładnie {@code lineNet}.
+         */
+        CreateInvoiceLineRequest toRequest(String uomName, BigDecimal lineNet) {
+            BigDecimal unitNet = AllegroInvoiceMappingSupport.unitNetFromLineNet(lineNet, quantity);
+            BigDecimal check = unitNet.multiply(BigDecimal.valueOf(quantity)).setScale(2, RoundingMode.HALF_UP);
+            if (check.compareTo(lineNet) != 0) {
+                throw new IllegalStateException(
+                        "Cena jednostkowa " + unitNet + " × " + quantity + " nie daje netto pozycji " + lineNet);
+            }
             return new CreateInvoiceLineRequest(
                     itemCode,
                     description,

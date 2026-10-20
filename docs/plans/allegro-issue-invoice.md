@@ -17,7 +17,20 @@ Reguły obejmują m.in. `InvoiceRow[].Item.Code|Description|Type|UOMName`, `Quan
 
 ## Kwota transakcji
 
-Brutto faktury (suma netto + VAT) musi = `summary.totalToPay.amount` (±0,01 PLN).
+Allegro zwraca ceny **brutto**, Merit wymaga **netto** i sam liczy VAT jako `round(suma netto stawki × stawka, 2)`.
+Merit zaokrągla każdy wiersz (`Price × Quantity`) do groszy i porównuje sumę wierszy z `TotalAmount`
+(błąd: „Suma z artykułów nie zgadza się z wartością faktury”).
+
+Algorytm (`InvoiceNetAllocator` + `AllegroToMeritInvoiceBuilder`), osobno dla każdej stawki VAT:
+
+1. `TotalAmount` grupy = `round(Σ brutto pozycji / (1+VAT), 2)`.
+2. Netto pozycji = `brutto pozycji / (1+VAT)` obcięte do groszy; brakujące grosze (0..n) dodawane pozycjom
+   o największej reszcie, tak by suma netto pozycji = `TotalAmount` grupy.
+3. `Price` = netto pozycji / ilość (7 dp) — po zaokrągleniu `Price × Quantity` do groszy daje dokładnie netto pozycji.
+4. `RoundingAmount` = G − Σ po stawkach (`netto + round(netto × VAT)`), gdzie G = `payment.paidAmount`
+   (inaczej `summary.totalToPay`). Typowo 0 albo ±0,01; wartość > 0,05 = błąd 400 (brutto Allegro nie zgadza się z pozycjami).
+
+Przykład: towar 403,26 + dostawa 10,95 = 414,21 → wiersze 327,86 + 8,90 = 336,76; Merit VAT 77,45; brutto 414,21; bez korekty.
 
 Składniki:
 
@@ -38,7 +51,7 @@ Lista Sprzedane: `totalGross` z `summary.totalToPay` (fallback: suma powyższych
 2. `GET /order/checkout-forms/{id}` (Allegro)
 3. Klient Merit: `getcustomers` po `VatRegNo` albo `sendcustomer` (v2) — w **preview** bez `sendcustomer`
 4. Budowa linii (towary + koszty) i walidacja vs `summary.totalToPay`
-5. `sendinvoice` (ceny Allegro = brutto → netto wg VAT; dostawa/dopłaty → 23%)
+5. `sendinvoice` (ceny Allegro = brutto → netto wg algorytmu powyżej; dostawa/dopłaty → 23%)
 6. Zapis do `allegro_sold_invoice` (tylko issue)
 
 ## API

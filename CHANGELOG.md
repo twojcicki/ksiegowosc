@@ -27,6 +27,7 @@ Format oparty na [Keep a Changelog](https://keepachangelog.com/pl/1.1.0/).
 
 ### Fixed
 
+- Faktura Allegro→Merit: netto pozycji liczone w groszach z brutto pozycji (`InvoiceNetAllocator`), `TotalAmount` = suma netto pozycji, a `RoundingAmount` tylko jako reszta ±0,01 względem kwoty brutto z Allegro. Wcześniej `Price` miał 7 miejsc, a Merit zaokrągla wiersze do groszy i odrzucał fakturę: „Suma z artykułów nie zgadza się z wartością faktury”. Rozbieżność brutto Allegro z sumą pozycji > 0,05 zł kończy się błędem 400.
 - Login bez bocznego menu: `@Route(autoLayout = false)` — widok logowania poza `MainLayout`.
 - OAuth Allegro: dostęp do `/api/**` dla zalogowanych użytkowników (Vaadin `denyAll` dawał 403 na „Połącz z Allegro”).
 - OAuth Allegro: auto Redirect URI z hosta (bez `localhost` na Render) + podpowiedź URI w Ustawieniach API.
