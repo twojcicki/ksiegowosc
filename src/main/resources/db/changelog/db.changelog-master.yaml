@@ -19,3 +19,5 @@ databaseChangeLog:
       file: db/changelog/changes/014-user-invoice-schedule.sql
   - include:
       file: db/changelog/changes/015-allegro-trial-invoice.sql
+  - include:
+      file: db/changelog/changes/016-allegro-sold-invoice-payload-json.sql

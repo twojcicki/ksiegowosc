@@ -2,6 +2,7 @@ package pl.tw.ksiegowosc.service;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -17,6 +18,7 @@ import java.util.Set;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.mockito.InOrder;
 
 import pl.tw.ksiegowosc.dto.AllegroSoldItemDto;
 import pl.tw.ksiegowosc.dto.AllegroSoldItemsResult;
@@ -103,6 +105,37 @@ class AllegroInvoiceAutoIssueServiceTest {
         verify(invoiceService, never()).issueTrialInvoice(any(), any(), any());
     }
 
+    @Test
+    void sortOldestFirstOrdersByBoughtAtAscending() {
+        List<AllegroSoldItemDto> sorted = AllegroInvoiceAutoIssueService.sortOldestFirst(List.of(
+                itemAt("new", Instant.parse("2026-09-10T10:00:00Z")),
+                itemAt("old", Instant.parse("2026-09-01T10:00:00Z")),
+                itemAt("mid", Instant.parse("2026-09-05T10:00:00Z")),
+                itemAt("missing", null)));
+        assertThat(sorted).extracting(AllegroSoldItemDto::orderId)
+                .containsExactly("old", "mid", "new", "missing");
+    }
+
+    @Test
+    void runForScheduleProcessesOldestOrdersFirst() {
+        UserInvoiceSchedule schedule = schedule(true);
+        AppUser user = new AppUser();
+        user.setId(7L);
+        user.setLogin("admin");
+        when(credentialsService.requireUserById(7L)).thenReturn(user);
+        when(ordersService.getSoldItemsFrom(LocalDate.of(2026, 1, 1)))
+                .thenReturn(new AllegroSoldItemsResult(List.of(
+                        itemAt("newer", Instant.parse("2026-09-10T10:00:00Z")),
+                        itemAt("older", Instant.parse("2026-09-01T10:00:00Z"))), List.of()));
+        when(trialInvoiceRepository.findOrderIdsByOrderIdIn(any())).thenReturn(Set.of());
+
+        autoIssueService.runForSchedule(schedule, Instant.parse("2026-10-05T12:00:00Z"));
+
+        InOrder order = inOrder(invoiceService);
+        order.verify(invoiceService).issueInvoice(9L, "older");
+        order.verify(invoiceService).issueInvoice(9L, "newer");
+    }
+
     private static UserInvoiceSchedule schedule(boolean liveMode) {
         UserInvoiceSchedule schedule = new UserInvoiceSchedule();
         schedule.setUserId(7L);
@@ -114,6 +147,14 @@ class AllegroInvoiceAutoIssueServiceTest {
     }
 
     private static AllegroSoldItemDto item(String orderId, String invoiceNo) {
+        return itemAt(orderId, Instant.parse("2026-09-01T10:00:00Z"), invoiceNo);
+    }
+
+    private static AllegroSoldItemDto itemAt(String orderId, Instant boughtAt) {
+        return itemAt(orderId, boughtAt, null);
+    }
+
+    private static AllegroSoldItemDto itemAt(String orderId, Instant boughtAt, String invoiceNo) {
         return new AllegroSoldItemDto(
                 9L,
                 "Konto",
@@ -124,11 +165,12 @@ class AllegroInvoiceAutoIssueServiceTest {
                 List.of(),
                 BigDecimal.TEN,
                 "PLN",
-                Instant.parse("2026-09-01T10:00:00Z"),
+                boughtAt,
                 "buyer",
                 "BOUGHT",
                 "NEW",
                 invoiceNo,
+                null,
                 null);
     }
 }

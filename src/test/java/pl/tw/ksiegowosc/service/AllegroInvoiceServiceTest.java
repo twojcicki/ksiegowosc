@@ -144,6 +144,7 @@ class AllegroInvoiceServiceTest {
         verify(soldInvoiceRepository).save(entityCaptor.capture());
         assertThat(entityCaptor.getValue().getOrderId()).isEqualTo("order-1");
         assertThat(entityCaptor.getValue().getInvoiceNo()).isEqualTo("FS/1/01/2026");
+        assertThat(entityCaptor.getValue().getPayloadJson()).isNotBlank().contains("\"InvoiceNo\"");
         verify(customersService).createCustomer(any());
         verify(taxesService).listTaxes();
         verify(accountService).allocateInvoiceNo(9L, java.time.LocalDate.of(2026, 9, 6));

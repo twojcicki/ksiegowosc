@@ -6,8 +6,11 @@ import java.time.Instant;
 import java.time.LocalDate;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
+import java.util.Objects;
+import java.util.stream.Collectors;
 
 import org.springframework.web.client.RestClientResponseException;
 import org.springframework.web.server.ResponseStatusException;
@@ -31,6 +34,9 @@ import com.vaadin.flow.router.Route;
 
 import jakarta.annotation.security.PermitAll;
 import pl.tw.ksiegowosc.client.MeritErrorMessages;
+import pl.tw.ksiegowosc.dto.BulkDeleteInvoiceFailure;
+import pl.tw.ksiegowosc.dto.BulkDeleteInvoiceResult;
+import pl.tw.ksiegowosc.dto.DeleteInvoiceResult;
 import pl.tw.ksiegowosc.dto.SalesInvoiceDetailsDto;
 import pl.tw.ksiegowosc.dto.SalesInvoiceDto;
 import pl.tw.ksiegowosc.dto.SalesInvoiceHeaderDto;
@@ -60,6 +66,7 @@ public class InvoiceListView extends View {
     private final UnitsService unitsService;
     private final DatePicker fromPicker = new DatePicker("Od");
     private final DatePicker toPicker = new DatePicker("Do");
+    private final Button deleteSelectedButton = new Button("Usuń zaznaczone");
     private final Grid<SalesInvoiceDto> grid = new Grid<>(SalesInvoiceDto.class, false);
     private final NumberFormat amountFormat;
 
@@ -103,13 +110,19 @@ public class InvoiceListView extends View {
         Button search = new Button("Szukaj", e -> loadInvoices());
         search.addThemeVariants(ButtonVariant.PRIMARY);
 
-        HorizontalLayout filters = new HorizontalLayout(fromPicker, toPicker, search);
+        deleteSelectedButton.addThemeVariants(ButtonVariant.LUMO_ERROR);
+        deleteSelectedButton.setEnabled(false);
+        deleteSelectedButton.addClickListener(e -> confirmDeleteSelected());
+
+        HorizontalLayout filters = new HorizontalLayout(fromPicker, toPicker, search, deleteSelectedButton);
         filters.addClassName("filters");
         filters.setWidthFull();
         return filters;
     }
 
     private Grid<SalesInvoiceDto> createGrid() {
+        grid.setSelectionMode(Grid.SelectionMode.MULTI);
+        grid.addSelectionListener(event -> updateDeleteSelectedButton());
         grid.addThemeVariants(GridVariant.NO_BORDER);
         grid.addColumn(SalesInvoiceDto::invoiceNo).setHeader("Numer").setAutoWidth(true).setSortable(true);
         grid.addColumn(SalesInvoiceDto::documentDate).setHeader("Data").setAutoWidth(true).setSortable(true);
@@ -152,7 +165,12 @@ public class InvoiceListView extends View {
             email.setEnabled(invoice.sihId() != null && !invoice.sihId().isBlank());
             email.addClickListener(e -> confirmSendEmail(invoice, email));
 
-            return new HorizontalLayout(details, email);
+            Button delete = new Button("Usuń");
+            delete.addThemeVariants(ButtonVariant.LUMO_SMALL, ButtonVariant.LUMO_ERROR, ButtonVariant.LUMO_TERTIARY);
+            delete.setEnabled(invoice.sihId() != null && !invoice.sihId().isBlank());
+            delete.addClickListener(e -> confirmDeleteInvoice(invoice, delete));
+
+            return new HorizontalLayout(details, email, delete);
         }).setHeader("Akcje").setAutoWidth(true).setFlexGrow(0).setFrozenToEnd(true);
         grid.setSizeFull();
         return grid;
@@ -259,6 +277,152 @@ public class InvoiceListView extends View {
         dialog.open();
     }
 
+    private void confirmDeleteInvoice(SalesInvoiceDto invoice, Button deleteButton) {
+        String invoiceNo = invoiceLabel(invoice);
+
+        ConfirmDialog dialog = new ConfirmDialog();
+        dialog.setHeader("Usuń fakturę");
+        dialog.setText("Czy na pewno chcesz usunąć fakturę o numerze " + invoiceNo + "?");
+        dialog.setCancelable(true);
+        dialog.setCancelText("Nie");
+        dialog.setConfirmText("Tak");
+        dialog.setConfirmButtonTheme("error primary");
+        dialog.addConfirmListener(event -> {
+            dialog.close();
+            deleteInvoice(invoice, deleteButton);
+        });
+        dialog.open();
+    }
+
+    private void confirmDeleteSelected() {
+        List<SalesInvoiceDto> selected = selectedDeletableInvoices();
+        if (selected.isEmpty()) {
+            showError("Zaznacz co najmniej jedną fakturę.");
+            return;
+        }
+        List<String> numbers = selected.stream().map(InvoiceListView::invoiceLabel).toList();
+        int count = numbers.size();
+
+        ConfirmDialog dialog = new ConfirmDialog();
+        dialog.setHeader("Usuń zaznaczone faktury");
+        dialog.setText("Czy na pewno chcesz usunąć " + count + " faktur: " + String.join(", ", numbers) + "?");
+        dialog.setCancelable(true);
+        dialog.setCancelText("Nie");
+        dialog.setConfirmText("Tak");
+        dialog.setConfirmButtonTheme("error primary");
+        dialog.addConfirmListener(event -> {
+            dialog.close();
+            deleteSelectedInvoices(selected);
+        });
+        dialog.open();
+    }
+
+    private void deleteSelectedInvoices(List<SalesInvoiceDto> selected) {
+        deleteSelectedButton.setEnabled(false);
+        List<String> ids = selected.stream()
+                .map(SalesInvoiceDto::sihId)
+                .filter(Objects::nonNull)
+                .map(String::trim)
+                .filter(id -> !id.isBlank())
+                .toList();
+        try {
+            BulkDeleteInvoiceResult result = invoicesService.deleteInvoices(ids);
+            showBulkDeleteResult(result);
+            grid.deselectAll();
+            loadInvoices();
+        } catch (ResponseStatusException ex) {
+            showError(reason(ex));
+        } catch (RuntimeException ex) {
+            showError("Nie udało się usunąć zaznaczonych faktur.");
+        } finally {
+            updateDeleteSelectedButton();
+        }
+    }
+
+    private void showBulkDeleteResult(BulkDeleteInvoiceResult result) {
+        int ok = result.successes() == null ? 0 : result.successes().size();
+        int failed = result.failures() == null ? 0 : result.failures().size();
+        if (failed == 0) {
+            String numbers = result.successes().stream()
+                    .map(DeleteInvoiceResult::invoiceNo)
+                    .filter(Objects::nonNull)
+                    .filter(no -> !no.isBlank())
+                    .collect(Collectors.joining(", "));
+            Notifications.show(
+                    "Usunięto " + ok + " faktur: " + numbers + ".",
+                    NotificationVariant.SUCCESS);
+            return;
+        }
+        String failureDetails = result.failures().stream()
+                .map(failure -> invoiceLabel(failure) + ": " + failure.message())
+                .collect(Collectors.joining("; "));
+        if (ok == 0) {
+            showError("Nie usunięto żadnej faktury. " + failureDetails);
+            return;
+        }
+        Notifications.show(
+                "Usunięto " + ok + " faktur, nie udało się usunąć " + failed + ": " + failureDetails,
+                NotificationVariant.LUMO_PRIMARY);
+    }
+
+    private void updateDeleteSelectedButton() {
+        deleteSelectedButton.setEnabled(!selectedDeletableInvoices().isEmpty());
+    }
+
+    private List<SalesInvoiceDto> selectedDeletableInvoices() {
+        List<SalesInvoiceDto> selected = new ArrayList<>();
+        for (SalesInvoiceDto invoice : grid.getSelectedItems()) {
+            if (invoice != null && invoice.sihId() != null && !invoice.sihId().isBlank()) {
+                selected.add(invoice);
+            }
+        }
+        return selected;
+    }
+
+    private static String invoiceLabel(SalesInvoiceDto invoice) {
+        if (invoice.invoiceNo() == null || invoice.invoiceNo().isBlank()) {
+            return invoice.sihId();
+        }
+        return invoice.invoiceNo();
+    }
+
+    private static String invoiceLabel(BulkDeleteInvoiceFailure failure) {
+        if (failure.invoiceNo() == null || failure.invoiceNo().isBlank()) {
+            return failure.id();
+        }
+        return failure.invoiceNo();
+    }
+
+    private void deleteInvoice(SalesInvoiceDto invoice, Button deleteButton) {
+        deleteButton.setEnabled(false);
+        String invoiceNo = invoice.invoiceNo() == null || invoice.invoiceNo().isBlank()
+                ? invoice.sihId()
+                : invoice.invoiceNo();
+        try {
+            var result = invoicesService.deleteInvoice(invoice.sihId());
+            String deletedInvoiceNo = result.invoiceNo() == null || result.invoiceNo().isBlank()
+                    ? invoiceNo
+                    : result.invoiceNo();
+            if (result.paymentDocumentNos() != null && !result.paymentDocumentNos().isEmpty()) {
+                Notifications.show(
+                        "Usunięto płatności " + String.join(", ", result.paymentDocumentNos())
+                                + " oraz fakturę " + deletedInvoiceNo + ".",
+                        NotificationVariant.SUCCESS);
+            } else {
+                Notifications.show("Usunięto fakturę " + deletedInvoiceNo + ".", NotificationVariant.SUCCESS);
+            }
+            loadInvoices();
+        } catch (ResponseStatusException ex) {
+            showError(reason(ex));
+        } catch (RestClientResponseException ex) {
+            showError(MeritErrorMessages.from(ex));
+        } catch (RuntimeException ex) {
+            showError("Nie udało się usunąć faktury " + invoiceNo + ".");
+        } finally {
+            deleteButton.setEnabled(true);
+        }
+    }
+
     private void sendInvoiceByEmail(SalesInvoiceDto invoice, Button emailButton) {
         emailButton.setEnabled(false);
         String invoiceNo = invoice.invoiceNo() == null || invoice.invoiceNo().isBlank()
@@ -289,6 +453,8 @@ public class InvoiceListView extends View {
         try {
             List<SalesInvoiceDto> invoices = invoicesService.getInvoices(from, to);
             grid.setItems(invoices);
+            grid.deselectAll();
+            updateDeleteSelectedButton();
         } catch (ResponseStatusException ex) {
             showError(reason(ex));
         } catch (RestClientResponseException ex) {

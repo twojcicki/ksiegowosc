@@ -148,6 +148,9 @@ public class AllegroOrdersService {
                 if (saved.getIssueError() != null && !saved.getIssueError().isBlank()) {
                     withInvoice = soldItemMapper.withIssueError(withInvoice, saved.getIssueError());
                 }
+                if (saved.getPayloadJson() != null && !saved.getPayloadJson().isBlank()) {
+                    withInvoice = soldItemMapper.withPayloadJson(withInvoice, saved.getPayloadJson());
+                }
                 enriched.add(withInvoice);
             }
             resultOrders = enriched;

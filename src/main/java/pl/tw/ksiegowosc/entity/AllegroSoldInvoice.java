@@ -30,6 +30,9 @@ public class AllegroSoldInvoice {
     @Column(name = "issue_error_at")
     private Instant issueErrorAt;
 
+    @Column(name = "payload_json", columnDefinition = "TEXT")
+    private String payloadJson;
+
     public String getOrderId() {
         return orderId;
     }
@@ -76,6 +79,14 @@ public class AllegroSoldInvoice {
 
     public void setIssueErrorAt(Instant issueErrorAt) {
         this.issueErrorAt = issueErrorAt;
+    }
+
+    public String getPayloadJson() {
+        return payloadJson;
+    }
+
+    public void setPayloadJson(String payloadJson) {
+        this.payloadJson = payloadJson;
     }
 
     public boolean hasIssuedInvoice() {

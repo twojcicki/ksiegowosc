@@ -101,7 +101,7 @@ Aplikacja czyta port ze zmiennej `PORT` (domyślnie `8080`). Render wstrzykuje w
    - opcjonalnie puste `ALLEGRO_SCOPES`, żeby nie wysyłać `scope` w OAuth authorize
 4. W Allegro Sandbox Developer Apps ustaw **ten sam** Redirect URI co pokazuje Ustawienia API.
 
-Obraz budowany jest z profilem Maven `production` (zoptymalizowany frontend Vaadin). Po deployu UI listy faktur będzie pod `/`, Allegro pod `/allegro`, Swagger pod `/swagger-ui.html`, lista REST pod `/api/invoices?from=2026-01-01&to=2026-01-31`, tworzenie faktury pod `POST /api/invoices`, szczegóły pod `/api/invoices/{id}`, wysyłka e-mail pod `POST /api/invoices/{id}/email`, klienci pod `/api/customers`, stawki VAT pod `/api/taxes`, oferty Allegro pod `/api/allegro/offers`, sprzedane zamówienia pod `/api/allegro/sold-items?from=...&to=...`, wystawienie faktury z Allegro pod `POST /api/allegro/sold-items/invoice`.
+Obraz budowany jest z profilem Maven `production` (zoptymalizowany frontend Vaadin). Po deployu UI listy faktur będzie pod `/`, Allegro pod `/allegro`, Swagger pod `/swagger-ui.html`, lista REST pod `/api/invoices?from=2026-01-01&to=2026-01-31`, tworzenie faktury pod `POST /api/invoices`, szczegóły pod `/api/invoices/{id}`, wysyłka e-mail pod `POST /api/invoices/{id}/email`, usuwanie pod `DELETE /api/invoices/{id}`, klienci pod `/api/customers`, stawki VAT pod `/api/taxes`, oferty Allegro pod `/api/allegro/offers`, sprzedane zamówienia pod `/api/allegro/sold-items?from=...&to=...`, wystawienie faktury z Allegro pod `POST /api/allegro/sold-items/invoice`.
 
 ## Swagger
 
@@ -177,6 +177,14 @@ curl -X POST "http://localhost:8080/api/invoices/5f91033c-9d0f-416e-a079-d3c892b
 Wywołanie idzie do `POST https://program.360ksiegowosc.pl/api/v2/sendinvoicebyemail`
 
 z `Id` oraz `DelivNote`.
+
+Usunięcie faktury w Merit (`SIHId`):
+
+```bash
+curl -X DELETE "http://localhost:8080/api/invoices/5f91033c-9d0f-416e-a079-d3c892b8c317"
+```
+
+Wywołanie idzie do `POST https://program.360ksiegowosc.pl/api/v2/deleteinvoice/{id}` z body `{}`.
 
 Wystawienie faktury w Merit dla zamówienia Allegro (wszystkie pozycje, klient find-or-create po NIP):
 

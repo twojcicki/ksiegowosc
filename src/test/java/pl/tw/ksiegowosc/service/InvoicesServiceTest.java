@@ -3,6 +3,9 @@ package pl.tw.ksiegowosc.service;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -18,21 +21,27 @@ import java.util.Optional;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
+import org.mockito.InOrder;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.server.ResponseStatusException;
 
 import pl.tw.ksiegowosc.client.MeritApiClient;
+import pl.tw.ksiegowosc.dto.BulkDeleteInvoiceResult;
 import pl.tw.ksiegowosc.dto.CreateInvoiceLineRequest;
 import pl.tw.ksiegowosc.dto.CreateInvoiceRequest;
 import pl.tw.ksiegowosc.dto.CreateInvoiceResponse;
 import pl.tw.ksiegowosc.dto.CreateInvoiceTaxAmountRequest;
+import pl.tw.ksiegowosc.dto.DeleteInvoiceResult;
 import pl.tw.ksiegowosc.dto.MeritCreateInvoiceRequest;
 import pl.tw.ksiegowosc.dto.MeritCreateInvoiceResponse;
+import pl.tw.ksiegowosc.dto.MeritPaymApiDetails;
+import pl.tw.ksiegowosc.dto.MeritPaymentDto;
 import pl.tw.ksiegowosc.dto.SalesInvoiceDetailsDto;
 import pl.tw.ksiegowosc.dto.SalesInvoiceDto;
 import pl.tw.ksiegowosc.dto.SalesInvoiceHeaderDto;
+import pl.tw.ksiegowosc.dto.SalesInvoicePaymentDto;
 import pl.tw.ksiegowosc.dto.SendInvoiceEmailResponse;
 import pl.tw.ksiegowosc.entity.InvoiceEmailStatus;
 import pl.tw.ksiegowosc.mapper.MapperFixtures;
@@ -252,6 +261,158 @@ class InvoicesServiceTest {
                             .isEqualTo("E-mail nadawcy nie został wpisany w ustawieniach faktury sprzedaży.");
                 });
         verify(invoiceEmailStatusRepository, never()).save(any());
+    }
+
+    @Test
+    void shouldDeleteInvoiceWithoutPayments() {
+        String invoiceId = "5f91033c-9d0f-416e-a079-d3c892b8c317";
+        when(meritApiClient.getInvoiceDetails(invoiceId, false))
+                .thenReturn(details(invoiceId, "FV/1", List.of()));
+
+        DeleteInvoiceResult result = invoicesService.deleteInvoice(invoiceId);
+
+        assertThat(result.invoiceNo()).isEqualTo("FV/1");
+        assertThat(result.paymentDocumentNos()).isEmpty();
+        verify(meritApiClient, never()).deletePayment(any());
+        verify(meritApiClient, never()).getPayments(any(), any());
+        verify(meritApiClient).deleteInvoice(invoiceId);
+    }
+
+    @Test
+    void shouldDeletePaymentsBeforeInvoice() {
+        String invoiceId = "5f91033c-9d0f-416e-a079-d3c892b8c317";
+        String paymentId = "pay-1";
+        when(meritApiClient.getInvoiceDetails(invoiceId, false))
+                .thenReturn(details(
+                        invoiceId,
+                        "FV/2",
+                        List.of(new SalesInvoicePaymentDto("20261015", BigDecimal.TEN, "Bank", paymentId))));
+        when(meritApiClient.getPayments(any(), any()))
+                .thenReturn(List.of(new MeritPaymentDto(
+                        paymentId,
+                        "WP/12",
+                        "20261015",
+                        new MeritPaymApiDetails(paymentId, "FV/2", invoiceId))));
+
+        DeleteInvoiceResult result = invoicesService.deleteInvoice(invoiceId);
+
+        assertThat(result.invoiceNo()).isEqualTo("FV/2");
+        assertThat(result.paymentDocumentNos()).containsExactly("WP/12");
+        InOrder order = inOrder(meritApiClient);
+        order.verify(meritApiClient).getInvoiceDetails(invoiceId, false);
+        order.verify(meritApiClient).getPayments(any(), any());
+        order.verify(meritApiClient).deletePayment(paymentId);
+        order.verify(meritApiClient).deleteInvoice(invoiceId);
+    }
+
+    @Test
+    void shouldFallbackToPaymentIdWhenDocumentNoMissing() {
+        String invoiceId = "5f91033c-9d0f-416e-a079-d3c892b8c317";
+        String paymentId = "pay-missing-doc";
+        when(meritApiClient.getInvoiceDetails(invoiceId, false))
+                .thenReturn(details(
+                        invoiceId,
+                        "FV/3",
+                        List.of(new SalesInvoicePaymentDto("20261015", BigDecimal.ONE, "Cash", paymentId))));
+        when(meritApiClient.getPayments(any(), any())).thenReturn(List.of());
+
+        DeleteInvoiceResult result = invoicesService.deleteInvoice(invoiceId);
+
+        assertThat(result.paymentDocumentNos()).containsExactly(paymentId);
+        verify(meritApiClient).deletePayment(paymentId);
+        verify(meritApiClient).deleteInvoice(invoiceId);
+    }
+
+    @Test
+    void shouldRejectBlankInvoiceIdOnDelete() {
+        assertThatThrownBy(() -> invoicesService.deleteInvoice("  "))
+                .isInstanceOf(ResponseStatusException.class)
+                .satisfies(ex -> {
+                    ResponseStatusException statusEx = (ResponseStatusException) ex;
+                    assertThat(statusEx.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+                    assertThat(statusEx.getReason()).isEqualTo("Podaj identyfikator faktury.");
+                });
+        verify(meritApiClient, never()).getInvoiceDetails(any(), eq(false));
+        verify(meritApiClient, never()).deleteInvoice(any());
+    }
+
+    @Test
+    void shouldReturnMeritMessageWhenDeleteIsRejected() {
+        when(meritApiClient.getInvoiceDetails("id", false))
+                .thenReturn(details("id", "FV/x", List.of()));
+        String meritBody = "{\"Message\":\"Invoice cannot be deleted.\"}";
+        doThrow(HttpClientErrorException.create(
+                        HttpStatus.BAD_REQUEST,
+                        "Bad Request",
+                        HttpHeaders.EMPTY,
+                        meritBody.getBytes(StandardCharsets.UTF_8),
+                        StandardCharsets.UTF_8))
+                .when(meritApiClient)
+                .deleteInvoice("id");
+
+        assertThatThrownBy(() -> invoicesService.deleteInvoice("id"))
+                .isInstanceOf(ResponseStatusException.class)
+                .satisfies(ex -> {
+                    ResponseStatusException statusEx = (ResponseStatusException) ex;
+                    assertThat(statusEx.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+                    assertThat(statusEx.getReason()).isEqualTo("Invoice cannot be deleted.");
+                });
+    }
+
+    @Test
+    void shouldDeleteInvoicesInOrderAndContinueOnError() {
+        when(meritApiClient.getInvoiceDetails("a", false)).thenReturn(details("a", "FV/A", List.of()));
+        when(meritApiClient.getInvoiceDetails("b", false)).thenReturn(details("b", "FV/B", List.of()));
+        when(meritApiClient.getInvoiceDetails("c", false)).thenReturn(details("c", "FV/C", List.of()));
+        doThrow(HttpClientErrorException.create(
+                        HttpStatus.BAD_REQUEST,
+                        "Bad Request",
+                        HttpHeaders.EMPTY,
+                        "{\"Message\":\"blocked\"}".getBytes(StandardCharsets.UTF_8),
+                        StandardCharsets.UTF_8))
+                .when(meritApiClient)
+                .deleteInvoice("b");
+
+        BulkDeleteInvoiceResult result = invoicesService.deleteInvoices(List.of("a", "b", "c"));
+
+        assertThat(result.successes()).extracting(DeleteInvoiceResult::invoiceNo).containsExactly("FV/A", "FV/C");
+        assertThat(result.failures()).hasSize(1);
+        assertThat(result.failures().getFirst().id()).isEqualTo("b");
+        assertThat(result.failures().getFirst().message()).isEqualTo("blocked");
+        InOrder order = inOrder(meritApiClient);
+        order.verify(meritApiClient).getInvoiceDetails("a", false);
+        order.verify(meritApiClient).deleteInvoice("a");
+        order.verify(meritApiClient).getInvoiceDetails("b", false);
+        order.verify(meritApiClient).deleteInvoice("b");
+        order.verify(meritApiClient).getInvoiceDetails("c", false);
+        order.verify(meritApiClient).deleteInvoice("c");
+    }
+
+    @Test
+    void shouldRejectEmptyBulkDelete() {
+        assertThatThrownBy(() -> invoicesService.deleteInvoices(List.of()))
+                .isInstanceOf(ResponseStatusException.class)
+                .satisfies(ex -> {
+                    ResponseStatusException statusEx = (ResponseStatusException) ex;
+                    assertThat(statusEx.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+                });
+        verify(meritApiClient, never()).deleteInvoice(any());
+    }
+
+    private static SalesInvoiceDetailsDto details(
+            String invoiceId, String invoiceNo, List<SalesInvoicePaymentDto> payments) {
+        return new SalesInvoiceDetailsDto(
+                new SalesInvoiceHeaderDto(
+                        invoiceId,
+                        null, null, null, null, null,
+                        invoiceNo,
+                        "20261015", null, "Klient",
+                        null, null, null, null, null, null, null,
+                        new BigDecimal("10.00"),
+                        null, null, null, null, null, null, null, null, null, null, null, null, null),
+                List.of(),
+                payments,
+                null);
     }
 
     @Test

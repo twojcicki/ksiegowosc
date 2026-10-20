@@ -3,6 +3,7 @@ package pl.tw.ksiegowosc.service;
 import java.time.Clock;
 import java.time.Instant;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Objects;
@@ -71,7 +72,7 @@ public class AllegroInvoiceAutoIssueService {
     private void processUser(UserInvoiceSchedule schedule) {
         AllegroSoldItemsResult sold = ordersService.getSoldItemsFrom(schedule.getInvoicesFromDate());
         List<AllegroSoldItemDto> withoutLive = filterCandidates(sold.items());
-        List<AllegroSoldItemDto> candidates = filterWithoutTrial(withoutLive);
+        List<AllegroSoldItemDto> candidates = sortOldestFirst(filterWithoutTrial(withoutLive));
         log.info(
                 "Auto-wystawianie userId={} live={} kandydatów={} ostrzeżeń={}",
                 schedule.getUserId(),
@@ -120,6 +121,18 @@ public class AllegroInvoiceAutoIssueService {
             result.add(item);
         }
         return result;
+    }
+
+    /** Oldest {@code boughtAt} first; missing dates last; tie-break by orderId. */
+    static List<AllegroSoldItemDto> sortOldestFirst(List<AllegroSoldItemDto> items) {
+        if (items == null || items.isEmpty()) {
+            return List.of();
+        }
+        return items.stream()
+                .sorted(Comparator
+                        .comparing(AllegroSoldItemDto::boughtAt, Comparator.nullsLast(Comparator.naturalOrder()))
+                        .thenComparing(AllegroSoldItemDto::orderId, Comparator.nullsLast(Comparator.naturalOrder())))
+                .toList();
     }
 
     List<AllegroSoldItemDto> filterWithoutTrial(List<AllegroSoldItemDto> candidates) {

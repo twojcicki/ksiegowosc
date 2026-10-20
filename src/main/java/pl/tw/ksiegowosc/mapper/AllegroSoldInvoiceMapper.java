@@ -17,5 +17,6 @@ public interface AllegroSoldInvoiceMapper {
     @Mapping(target = "createdAt", source = "createdAt")
     @Mapping(target = "issueError", ignore = true)
     @Mapping(target = "issueErrorAt", ignore = true)
+    @Mapping(target = "payloadJson", ignore = true)
     AllegroSoldInvoice toEntity(String orderId, String invoiceNo, String meritInvoiceId, Instant createdAt);
 }

@@ -19,5 +19,6 @@ public record AllegroSoldItemDto(
         String orderStatus,
         String fulfillmentStatus,
         String invoiceNo,
-        String issueError) {
+        String issueError,
+        String payloadJson) {
 }

@@ -6,6 +6,10 @@ Format oparty na [Keep a Changelog](https://keepachangelog.com/pl/1.1.0/).
 
 ### Added
 
+- Usuwanie faktury Merit z listy (przycisk Usuń + potwierdzenie Tak/Nie) oraz `DELETE /api/invoices/{id}` → Merit v2 `deleteinvoice/{id}`.
+- Przy usuwaniu faktury Merit: najpierw `getinvoice` + `deletepayment` dla powiązanych płatności, potem `deleteinvoice`; komunikat z numerami płatności i faktury.
+- Grupowe usuwanie faktur Merit: zaznaczanie wielu wierszy + „Usuń zaznaczone” z potwierdzeniem Tak/Nie.
+- Live wystawianie faktur Allegro: zapis payloadu Merit (`payload_json` w `allegro_sold_invoice`) i podgląd JSON w tabeli sprzedanych.
 - Płatność na fakturze Allegro→Merit: `Payment` z `paidAmount`/`finishedAt` zamówienia oraz `PaymentMethod` z pola konta Allegro.
 - Faktura Allegro dla osoby bez NIP (`invoice.required`): `NotTDCustomer=true`, Name = `naturalPerson` (imię+nazwisko); adres wyłącznie z `invoice.address`.
 - Opcjonalne pominięcie OAuth `scope`: puste `ALLEGRO_SCOPES` / `clients.allegro.scopes` — Allegro używa scope’ów zadeklarowanych w aplikacji.
@@ -16,6 +20,7 @@ Format oparty na [Keep a Changelog](https://keepachangelog.com/pl/1.1.0/).
 
 ### Changed
 
+- Cykliczne auto-wystawianie Allegro przetwarza zamówienia od najstarszego (`boughtAt` rosnąco).
 - Mapowanie klienta Allegro wg `invoice.required`: przy chęci faktury Name/adres/NIP wyłącznie z `invoice` (company → naturalPerson); bez checka — Name/adres z `delivery.address`; zawsze nowy klient w Merit (bez lookupu).
 - Dostawa na fakturze Allegro: `InvoiceRow[].Item.Code` zawsze `Dostawa` (nie `delivery.method.id`).
 - HComment faktur Allegro: `{AllegroAccount.name}, {login z GET /me}, ID transakcji: {orderId} / {buyer.login}`.

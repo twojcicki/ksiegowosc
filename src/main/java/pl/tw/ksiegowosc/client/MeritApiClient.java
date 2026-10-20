@@ -27,6 +27,8 @@ import pl.tw.ksiegowosc.dto.MeritCreateCustomerResponse;
 import pl.tw.ksiegowosc.dto.MeritCreateInvoiceRequest;
 import pl.tw.ksiegowosc.dto.MeritCreateInvoiceResponse;
 import pl.tw.ksiegowosc.dto.MeritCustomersRequest;
+import pl.tw.ksiegowosc.dto.MeritPaymentDto;
+import pl.tw.ksiegowosc.dto.MeritPaymentsRequest;
 import pl.tw.ksiegowosc.dto.MeritTaxDto;
 import pl.tw.ksiegowosc.dto.MeritUnitDto;
 import pl.tw.ksiegowosc.dto.SalesInvoiceDetailsDto;
@@ -46,6 +48,9 @@ public class MeritApiClient {
             new ParameterizedTypeReference<>() {
             };
     private static final ParameterizedTypeReference<List<MeritUnitDto>> UNITS_RESPONSE =
+            new ParameterizedTypeReference<>() {
+            };
+    private static final ParameterizedTypeReference<List<MeritPaymentDto>> PAYMENTS_RESPONSE =
             new ParameterizedTypeReference<>() {
             };
 
@@ -93,6 +98,38 @@ public class MeritApiClient {
                 .body(request)
                 .retrieve()
                 .body(String.class);
+    }
+
+    public void deleteInvoice(String id) {
+        meritV2RestClient.post()
+                .uri("/deleteinvoice/{id}", id)
+                .contentType(MediaType.APPLICATION_JSON)
+                .body(Map.of())
+                .retrieve()
+                .toBodilessEntity();
+    }
+
+    public void deletePayment(String paymentId) {
+        meritV2RestClient.post()
+                .uri("/deletepayment/{id}", paymentId)
+                .contentType(MediaType.APPLICATION_JSON)
+                .body(Map.of())
+                .retrieve()
+                .toBodilessEntity();
+    }
+
+    public List<MeritPaymentDto> getPayments(LocalDate from, LocalDate to) {
+        MeritPaymentsRequest request = new MeritPaymentsRequest(
+                from.format(PERIOD_FORMAT),
+                to.format(PERIOD_FORMAT),
+                0);
+        List<MeritPaymentDto> payments = meritV2RestClient.post()
+                .uri("/getpayments")
+                .contentType(MediaType.APPLICATION_JSON)
+                .body(request)
+                .retrieve()
+                .body(PAYMENTS_RESPONSE);
+        return payments == null ? List.of() : List.copyOf(payments);
     }
 
     public MeritCreateInvoiceResponse createInvoice(MeritCreateInvoiceRequest request) {
